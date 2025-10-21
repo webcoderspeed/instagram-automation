@@ -11,6 +11,11 @@ import {
   WebhookController,
   createWebhookController,
 } from "./services/webhook/webhook-controller";
+import {
+  OAuthController,
+  createOAuthController,
+  createOAuthConfig,
+} from "./services/oauth";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -79,9 +84,10 @@ app.get("/api/status", (req: Request, res: Response) => {
       core: ["GET /", "GET /health", "GET /api/status"],
       authentication: [
         "GET /auth/instagram",
-        "GET /auth/instagram/callback",
+        "GET /auth/instagram/callback", 
         "POST /auth/instagram/refresh",
-        "POST /auth/instagram/validate",
+        "GET /auth/instagram/user/:userId",
+        "POST /auth/instagram/revoke",
       ],
       instagram: [
         "GET /api/instagram/profile",
@@ -439,162 +445,31 @@ const authService = new InstagramAuthService({
     "http://localhost:3000/auth/instagram/callback",
 });
 
+// New OAuth Controller
+const oauthConfig = createOAuthConfig(
+  process.env.INSTAGRAM_APP_ID || "",
+  process.env.INSTAGRAM_APP_SECRET || "",
+  process.env.INSTAGRAM_REDIRECT_URI || "http://localhost:3000/auth/instagram/callback"
+);
+const oauthController = createOAuthController(oauthConfig);
+
 // Webhook service
 const webhookController = createWebhookController(
   process.env.INSTAGRAM_APP_SECRET || "",
   process.env.WEBHOOK_VERIFY_TOKEN || ""
 );
 
-app.get("/auth/instagram", (req: Request, res: Response) => {
-  try {
-    logger.info("Instagram OAuth authorization endpoint accessed");
+app.get("/auth/instagram", oauthController.initiateAuth);
 
-    if (!process.env.INSTAGRAM_APP_ID || !process.env.INSTAGRAM_APP_SECRET) {
-      return res.status(500).json({
-        success: false,
-        error: "Instagram app credentials not configured",
-      });
-    }
+app.get("/auth/instagram/callback", oauthController.handleCallback);
 
-    const authUrl = authService.generateAuthUrl();
+app.post("/auth/instagram/refresh", oauthController.refreshToken);
 
-    return res.json({
-      success: true,
-      authUrl,
-      message: "Visit the authorization URL to authenticate with Instagram",
-    });
-  } catch (error) {
-    logger.error(`Error in Instagram auth endpoint: ${error}`);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to generate authorization URL",
-    });
-  }
-});
+// Add user info route using OAuth controller
+app.get("/auth/instagram/user/:userId", oauthController.getUserInfo);
 
-app.get("/auth/instagram/callback", async (req: Request, res: Response) => {
-  try {
-    const { code, state } = req.query;
-    logger.info("Instagram OAuth callback endpoint accessed", {
-      code: code ? "present" : "missing",
-    });
-
-    if (!code) {
-      return res.status(400).json({
-        success: false,
-        error: "Authorization code is required",
-      });
-    }
-
-    // Exchange code for access token
-    const tokenData = await authService.exchangeCodeForToken(code as string);
-
-    if (!tokenData) {
-      return res.status(400).json({
-        success: false,
-        error: "Failed to exchange code for access token",
-      });
-    }
-
-    // Get long-lived token
-    const longLivedToken = await authService.exchangeForLongLivedToken(
-      tokenData.access_token
-    );
-
-    if (!longLivedToken) {
-      return res.status(400).json({
-        success: false,
-        error: "Failed to get long-lived access token",
-      });
-    }
-
-    // Get user info
-    const userInfo = await authService.getUserInfo(longLivedToken.access_token);
-
-    return res.json({
-      success: true,
-      data: {
-        accessToken: longLivedToken.access_token,
-        expiresIn: longLivedToken.expires_in,
-        tokenType: longLivedToken.token_type,
-        user: userInfo,
-      },
-      message: "Instagram authentication successful",
-    });
-  } catch (error) {
-    logger.error(`Error in Instagram callback endpoint: ${error}`);
-    return res.status(500).json({
-      success: false,
-      error: "Authentication failed",
-    });
-  }
-});
-
-app.post("/auth/instagram/refresh", async (req: Request, res: Response) => {
-  try {
-    const { accessToken } = req.body;
-    logger.info("Instagram token refresh endpoint accessed");
-
-    if (!accessToken) {
-      return res.status(400).json({
-        success: false,
-        error: "Access token is required",
-      });
-    }
-
-    const refreshedToken = await authService.refreshLongLivedToken(accessToken);
-
-    if (!refreshedToken) {
-      return res.status(400).json({
-        success: false,
-        error: "Failed to refresh access token",
-      });
-    }
-
-    return res.json({
-      success: true,
-      data: refreshedToken,
-      message: "Access token refreshed successfully",
-    });
-  } catch (error) {
-    logger.error(`Error in token refresh endpoint: ${error}`);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to refresh token",
-    });
-  }
-});
-
-app.post("/auth/instagram/validate", async (req: Request, res: Response) => {
-  try {
-    const { accessToken } = req.body;
-    logger.info("Instagram token validation endpoint accessed");
-
-    if (!accessToken) {
-      return res.status(400).json({
-        success: false,
-        error: "Access token is required",
-      });
-    }
-
-    const isValid = await authService.validateToken(accessToken);
-
-    return res.json({
-      success: true,
-      data: {
-        isValid,
-        accessToken: accessToken.substring(0, 10) + "...",
-      },
-      message: isValid ? "Access token is valid" : "Access token is invalid",
-    });
-  } catch (error) {
-    logger.error(`Error in token validation endpoint: ${error}`);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to validate token",
-    });
-  }
-});
+// Add revoke token route using OAuth controller  
+app.post("/auth/instagram/revoke", oauthController.revokeToken);
 
 // Webhook endpoints
 // Webhook verification endpoint (GET) - used by Meta to verify the webhook URL

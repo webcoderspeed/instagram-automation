@@ -64,13 +64,15 @@ export class InstagramAuthService {
     try {
       logger.info('Exchanging authorization code for access token');
       
-      const response = await axios.post(this.INSTAGRAM_TOKEN_URL, {
+      const params = new URLSearchParams({
         client_id: this.config.appId,
         client_secret: this.config.appSecret,
         grant_type: 'authorization_code',
         redirect_uri: this.config.redirectUri,
         code: code
-      }, {
+      });
+
+      const response = await axios.post(this.INSTAGRAM_TOKEN_URL, params, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
