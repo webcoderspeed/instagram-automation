@@ -1,0 +1,79 @@
+### User Login API Tests
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+### 1. User Login - Valid Credentials
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!"
+}
+
+### 2. User Login - Invalid Email
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "nonexistent@example.com",
+  "password": "SecurePassword123!"
+}
+
+### 3. User Login - Invalid Password
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "WrongPassword123!"
+}
+
+### 4. User Login - Missing Email
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "password": "SecurePassword123!"
+}
+
+### 5. User Login - Missing Password
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com"
+}
+
+### 6. User Login - Empty Request Body
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{}
+
+### 7. Get Current User Profile (Requires Authentication)
+# @name loginRequest
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "SecurePassword123!"
+}
+
+### Extract token from login response
+@authToken = {{loginRequest.response.body.data.token}}
+
+### 8. Get User Profile with Valid Token
+GET {{baseUrl}}/api/auth/profile
+Authorization: Bearer {{authToken}}
+
+### 9. Get User Profile with Invalid Token
+GET {{baseUrl}}/api/auth/profile
+Authorization: Bearer invalid_token_here
+
+### 10. Logout User
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}

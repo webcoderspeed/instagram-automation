@@ -20,7 +20,6 @@ export interface SignupData {
   lastName?: string;
   timezone?: string;
   language?: string;
-  referralCode?: string;
 }
 
 export interface SignupResult {
@@ -44,10 +43,6 @@ class SignupService {
       // Hash password
       const passwordHash = await this.hashPassword(data.password);
 
-      // Generate email verification token
-      const emailVerificationToken = this.generateVerificationToken();
-      const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
       // Create user
       const user = new UserModel({
         email: data.email.toLowerCase(),
@@ -58,18 +53,19 @@ class SignupService {
         displayName: data.firstName && data.lastName ? `${data.firstName} ${data.lastName}` : data.username,
         timezone: data.timezone || 'UTC',
         language: data.language || 'en',
-        emailVerificationToken,
-        emailVerificationExpires,
         isEmailVerified: false
       });
+
+      // Generate email verification token using user model method
+      const emailVerificationToken = user.generateEmailVerificationToken();
 
       await user.save();
 
       // Create free subscription
       await this.createFreeSubscription(String(user._id));
 
-      // Send verification email
-      await this.sendVerificationEmail(user);
+      // Send verification email with the original token
+      await this.sendVerificationEmail(user, emailVerificationToken);
 
       // Create welcome notification
       await this.createWelcomeNotification(String(user._id));
@@ -95,8 +91,11 @@ class SignupService {
    */
   async verifyEmail(token: string): Promise<UserDocument> {
     try {
+      // Hash the provided token to match the stored hash
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+      
       const user = await UserModel.findOne({
-        emailVerificationToken: token,
+        emailVerificationToken: hashedToken,
         emailVerificationExpires: { $gt: new Date() },
         isEmailVerified: false
       });
@@ -140,16 +139,12 @@ class SignupService {
         throw new ApiError(404, 'User not found or already verified');
       }
 
-      // Generate new token
-      const emailVerificationToken = this.generateVerificationToken();
-      const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      user.emailVerificationToken = emailVerificationToken;
-      user.emailVerificationExpires = emailVerificationExpires;
+      // Generate new token using user model method
+      const emailVerificationToken = user.generateEmailVerificationToken();
       await user.save();
 
-      // Send verification email
-      await this.sendVerificationEmail(user);
+      // Send verification email with the original token
+      await this.sendVerificationEmail(user, emailVerificationToken);
 
       logger.info(`Verification email resent to: ${user.email}`);
     } catch (error: unknown) {
@@ -184,12 +179,7 @@ class SignupService {
     return bcrypt.hash(password, saltRounds);
   }
 
-  /**
-   * Generate verification token
-   */
-  private generateVerificationToken(): string {
-    return crypto.randomBytes(32).toString('hex');
-  }
+
 
   /**
    * Create free subscription for new user
@@ -225,9 +215,9 @@ class SignupService {
   /**
    * Send verification email
    */
-  private async sendVerificationEmail(user: UserDocument): Promise<void> {
+  private async sendVerificationEmail(user: UserDocument, originalToken: string): Promise<void> {
     try {
-      const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${user.emailVerificationToken}`;
+      const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${originalToken}`;
       
       await emailService.sendVerificationEmail({
         to: user.email,

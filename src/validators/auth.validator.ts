@@ -14,6 +14,11 @@ export const registerSchema = z.object({
       .string()
       .email('Invalid email format')
       .min(1, 'Email is required'),
+    username: z
+      .string()
+      .min(3, 'Username must be at least 3 characters')
+      .max(30, 'Username must be less than 30 characters')
+      .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters')
@@ -23,12 +28,18 @@ export const registerSchema = z.object({
       ),
     firstName: z
       .string()
-      .min(1, 'First name is required')
-      .max(50, 'First name must be less than 50 characters'),
+      .max(50, 'First name must be less than 50 characters')
+      .optional(),
     lastName: z
       .string()
-      .min(1, 'Last name is required')
-      .max(50, 'Last name must be less than 50 characters'),
+      .max(50, 'Last name must be less than 50 characters')
+      .optional(),
+    timezone: z
+      .string()
+      .optional(),
+    language: z
+      .string()
+      .optional(),
   }),
 });
 

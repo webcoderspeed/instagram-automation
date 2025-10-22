@@ -10,18 +10,21 @@ import { loginController } from '../auth/login/login.controller';
 import { passwordResetController } from '../auth/password-reset/password-reset.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { rateLimitMiddleware } from '../middleware/rate-limit.middleware';
+import { validate } from '../validators/common.validator';
+import { registerSchema, loginSchema } from '../validators/auth.validator';
 
 const router = Router();
 const authController = new AuthController();
 
 // User Authentication routes
 // Signup routes
-router.post('/signup', rateLimitMiddleware.signup, signupController.signup);
+router.post('/signup', rateLimitMiddleware.signup, validate(registerSchema), signupController.signup);
 router.post('/verify-email', rateLimitMiddleware.emailVerification, signupController.verifyEmail);
+router.get('/verify-email', rateLimitMiddleware.emailVerification, signupController.verifyEmail);
 router.post('/resend-verification', rateLimitMiddleware.emailVerification, signupController.resendVerification);
 
 // Login routes
-router.post('/login', rateLimitMiddleware.login, loginController.login);
+router.post('/login', rateLimitMiddleware.login, validate(loginSchema), loginController.login);
 router.post('/refresh-token', rateLimitMiddleware.refreshToken, loginController.refreshToken);
 router.post('/logout', authMiddleware.authenticate, loginController.logout);
 

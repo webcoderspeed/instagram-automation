@@ -1,0 +1,117 @@
+### Webhook API Tests
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+@authToken = your_jwt_token_here
+
+### 1. Instagram Webhook Verification (GET)
+GET {{baseUrl}}/api/webhook/instagram?hub.mode=subscribe&hub.challenge=test_challenge&hub.verify_token=your_verify_token
+
+### 2. Instagram Webhook - New Message
+POST {{baseUrl}}/api/webhook/instagram
+Content-Type: {{contentType}}
+
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "instagram_page_id",
+      "time": 1234567890,
+      "messaging": [
+        {
+          "sender": {
+            "id": "sender_user_id"
+          },
+          "recipient": {
+            "id": "page_id"
+          },
+          "timestamp": 1234567890,
+          "message": {
+            "mid": "message_id",
+            "text": "Hello! This is a test message."
+          }
+        }
+      ]
+    }
+  ]
+}
+
+### 3. Instagram Webhook - New Follower
+POST {{baseUrl}}/api/webhook/instagram
+Content-Type: {{contentType}}
+
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "instagram_page_id",
+      "time": 1234567890,
+      "changes": [
+        {
+          "field": "followers",
+          "value": {
+            "user_id": "new_follower_id",
+            "action": "follow"
+          }
+        }
+      ]
+    }
+  ]
+}
+
+### 4. Instagram Webhook - Comment on Post
+POST {{baseUrl}}/api/webhook/instagram
+Content-Type: {{contentType}}
+
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "instagram_page_id",
+      "time": 1234567890,
+      "changes": [
+        {
+          "field": "comments",
+          "value": {
+            "media_id": "post_media_id",
+            "comment_id": "comment_id",
+            "text": "Great post!",
+            "from": {
+              "id": "commenter_user_id",
+              "username": "commenter_username"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
+### 5. Get Webhook Configuration
+GET {{baseUrl}}/api/webhook/config
+Authorization: Bearer {{authToken}}
+
+### 6. Update Webhook Configuration
+PUT {{baseUrl}}/api/webhook/config
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "verifyToken": "new_verify_token",
+  "isActive": true,
+  "events": ["messages", "messaging_postbacks", "messaging_optins"]
+}
+
+### 7. Test Webhook Endpoint
+POST {{baseUrl}}/api/webhook/test
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "platform": "instagram",
+  "eventType": "message",
+  "testData": {
+    "senderId": "test_sender_id",
+    "message": "Test webhook message"
+  }
+}

@@ -1,0 +1,30 @@
+### User Logout API Tests
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+@authToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+### 1. Logout - Valid Authentication Token
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+### 2. Logout - Valid Authentication Token (Alternative)
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}
+Authorization: Bearer valid-jwt-token-here
+
+### 3. Logout - Valid Authentication Token (Long Format)
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}
+Authorization: Bearer abc123def456ghi789jkl012mno345pqr678stu901vwx234yz567890abcdef
+
+### 4. Logout - Valid Authentication Token (UUID Format)
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}
+Authorization: Bearer 550e8400-e29b-41d4-a716-446655440000
+
+### 5. Logout - Valid Authentication Token (Alphanumeric)
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}
+Authorization: Bearer AUTH2024ABC123DEF456GHI789

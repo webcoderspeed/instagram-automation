@@ -61,7 +61,7 @@ class LoginService {
       }
 
       // Verify password
-      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+      const isPasswordValid = await user.comparePassword(password);
       
       if (!isPasswordValid) {
         // Increment login attempts

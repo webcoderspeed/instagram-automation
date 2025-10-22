@@ -1,0 +1,44 @@
+### Email Verification API Tests
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+### 1. Verify Email - Valid Token
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: {{contentType}}
+
+{
+  "token": "b2f5a47ff83e1c540d54c637146990711f9454b5f093b0143dbbfa951b6cfef1"
+}
+
+### 2. Verify Email - Valid Token (Alternative Format)
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: {{contentType}}
+
+{
+  "token": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz"
+}
+
+### 3. Verify Email - Valid Token (Short Format)
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: {{contentType}}
+
+{
+  "token": "verification123"
+}
+
+### 4. Verify Email - Valid Token (UUID Format)
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: {{contentType}}
+
+{
+  "token": "550e8400-e29b-41d4-a716-446655440000"
+}
+
+### 5. Verify Email - Valid Token (Alphanumeric)
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: {{contentType}}
+
+{
+  "token": "VER1F1CAT10N2024ABC123"
+}

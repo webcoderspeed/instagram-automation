@@ -1,0 +1,117 @@
+### Settings API Tests
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+@authToken = your_jwt_token_here
+
+### 1. Get User Settings
+GET {{baseUrl}}/api/settings
+Authorization: Bearer {{authToken}}
+
+### 2. Update User Profile
+PUT {{baseUrl}}/api/settings/profile
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john.doe@example.com",
+  "phone": "+1234567890",
+  "timezone": "America/New_York"
+}
+
+### 3. Update Notification Settings
+PUT {{baseUrl}}/api/settings/notifications
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "emailNotifications": {
+    "newMessages": true,
+    "automationAlerts": true,
+    "weeklyReports": false,
+    "systemUpdates": true
+  },
+  "pushNotifications": {
+    "newMessages": true,
+    "automationAlerts": false,
+    "systemUpdates": true
+  }
+}
+
+### 4. Update Privacy Settings
+PUT {{baseUrl}}/api/settings/privacy
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "profileVisibility": "private",
+  "dataSharing": false,
+  "analyticsTracking": true
+}
+
+### 5. Change Password
+PUT {{baseUrl}}/api/settings/password
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "currentPassword": "CurrentPassword123!",
+  "newPassword": "NewSecurePassword123!",
+  "confirmPassword": "NewSecurePassword123!"
+}
+
+### 6. Enable Two-Factor Authentication
+POST {{baseUrl}}/api/settings/2fa/enable
+Authorization: Bearer {{authToken}}
+
+### 7. Verify Two-Factor Authentication
+POST {{baseUrl}}/api/settings/2fa/verify
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "token": "123456"
+}
+
+### 8. Disable Two-Factor Authentication
+POST {{baseUrl}}/api/settings/2fa/disable
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "password": "CurrentPassword123!"
+}
+
+### 9. Get API Keys
+GET {{baseUrl}}/api/settings/api-keys
+Authorization: Bearer {{authToken}}
+
+### 10. Generate New API Key
+POST {{baseUrl}}/api/settings/api-keys
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": "My API Key",
+  "permissions": ["read", "write"]
+}
+
+### 11. Revoke API Key
+DELETE {{baseUrl}}/api/settings/api-keys/key_id_here
+Authorization: Bearer {{authToken}}
+
+### 12. Export User Data
+POST {{baseUrl}}/api/settings/export
+Authorization: Bearer {{authToken}}
+
+### 13. Delete Account
+DELETE {{baseUrl}}/api/settings/account
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "password": "CurrentPassword123!",
+  "confirmation": "DELETE"
+}

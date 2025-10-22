@@ -1,0 +1,80 @@
+### Subscription API Tests
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+@authToken = your_jwt_token_here
+
+### 1. Get Available Plans
+GET {{baseUrl}}/api/subscription/plans
+Authorization: Bearer {{authToken}}
+
+### 2. Get Current Subscription
+GET {{baseUrl}}/api/subscription/current
+Authorization: Bearer {{authToken}}
+
+### 3. Create Subscription
+POST {{baseUrl}}/api/subscription/create
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "planId": "plan_basic_monthly",
+  "paymentMethodId": "pm_card_visa"
+}
+
+### 4. Update Subscription Plan
+PUT {{baseUrl}}/api/subscription/update
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "planId": "plan_premium_monthly"
+}
+
+### 5. Cancel Subscription
+POST {{baseUrl}}/api/subscription/cancel
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "reason": "No longer needed",
+  "cancelAtPeriodEnd": true
+}
+
+### 6. Resume Subscription
+POST {{baseUrl}}/api/subscription/resume
+Authorization: Bearer {{authToken}}
+
+### 7. Get Billing History
+GET {{baseUrl}}/api/subscription/billing/history
+Authorization: Bearer {{authToken}}
+
+### 8. Get Upcoming Invoice
+GET {{baseUrl}}/api/subscription/billing/upcoming
+Authorization: Bearer {{authToken}}
+
+### 9. Download Invoice
+GET {{baseUrl}}/api/subscription/billing/invoice/invoice_id_here/download
+Authorization: Bearer {{authToken}}
+
+### 10. Update Payment Method
+PUT {{baseUrl}}/api/subscription/payment-method
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "paymentMethodId": "pm_card_mastercard"
+}
+
+### 11. Get Usage Statistics
+GET {{baseUrl}}/api/subscription/usage
+Authorization: Bearer {{authToken}}
+
+### 12. Apply Coupon
+POST {{baseUrl}}/api/subscription/coupon
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "couponCode": "SAVE20"
+}

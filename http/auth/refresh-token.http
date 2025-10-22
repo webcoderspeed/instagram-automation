@@ -1,0 +1,44 @@
+### Refresh Token API Tests
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+### 1. Refresh Token - Valid Refresh Token
+POST {{baseUrl}}/api/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGY4YmVjZTc4OWI4ZDIzODhlMmM1YWUiLCJlbWFpbCI6InRlc3QtdGVybWluYWwtdmVyaWZ5QGV4YW1wbGUuY29tIiwidG9rZW5UeXBlIjoicmVmcmVzaCIsImlhdCI6MTc2MTEzMjQ3MiwiZXhwIjoxNzYxNzM3MjcyLCJhdWQiOiJzb2NpYWwtbWVkaWEtYXV0b21hdGlvbi11c2VycyIsImlzcyI6InNvY2lhbC1tZWRpYS1hdXRvbWF0aW9uIn0.VGDZ5R6RSPDo0c_4sDPAVoUiTKkt-QcjN1uxQbHmKVQ"
+}
+
+### 2. Refresh Token - Valid JWT Format
+POST {{baseUrl}}/api/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+}
+
+### 3. Refresh Token - Valid Long Token
+POST {{baseUrl}}/api/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz567890abcdef"
+}
+
+### 4. Refresh Token - Valid UUID Format
+POST {{baseUrl}}/api/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
+}
+
+### 5. Refresh Token - Valid Alphanumeric Token
+POST {{baseUrl}}/api/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "REFRESH2024ABC123DEF456GHI789"
+}

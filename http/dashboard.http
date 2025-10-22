@@ -1,0 +1,45 @@
+### Dashboard API Tests
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+@authToken = your_jwt_token_here
+
+### 1. Get Dashboard Overview
+GET {{baseUrl}}/api/dashboard/overview
+Authorization: Bearer {{authToken}}
+
+### 2. Get Dashboard Analytics
+GET {{baseUrl}}/api/dashboard/analytics
+Authorization: Bearer {{authToken}}
+
+### 3. Get Dashboard Analytics with Date Range
+GET {{baseUrl}}/api/dashboard/analytics?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{authToken}}
+
+### 4. Get Recent Activities
+GET {{baseUrl}}/api/dashboard/activities
+Authorization: Bearer {{authToken}}
+
+### 5. Get Recent Activities with Limit
+GET {{baseUrl}}/api/dashboard/activities?limit=20
+Authorization: Bearer {{authToken}}
+
+### 6. Get Platform Statistics
+GET {{baseUrl}}/api/dashboard/stats/platforms
+Authorization: Bearer {{authToken}}
+
+### 7. Get Automation Statistics
+GET {{baseUrl}}/api/dashboard/stats/automations
+Authorization: Bearer {{authToken}}
+
+### 8. Get Message Statistics
+GET {{baseUrl}}/api/dashboard/stats/messages
+Authorization: Bearer {{authToken}}
+
+### 9. Get Performance Metrics
+GET {{baseUrl}}/api/dashboard/metrics
+Authorization: Bearer {{authToken}}
+
+### 10. Get User Growth Data
+GET {{baseUrl}}/api/dashboard/growth
+Authorization: Bearer {{authToken}}

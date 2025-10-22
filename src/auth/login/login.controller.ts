@@ -26,21 +26,10 @@ class LoginController {
     try {
       const { email, password, rememberMe }: LoginRequest = req.body;
 
-      // Validate required fields
-      if (!email || !password) {
-        throw ApiError.badRequest('Email and password are required');
-      }
-
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        throw ApiError.badRequest('Invalid email format');
-      }
-
       const result = await loginService.login({
         email: email.toLowerCase().trim(),
         password,
-        rememberMe: rememberMe || false
+        rememberMe: rememberMe ?? false
       });
 
       logger.info(`User login successful: ${email}`);

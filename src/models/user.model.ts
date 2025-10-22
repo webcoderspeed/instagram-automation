@@ -4,6 +4,8 @@
  */
 
 import { Schema, model, Types, Document } from "mongoose";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 // User Role const object
 export const UserRole = {
@@ -337,22 +339,25 @@ userSchema.methods.comparePassword = async function (
   this: UserDocument,
   password: string
 ): Promise<boolean> {
-  // Implementation would use bcrypt to compare passwords
-  return Promise.resolve(true); // Placeholder
+  return bcrypt.compare(password, this.passwordHash);
 };
 
 userSchema.methods.generatePasswordResetToken = function (
   this: UserDocument
 ): string {
-  // Implementation would generate a secure token
-  return "reset-token"; // Placeholder
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  return resetToken;
 };
 
 userSchema.methods.generateEmailVerificationToken = function (
   this: UserDocument
 ): string {
-  // Implementation would generate a secure token
-  return "verification-token"; // Placeholder
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  this.emailVerificationToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
+  this.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  return verificationToken;
 };
 
 userSchema.methods.isAccountLocked = function (this: UserDocument): boolean {

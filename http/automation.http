@@ -1,0 +1,78 @@
+### Automation API Tests
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+@authToken = your_jwt_token_here
+
+### 1. Create New Automation
+POST {{baseUrl}}/api/automation
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Welcome Message Automation",
+  "description": "Automatically send welcome message to new followers",
+  "trigger": {
+    "type": "new_follower",
+    "platform": "instagram"
+  },
+  "actions": [
+    {
+      "type": "send_message",
+      "message": "Thank you for following! Welcome to our community 🎉",
+      "delay": 300
+    }
+  ],
+  "isActive": true
+}
+
+### 2. Get All Automations
+GET {{baseUrl}}/api/automation
+Authorization: Bearer {{authToken}}
+
+### 3. Get Specific Automation
+GET {{baseUrl}}/api/automation/automation_id_here
+Authorization: Bearer {{authToken}}
+
+### 4. Update Automation
+PUT {{baseUrl}}/api/automation/automation_id_here
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Updated Welcome Message",
+  "description": "Updated automation description",
+  "isActive": false
+}
+
+### 5. Delete Automation
+DELETE {{baseUrl}}/api/automation/automation_id_here
+Authorization: Bearer {{authToken}}
+
+### 6. Start Automation
+POST {{baseUrl}}/api/automation/automation_id_here/start
+Authorization: Bearer {{authToken}}
+
+### 7. Stop Automation
+POST {{baseUrl}}/api/automation/automation_id_here/stop
+Authorization: Bearer {{authToken}}
+
+### 8. Get Automation Analytics
+GET {{baseUrl}}/api/automation/automation_id_here/analytics
+Authorization: Bearer {{authToken}}
+
+### 9. Test Automation
+POST {{baseUrl}}/api/automation/automation_id_here/test
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "testData": {
+    "userId": "test_user_id",
+    "platform": "instagram"
+  }
+}
+
+### 10. Get Automation Logs
+GET {{baseUrl}}/api/automation/automation_id_here/logs
+Authorization: Bearer {{authToken}}

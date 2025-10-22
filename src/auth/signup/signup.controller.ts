@@ -12,9 +12,10 @@ export interface SignupRequest {
   email: string;
   username: string;
   password: string;
-  firstName: string;
-  lastName: string;
-  acceptTerms?: boolean;
+  firstName?: string;
+  lastName?: string;
+  timezone?: string;
+  language?: string;
 }
 
 export interface VerifyEmailRequest {
@@ -31,35 +32,16 @@ class SignupController {
    */
   async signup(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { email, username, password, firstName, lastName, acceptTerms }: SignupRequest = req.body;
-
-      // Validate required fields
-      if (!email || !username || !password || !firstName || !lastName) {
-        throw ApiError.badRequest('Missing required fields: email, username, password, firstName, lastName');
-      }
-
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        throw ApiError.badRequest('Invalid email format');
-      }
-
-      // Validate password strength
-      if (password.length < 8) {
-        throw ApiError.badRequest('Password must be at least 8 characters long');
-      }
-
-      // Check terms acceptance (optional but recommended)
-      if (acceptTerms === false) {
-        throw ApiError.badRequest('You must accept the terms and conditions');
-      }
+      const { email, username, password, firstName, lastName, timezone, language }: SignupRequest = req.body;
 
       const result = await signupService.signup({
         email: email.toLowerCase().trim(),
         username: username.toLowerCase().trim(),
         password,
-        firstName: firstName.trim(),
-        lastName: lastName.trim()
+        firstName: firstName?.trim(),
+        lastName: lastName?.trim(),
+        timezone,
+        language
       });
 
       logger.info(`User signup successful: ${email}`);
@@ -87,7 +69,8 @@ class SignupController {
    */
   async verifyEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { token }: VerifyEmailRequest = req.body;
+      // Handle token from both query params (GET) and body (POST)
+      const token = req.query.token as string || req.body.token;
 
       if (!token) {
         throw ApiError.badRequest('Verification token is required');
