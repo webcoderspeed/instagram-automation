@@ -3,14 +3,21 @@
  * Standardized response types for API endpoints
  */
 
-import { ApiResponse, ApiError, ApiMeta } from './api.types';
+import { 
+  ApiResponse, 
+  SuccessResponse, 
+  ErrorResponse, 
+  ApiError, 
+  ApiMeta,
+  PaginatedApiResponse 
+} from './api.types';
 import { User } from './user.types';
 import { PlatformAccount, PlatformPost, PlatformMessage } from './platform.types';
 import { Conversation, Message, MessageTemplate } from './message.types';
 import { WebhookEvent } from './webhook.types';
 
 // Authentication Responses
-export interface LoginResponse extends ApiResponse<{
+export interface LoginResponse extends SuccessResponse<{
   user: User;
   tokens: {
     accessToken: string;
@@ -19,19 +26,19 @@ export interface LoginResponse extends ApiResponse<{
   };
 }> {}
 
-export interface RefreshTokenResponse extends ApiResponse<{
+export interface RefreshTokenResponse extends SuccessResponse<{
   accessToken: string;
   expiresIn: number;
 }> {}
 
-export interface LogoutResponse extends ApiResponse<{
+export interface LogoutResponse extends SuccessResponse<{
   message: string;
 }> {}
 
 // User Responses
-export interface UserResponse extends ApiResponse<User> {}
-export interface UsersResponse extends ApiResponse<User[]> {}
-export interface UserProfileResponse extends ApiResponse<{
+export interface UserResponse extends SuccessResponse<User> {}
+export interface UsersResponse extends PaginatedApiResponse<User> {}
+export interface UserProfileResponse extends SuccessResponse<{
   user: User;
   stats: {
     connectedAccounts: number;
@@ -42,38 +49,38 @@ export interface UserProfileResponse extends ApiResponse<{
 }> {}
 
 // Platform Account Responses
-export interface PlatformAccountResponse extends ApiResponse<PlatformAccount> {}
-export interface PlatformAccountsResponse extends ApiResponse<PlatformAccount[]> {}
-export interface ConnectAccountResponse extends ApiResponse<{
+export interface PlatformAccountResponse extends SuccessResponse<PlatformAccount> {}
+export interface PlatformAccountsResponse extends PaginatedApiResponse<PlatformAccount> {}
+export interface ConnectAccountResponse extends SuccessResponse<{
   account: PlatformAccount;
   authUrl?: string;
 }> {}
 
 // Post Responses
-export interface PostResponse extends ApiResponse<PlatformPost> {}
-export interface PostsResponse extends ApiResponse<PlatformPost[]> {}
-export interface CreatePostResponse extends ApiResponse<{
+export interface PostResponse extends SuccessResponse<PlatformPost> {}
+export interface PostsResponse extends PaginatedApiResponse<PlatformPost> {}
+export interface CreatePostResponse extends SuccessResponse<{
   post: PlatformPost;
-  platformResponse: Record<string, any>;
+  platformResponse: Record<string, unknown>;
 }> {}
-export interface SchedulePostResponse extends ApiResponse<{
+export interface SchedulePostResponse extends SuccessResponse<{
   post: PlatformPost;
   scheduledFor: Date;
 }> {}
 
 // Message Responses
-export interface MessageResponse extends ApiResponse<Message> {}
-export interface MessagesResponse extends ApiResponse<Message[]> {}
-export interface ConversationResponse extends ApiResponse<Conversation> {}
-export interface ConversationsResponse extends ApiResponse<Conversation[]> {}
-export interface SendMessageResponse extends ApiResponse<{
+export interface MessageResponse extends SuccessResponse<Message> {}
+export interface MessagesResponse extends PaginatedApiResponse<Message> {}
+export interface ConversationResponse extends SuccessResponse<Conversation> {}
+export interface ConversationsResponse extends PaginatedApiResponse<Conversation> {}
+export interface SendMessageResponse extends SuccessResponse<{
   message: Message;
-  platformResponse: Record<string, any>;
+  platformResponse: Record<string, unknown>;
 }> {}
 
 // Template Responses
-export interface TemplateResponse extends ApiResponse<MessageTemplate> {}
-export interface TemplatesResponse extends ApiResponse<MessageTemplate[]> {}
+export interface TemplateResponse extends SuccessResponse<MessageTemplate> {}
+export interface TemplatesResponse extends PaginatedApiResponse<MessageTemplate> {}
 
 // Webhook Responses
 export interface WebhookEventResponse extends ApiResponse<WebhookEvent> {}
@@ -174,10 +181,10 @@ export interface MultipleUploadResponse extends ApiResponse<Array<{
 }>> {}
 
 // Search Responses
-export interface SearchResponse<T> extends ApiResponse<{
+export interface SearchResponse<T> extends SuccessResponse<{
   results: T[];
   query: string;
-  filters: Record<string, any>;
+  filters: Record<string, unknown>;
   facets?: Record<string, Array<{
     value: string;
     count: number;
@@ -237,17 +244,13 @@ export interface SubscriptionResponse extends ApiResponse<{
 }> {}
 
 // Error Responses
-export interface ErrorResponse extends ApiResponse<never> {
-  success: false;
-  error: ApiError;
-}
-
+// Specific error response types
 export interface ValidationErrorResponse extends ErrorResponse {
   error: ApiError & {
     validationErrors: Array<{
       field: string;
       message: string;
-      value?: any;
+      value?: unknown;
     }>;
   };
 }

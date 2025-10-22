@@ -143,7 +143,7 @@ export const ProtectionLevels = {
   AUTOMATION_MANAGER: {
     requireAuth: true,
     requireEmailVerification: true,
-    requiredPermission: Permissions.AUTOMATION_UPDATE
+    requiredPermission: Permissions.AUTOMATION_READ
   },
 
   // User management (admin)

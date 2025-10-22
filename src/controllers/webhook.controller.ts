@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { createWebhookController } from '../services/webhook/webhook-controller';
 import { instagramService } from '../services/instagram';
+import { asyncHandler } from '../middleware/error.middleware';
+import { sendSuccess, createMeta } from '../utils/response-builder';
 import logger from '../utils/logger';
 
 export class WebhookController {
@@ -85,11 +87,7 @@ export class WebhookController {
         return;
       }
 
-      res.json({
-        success: true,
-        message: 'Webhook subscription created successfully',
-        data: result
-      });
+      sendSuccess(res, result, 200, createMeta());
     } catch (error) {
       logger.error('Error subscribing to webhook:', error);
       res.status(500).json({
@@ -123,10 +121,7 @@ export class WebhookController {
         return;
       }
 
-      res.json({
-        success: true,
-        data: result
-      });
+      sendSuccess(res, result, 200, createMeta());
     } catch (error) {
       logger.error('Error getting webhook subscriptions:', error);
       res.status(500).json({

@@ -12,6 +12,7 @@ import { INSTAGRAM_SCOPES, InstagramScopeValue } from '../services/oauth/types/s
 import logger from '../utils/logger';
 import { AppError } from '../utils/app-error';
 import asyncHandler from 'express-async-handler';
+import { sendSuccess, sendError, createMeta } from '../utils/response-builder';
 
 export class IntegrationsController {
   private oauthService: OAuthService;
@@ -43,10 +44,9 @@ export class IntegrationsController {
       isActive: true 
     }).select('platform platformUsername platformId isActive lastSyncAt');
 
-    res.json({
-      success: true,
-      data: connectedPlatforms
-    });
+    sendSuccess(res, connectedPlatforms, 200, createMeta({ 
+      requestId: req.headers['x-request-id'] as string 
+    }));
   });
 
   /**
@@ -66,17 +66,18 @@ export class IntegrationsController {
       throw AppError.notFound(`${platform} connection`);
     }
 
-    res.json({
-      success: true,
-      data: {
-        platform: connection.platform,
-        username: connection.platformUsername,
-        userId: connection.platformId,
-        isActive: connection.isActive,
-        lastSync: connection.lastSyncAt,
-        permissions: connection.permissions
-      }
-    });
+    const connectionData = {
+      platform: connection.platform,
+      username: connection.platformUsername,
+      userId: connection.platformId,
+      isActive: connection.isActive,
+      lastSync: connection.lastSyncAt,
+      permissions: connection.permissions
+    };
+
+    sendSuccess(res, connectionData, 200, createMeta({ 
+      requestId: req.headers['x-request-id'] as string 
+    }));
   });
 
   /**
@@ -110,14 +111,15 @@ export class IntegrationsController {
     // Store state for verification (in production, store this in Redis or database)
     logger.info('OAuth flow initiated', { userId, platform, state });
 
-    res.json({
-      success: true,
-      data: {
-        authUrl,
-        state,
-        platform
-      }
-    });
+    const authData = {
+      authUrl,
+      state,
+      platform
+    };
+
+    sendSuccess(res, authData, 200, createMeta({ 
+      requestId: req.headers['x-request-id'] as string 
+    }));
   });
 
   /**
@@ -175,19 +177,20 @@ export class IntegrationsController {
         platformId: platformData.userId 
       });
 
-      res.json({
-        success: true,
-        message: `${platform} account connected successfully`,
-        data: {
-          platform: platformAccount.platform,
-          username: platformAccount.platformUsername,
-          userId: platformAccount.platformId
-        }
-      });
+      const responseData = {
+        platform: platformAccount.platform,
+        username: platformAccount.platformUsername,
+        userId: platformAccount.platformId,
+        message: `${platform} account connected successfully`
+      };
+
+      sendSuccess(res, responseData, 200, createMeta({ 
+        requestId: req.headers['x-request-id'] as string 
+      }));
 
     } catch (error) {
       logger.error('OAuth callback error', { userId, platform, error });
-      throw AppError.externalService(platform, error);
+      throw AppError.externalService(platform, error as Record<string, unknown>);
     }
   });
 
@@ -225,10 +228,9 @@ export class IntegrationsController {
 
     logger.info('Platform disconnected', { userId, platform });
 
-    res.json({
-      success: true,
-      message: `${platform} account disconnected successfully`
-    });
+    sendSuccess(res, { message: `${platform} account disconnected successfully` }, 200, createMeta({ 
+      requestId: req.headers['x-request-id'] as string 
+    }));
   });
 
   /**
@@ -261,14 +263,13 @@ export class IntegrationsController {
 
       logger.info('Tokens refreshed successfully', { userId, platform });
 
-      res.json({
-        success: true,
-        message: 'Tokens refreshed successfully'
-      });
+      sendSuccess(res, { message: 'Tokens refreshed successfully' }, 200, createMeta({ 
+        requestId: req.headers['x-request-id'] as string 
+      }));
 
     } catch (error) {
       logger.error('Token refresh error', { userId, platform, error });
-      throw AppError.externalService(platform, error);
+      throw AppError.externalService(platform, error as Record<string, unknown>);
     }
   });
 
@@ -316,16 +317,17 @@ export class IntegrationsController {
       platformAccount.lastSyncAt = new Date();
       await platformAccount.save();
 
-      res.json({
-        success: true,
-        message: 'Connection test successful',
-        data: {
-          platform,
-          status: 'connected',
-          lastTested: new Date(),
-          details: testResult
-        }
-      });
+      const responseData = {
+        platform,
+        status: 'connected',
+        lastTested: new Date(),
+        details: testResult,
+        message: 'Connection test successful'
+      };
+
+      sendSuccess(res, responseData, 200, createMeta({ 
+        requestId: req.headers['x-request-id'] as string 
+      }));
 
     } catch (error) {
       logger.error('Connection test failed', { userId, platform, error });
@@ -334,15 +336,19 @@ export class IntegrationsController {
       platformAccount.lastSyncAt = new Date();
       await platformAccount.save();
 
-      res.status(400).json({
-        success: false,
+      const errorData = {
+        platform,
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+
+      sendError(res, {
         message: 'Connection test failed',
-        data: {
-          platform,
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      });
+        code: 'CONNECTION_TEST_FAILED',
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id'] as string || 'unknown',
+        details: errorData
+      }, 400);
     }
   });
 
@@ -421,18 +427,19 @@ export class IntegrationsController {
       }
     }
 
-    res.json({
-      success: true,
-      data: {
-        platform,
-        timeframe,
-        insights,
-        dateRange: {
-          start: startDate,
-          end: endDate
-        }
+    const responseData = {
+      platform,
+      timeframe,
+      insights,
+      dateRange: {
+        start: startDate,
+        end: endDate
       }
-    });
+    };
+
+    sendSuccess(res, responseData, 200, createMeta({ 
+      requestId: req.headers['x-request-id'] as string 
+    }));
   });
 
   /**
@@ -514,9 +521,8 @@ export class IntegrationsController {
       }
     }
 
-    res.json({
-      success: true,
-      data: availablePlatforms
-    });
+    sendSuccess(res, availablePlatforms, 200, createMeta({ 
+      requestId: req.headers['x-request-id'] as string 
+    }));
   });
 }

@@ -12,10 +12,6 @@ import {
   AutomationType, 
   TriggerType 
 } from '../models/automation.model';
-import { PlatformAccountModel } from '../models/platform-account.model';
-import { PostModel } from '../models/post.model';
-import { AnalyticsModel } from '../models/analytics.model';
-import { NotificationModel } from '../models/notification.model';
 import logger from '../utils/logger';
 import { ApiError } from '../utils/api-error';
 

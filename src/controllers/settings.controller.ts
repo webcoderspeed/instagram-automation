@@ -18,6 +18,7 @@ import {
   UpdateSettingsResponse
 } from '../types/settings.types';
 import logger from '../utils/logger';
+import { sendSuccess, createMeta } from '../utils/response-builder';
 
 export class SettingsController {
   /**
@@ -31,12 +32,7 @@ export class SettingsController {
     try {
       const settings = await settingsService.getUserSettings(userId);
 
-      const response: SettingsResponse = {
-        success: true,
-        data: settings
-      };
-
-      res.json(response);
+      sendSuccess(res, settings, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to get settings:', { error, userId });
       throw error;
@@ -54,10 +50,7 @@ export class SettingsController {
     try {
       const settings = await settingsService.getUserSettings(userId);
 
-      res.json({
-        success: true,
-        data: settings.profile
-      });
+      sendSuccess(res, settings.profile, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to get profile settings:', { error, userId });
       throw error;
@@ -76,13 +69,7 @@ export class SettingsController {
     try {
       const updatedProfile = await settingsService.updateProfileSettings(userId, updates);
 
-      const response: UpdateSettingsResponse = {
-        success: true,
-        data: { profile: updatedProfile },
-        message: 'Profile settings updated successfully'
-      };
-
-      res.json(response);
+      sendSuccess(res, { profile: updatedProfile }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to update profile settings:', { error, userId });
       throw error;
@@ -100,10 +87,7 @@ export class SettingsController {
     try {
       const settings = await settingsService.getUserSettings(userId);
 
-      res.json({
-        success: true,
-        data: settings.notifications
-      });
+      sendSuccess(res, settings.notifications, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to get notification settings:', { error, userId });
       throw error;
@@ -122,13 +106,7 @@ export class SettingsController {
     try {
       const updatedNotifications = await settingsService.updateNotificationSettings(userId, updates);
 
-      const response: UpdateSettingsResponse = {
-        success: true,
-        data: { notifications: updatedNotifications },
-        message: 'Notification settings updated successfully'
-      };
-
-      res.json(response);
+      sendSuccess(res, { notifications: updatedNotifications }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to update notification settings:', { error, userId });
       throw error;
@@ -146,10 +124,7 @@ export class SettingsController {
     try {
       const settings = await settingsService.getUserSettings(userId);
 
-      res.json({
-        success: true,
-        data: settings.privacy
-      });
+      sendSuccess(res, settings.privacy, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to get privacy settings:', { error, userId });
       throw error;
@@ -168,13 +143,7 @@ export class SettingsController {
     try {
       const updatedPrivacy = await settingsService.updatePrivacySettings(userId, updates);
 
-      const response: UpdateSettingsResponse = {
-        success: true,
-        data: { privacy: updatedPrivacy },
-        message: 'Privacy settings updated successfully'
-      };
-
-      res.json(response);
+      sendSuccess(res, { privacy: updatedPrivacy }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to update privacy settings:', { error, userId });
       throw error;
@@ -192,10 +161,7 @@ export class SettingsController {
     try {
       const settings = await settingsService.getUserSettings(userId);
 
-      res.json({
-        success: true,
-        data: settings.automation
-      });
+      sendSuccess(res, settings.automation, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to get automation settings:', { error, userId });
       throw error;
@@ -214,13 +180,7 @@ export class SettingsController {
     try {
       const updatedAutomation = await settingsService.updateAutomationSettings(userId, updates);
 
-      const response: UpdateSettingsResponse = {
-        success: true,
-        data: { automation: updatedAutomation },
-        message: 'Automation settings updated successfully'
-      };
-
-      res.json(response);
+      sendSuccess(res, { automation: updatedAutomation }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to update automation settings:', { error, userId });
       throw error;
@@ -238,10 +198,7 @@ export class SettingsController {
     try {
       const settings = await settingsService.getUserSettings(userId);
 
-      res.json({
-        success: true,
-        data: settings.billing
-      });
+      sendSuccess(res, settings.billing, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to get billing settings:', { error, userId });
       throw error;
@@ -260,13 +217,7 @@ export class SettingsController {
     try {
       const updatedBilling = await settingsService.updateBillingSettings(userId, updates);
 
-      const response: UpdateSettingsResponse = {
-        success: true,
-        data: { billing: updatedBilling },
-        message: 'Billing settings updated successfully'
-      };
-
-      res.json(response);
+      sendSuccess(res, { billing: updatedBilling }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to update billing settings:', { error, userId });
       throw error;
@@ -284,10 +235,7 @@ export class SettingsController {
     try {
       const settings = await settingsService.getUserSettings(userId);
 
-      res.json({
-        success: true,
-        data: settings.security
-      });
+      sendSuccess(res, settings.security, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to get security settings:', { error, userId });
       throw error;
@@ -306,13 +254,7 @@ export class SettingsController {
     try {
       const updatedSecurity = await settingsService.updateSecuritySettings(userId, updates);
 
-      const response: UpdateSettingsResponse = {
-        success: true,
-        data: { security: updatedSecurity },
-        message: 'Security settings updated successfully'
-      };
-
-      res.json(response);
+      sendSuccess(res, { security: updatedSecurity }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to update security settings:', { error, userId });
       throw error;
@@ -331,13 +273,7 @@ export class SettingsController {
     try {
       const updatedSettings = await settingsService.updateSettings(userId, updates);
 
-      const response: UpdateSettingsResponse = {
-        success: true,
-        data: updatedSettings,
-        message: 'Settings updated successfully'
-      };
-
-      res.json(response);
+      sendSuccess(res, updatedSettings, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to update settings:', { error, userId });
       throw error;
@@ -355,10 +291,7 @@ export class SettingsController {
     try {
       const settingsExport = await settingsService.exportSettings(userId);
 
-      res.json({
-        success: true,
-        data: settingsExport
-      });
+      sendSuccess(res, settingsExport, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to export settings:', { error, userId });
       throw error;
@@ -377,13 +310,7 @@ export class SettingsController {
     try {
       const resetSettings = await settingsService.resetSettings(userId, categories);
 
-      const response: SettingsResponse = {
-        success: true,
-        data: resetSettings,
-        message: 'Settings reset to defaults successfully'
-      };
-
-      res.json(response);
+      sendSuccess(res, resetSettings, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to reset settings:', { error, userId });
       throw error;

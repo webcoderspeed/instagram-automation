@@ -12,11 +12,10 @@ import {
   sessionConfig,
 } from "./config";
 import { corsMiddleware } from "./middleware/cors.middleware";
-import { errorHandler } from "./middleware/error.middleware";
+import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import { generalRateLimit } from "./middleware/rate-limit.middleware";
 import routes from "./routes";
 import logger from "./utils/logger";
-import mailerService from "./services/mailer.service";
 
 /**
  * Social Media SaaS Automation Server
@@ -108,14 +107,8 @@ class Server {
    * Initialize error handling middleware
    */
   private initializeErrorHandling(): void {
-    // 404 handler
-    this.app.use((req, res) => {
-      res.status(404).json({
-        error: "Not Found",
-        message: `Route ${req.originalUrl} not found`,
-        timestamp: new Date().toISOString(),
-      });
-    });
+    // 404 handler - using imported notFoundHandler
+    this.app.use(notFoundHandler);
 
     // Global error handler
     this.app.use(errorHandler);

@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { loginService } from './login.service';
 import { ApiError } from '../../utils/api-error';
+import { sendSuccess, sendError, createSuccessResponse, createMeta } from '../../utils/response-builder';
 import logger from '../../utils/logger';
 
 export interface LoginRequest {
@@ -30,22 +31,21 @@ class LoginController {
 
       logger.info(`User login successful: ${email}`);
 
-      res.status(200).json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          user: {
-            id: result.user._id,
-            email: result.user.email,
-            username: result.user.username,
-            firstName: result.user.firstName,
-            lastName: result.user.lastName,
-            role: result.user.role,
-            isEmailVerified: result.user.isEmailVerified,
-            lastLoginAt: result.user.lastLoginAt
-          }
-        }
-      });
+      const userData = {
+        id: result.user._id,
+        email: result.user.email,
+        username: result.user.username,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        role: result.user.role,
+        isEmailVerified: result.user.isEmailVerified,
+        lastLoginAt: result.user.lastLoginAt
+      };
+
+      sendSuccess(res, { user: userData }, 200, createMeta({ 
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id'] as string 
+      }));
 
     } catch (error: unknown) {
       logger.error('Login controller error:', error);
@@ -64,10 +64,7 @@ class LoginController {
 
       logger.info(`User logout: ${userId || 'unknown'}`);
 
-      res.status(200).json({
-        success: true,
-        message: 'Logout successful'
-      });
+      sendSuccess(res, { message: 'Logout successful' });
 
     } catch (error: unknown) {
       logger.error('Logout controller error:', error);
@@ -86,22 +83,19 @@ class LoginController {
         throw ApiError.unauthorized('User not authenticated');
       }
 
-      res.status(200).json({
-        success: true,
-        data: {
-          user: {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            role: user.role,
-            isEmailVerified: user.isEmailVerified,
-            lastLoginAt: user.lastLoginAt,
-            createdAt: user.createdAt
-          }
-        }
-      });
+      const userData = {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+        lastLoginAt: user.lastLoginAt,
+        createdAt: user.createdAt
+      };
+
+      sendSuccess(res, { user: userData });
 
     } catch (error: unknown) {
       logger.error('Get profile controller error:', error);
@@ -117,12 +111,9 @@ class LoginController {
       const isAuthenticated = loginService.isAuthenticated(req);
       const user = loginService.getCurrentUser(req);
 
-      res.status(200).json({
-        success: true,
-        data: {
-          isAuthenticated,
-          user: isAuthenticated ? user : null
-        }
+      sendSuccess(res, {
+        isAuthenticated,
+        user: isAuthenticated ? user : null
       });
 
     } catch (error: unknown) {
@@ -142,10 +133,7 @@ class LoginController {
 
       loginService.refreshSession(req);
 
-      res.status(200).json({
-        success: true,
-        message: 'Session refreshed successfully'
-      });
+      sendSuccess(res, { message: 'Session refreshed successfully' });
 
     } catch (error: unknown) {
       logger.error('Refresh session controller error:', error);

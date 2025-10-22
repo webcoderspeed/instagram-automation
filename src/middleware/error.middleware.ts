@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { ApiError } from '../utils/api-error';
 import logger from '../utils/logger';
 
 export interface AppError extends Error {
@@ -6,14 +7,41 @@ export interface AppError extends Error {
   isOperational?: boolean;
 }
 
+interface ErrorResponse {
+  success: false;
+  error: {
+    message: string;
+    code: string;
+    details?: Record<string, unknown>;
+    timestamp: string;
+    requestId: string;
+    stack?: string;
+  };
+}
+
 export const errorHandler = (
-  err: AppError,
+  err: AppError | ApiError,
   req: Request,
   res: Response,
   next: NextFunction
 ): void => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+  const statusCode: number = err instanceof ApiError ? err.statusCode : (err.statusCode || 500);
+  
+  const errorResponse: ErrorResponse = err instanceof ApiError 
+    ? {
+        success: false,
+        error: err.toJSON()
+      }
+    : {
+        success: false,
+        error: {
+          message: err.message || 'Internal Server Error',
+          code: 'INTERNAL_ERROR',
+          timestamp: new Date().toISOString(),
+          requestId: 'unknown',
+          ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+        }
+      };
 
   // Log error details
   logger.error('Error occurred:', {
@@ -26,13 +54,7 @@ export const errorHandler = (
   });
 
   // Send error response
-  res.status(statusCode).json({
-    success: false,
-    error: {
-      message,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-    }
-  });
+  res.status(statusCode).json(errorResponse);
 };
 
 export const notFoundHandler = (req: Request, res: Response): void => {

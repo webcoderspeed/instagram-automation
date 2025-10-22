@@ -67,7 +67,7 @@ export class StripeService {
       return session;
     } catch (error) {
       logger.error('Failed to create checkout session', { error, priceId: params.priceId });
-      throw AppError.externalService('Stripe', error);
+      throw AppError.externalService('Stripe', error as Record<string, unknown>);
     }
   }
 

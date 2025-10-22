@@ -5,17 +5,30 @@
 
 import { ValidationError, ErrorDetails } from './common.types';
 
-export interface ApiResponse<T = any> {
+// Base API Response interface with improved type safety
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: ApiError;
   meta?: ApiMeta;
 }
 
+// Success response type
+export interface SuccessResponse<T = unknown> extends Omit<ApiResponse<T>, 'error'> {
+  success: true;
+  data: T;
+}
+
+// Error response type
+export interface ErrorResponse extends Omit<ApiResponse<never>, 'data'> {
+  success: false;
+  error: ApiError;
+}
+
 export interface ApiError {
   code: string;
   message: string;
-  details?: ErrorDetails[];
+  details?: Record<string, unknown>;
   validationErrors?: ValidationError[];
   stack?: string;
   timestamp: string;

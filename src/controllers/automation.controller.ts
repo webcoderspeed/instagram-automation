@@ -1,8 +1,3 @@
-/**
- * Automation Controller
- * Handles automation management, execution, and analytics
- */
-
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
 import asyncHandler from 'express-async-handler';
@@ -11,20 +6,21 @@ import { AutomationModel, AutomationStatus, AutomationType, TriggerType } from '
 import { PlatformAccountModel } from '../models/platform-account.model';
 import { automationService } from '../services/automation.service';
 import logger from '../utils/logger';
+import { sendSuccess, createMeta } from '../utils/response-builder';
 
 export class AutomationController {
   /**
-   * Helper method to get authenticated user
+   * Get authenticated user from request
    */
   private getAuthenticatedUser(req: Request) {
     if (!req.user) {
-      throw ApiError.unauthorized('User not authenticated');
+      throw new ApiError(401, 'User not authenticated');
     }
     return req.user;
   }
 
   /**
-   * Get all automations for user
+   * Get all automations for authenticated user
    */
   getAutomations = asyncHandler(async (req: Request, res: Response) => {
     const userId = this.getAuthenticatedUser(req).id;
@@ -38,10 +34,12 @@ export class AutomationController {
       sortOrder = 'desc'
     } = req.query;
 
-    const offset = (Number(page) - 1) * Number(limit);
-    
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
     // Build query
-    const query: any = { 
+    const query: any = {
       userId,
       deletedAt: null
     };
@@ -68,34 +66,31 @@ export class AutomationController {
 
     const [automations, total] = await Promise.all([
       AutomationModel.find(query)
-        .sort(sort)
-        .skip(offset)
-        .limit(Number(limit))
         .populate('platformAccounts', 'platform platformUsername')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
         .lean(),
       AutomationModel.countDocuments(query)
     ]);
 
-    const totalPages = Math.ceil(total / Number(limit));
+    const totalPages = Math.ceil(total / limitNum);
 
-    res.json({
-      success: true,
-      data: {
-        automations,
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total,
-          totalPages,
-          hasNext: Number(page) < totalPages,
-          hasPrev: Number(page) > 1
-        }
+    sendSuccess(res, {
+      automations,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+        hasNext: pageNum < totalPages,
+        hasPrev: pageNum > 1
       }
-    });
+    }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
-   * Get single automation
+   * Get single automation by ID
    */
   getAutomation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -115,10 +110,7 @@ export class AutomationController {
       throw new ApiError(404, 'Automation not found');
     }
 
-    res.json({
-      success: true,
-      data: { automation }
-    });
+    sendSuccess(res, { automation }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -173,11 +165,7 @@ export class AutomationController {
 
     await automation.save();
 
-    res.status(201).json({
-      success: true,
-      data: { automation },
-      message: 'Automation created successfully'
-    });
+    sendSuccess(res, { automation }, 201, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -213,11 +201,7 @@ export class AutomationController {
     Object.assign(automation, updateData);
     await automation.save();
 
-    res.json({
-      success: true,
-      data: { automation },
-      message: 'Automation updated successfully'
-    });
+    sendSuccess(res, { automation }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -249,10 +233,7 @@ export class AutomationController {
     automation.deletedAt = new Date();
     await automation.save();
 
-    res.json({
-      success: true,
-      message: 'Automation deleted successfully'
-    });
+    sendSuccess(res, null, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -283,11 +264,7 @@ export class AutomationController {
     // Use automation service to start the automation
     const updatedAutomation = await automationService.startAutomation(id);
 
-    res.json({
-      success: true,
-      data: { automation: updatedAutomation },
-      message: 'Automation started successfully'
-    });
+    sendSuccess(res, { automation: updatedAutomation }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -318,11 +295,7 @@ export class AutomationController {
     // Use automation service to pause the automation
     const updatedAutomation = await automationService.pauseAutomation(id);
 
-    res.json({
-      success: true,
-      data: { automation: updatedAutomation },
-      message: 'Automation paused successfully'
-    });
+    sendSuccess(res, { automation: updatedAutomation }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -353,11 +326,7 @@ export class AutomationController {
     // Use automation service to stop the automation
     const updatedAutomation = await automationService.stopAutomation(id);
 
-    res.json({
-      success: true,
-      data: { automation: updatedAutomation },
-      message: 'Automation stopped successfully'
-    });
+    sendSuccess(res, { automation: updatedAutomation }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -384,17 +353,14 @@ export class AutomationController {
     // Use automation service to execute the automation
     const result = await automationService.executeAutomation(id);
 
-    res.json({
-      success: true,
-      data: {
-        executionId: new Types.ObjectId().toString(),
-        status: result.success ? 'completed' : 'failed',
-        executionTime: result.executionTime,
-        data: result.data,
-        message: result.success ? 'Automation executed successfully' : 'Automation execution failed',
-        error: result.error
-      }
-    });
+    sendSuccess(res, {
+      executionId: new Types.ObjectId().toString(),
+      status: result.success ? 'completed' : 'failed',
+      executionTime: result.executionTime,
+      data: result.data,
+      message: result.success ? 'Automation executed successfully' : 'Automation execution failed',
+      error: result.error
+    }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -470,17 +436,14 @@ export class AutomationController {
       ? (result.successfulExecutions / result.totalExecutions) * 100 
       : 0;
 
-    res.json({
-      success: true,
-      data: {
-        analytics: result,
-        timeRange,
-        period: {
-          startDate,
-          endDate
-        }
+    sendSuccess(res, {
+      analytics: result,
+      timeRange,
+      period: {
+        startDate,
+        endDate
       }
-    });
+    }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -552,10 +515,7 @@ export class AutomationController {
       );
     }
 
-    res.json({
-      success: true,
-      data: { templates }
-    });
+    sendSuccess(res, { templates }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -566,10 +526,6 @@ export class AutomationController {
 
     const stats = await automationService.getAutomationStats(userId);
 
-    res.json({
-      success: true,
-      data: { stats },
-      message: 'Automation statistics retrieved successfully'
-    });
+    sendSuccess(res, { stats }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 }

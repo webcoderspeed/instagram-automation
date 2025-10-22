@@ -6,7 +6,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { signupService } from './signup.service';
 import { ApiError } from '../../utils/api-error';
+import { sendSuccess, sendError, createMeta } from '../../utils/response-builder';
 import logger from '../../utils/logger';
+import { HttpStatus } from '../../types';
 
 export interface SignupRequest {
   email: string;
@@ -46,8 +48,7 @@ class SignupController {
 
       logger.info(`User signup successful: ${email}`);
 
-      res.status(201).json({
-        success: true,
+      sendSuccess(res, {
         message: result.message,
         data: {
           userId: result.user._id,
@@ -56,7 +57,7 @@ class SignupController {
           lastName: result.user.lastName,
           emailVerified: result.user.isEmailVerified
         }
-      });
+      }, HttpStatus.CREATED, createMeta({ requestId: req.headers['x-request-id'] as string }));
 
     } catch (error: unknown) {
       logger.error('Signup controller error:', error);
@@ -80,8 +81,7 @@ class SignupController {
 
       logger.info(`Email verified successfully: ${user.email}`);
 
-      res.status(200).json({
-        success: true,
+      sendSuccess(res, {
         message: 'Email verified successfully',
         data: {
           userId: user._id,
@@ -90,7 +90,7 @@ class SignupController {
           lastName: user.lastName,
           emailVerified: user.isEmailVerified
         }
-      });
+      }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
 
     } catch (error: unknown) {
       logger.error('Email verification controller error:', error);
@@ -119,10 +119,9 @@ class SignupController {
 
       logger.info(`Verification email resent: ${email}`);
 
-      res.status(200).json({
-        success: true,
+      sendSuccess(res, {
         message: 'Verification email sent successfully'
-      });
+      }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
 
     } catch (error: unknown) {
       logger.error('Resend verification controller error:', error);

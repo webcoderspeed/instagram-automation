@@ -14,6 +14,7 @@ import { StripeService } from "../services/stripe.service";
 import logger from "../utils/logger";
 import { AppError } from "../utils/app-error";
 import asyncHandler from "express-async-handler";
+import { sendSuccess, createMeta } from "../utils/response-builder";
 
 export class SubscriptionController {
   private stripeService: StripeService | null;
@@ -22,10 +23,10 @@ export class SubscriptionController {
    * Helper method to get authenticated user
    */
   private getAuthenticatedUser(req: Request) {
-    if (!req.user) {
+    if (!req.session.user) {
       throw new AppError('User not authenticated', 401);
     }
-    return req.user;
+    return req.session.user;
   }
 
   constructor() {
@@ -61,34 +62,31 @@ export class SubscriptionController {
 
       if (!subscription) {
         // Return free plan if no active subscription
-        res.json({
-          success: true,
-          data: {
-            id: null,
-            userId,
-            plan: "free",
-            status: "active",
-            currentPeriodStart: null,
-            currentPeriodEnd: null,
-            features: {
-              maxPosts: 10,
-              maxAutomations: 1,
-              maxConnectedAccounts: 2,
-              analytics: false,
-              prioritySupport: false,
-            },
-            usage: {
-              postsUsed: 0,
-              automationsUsed: 0,
-              connectedAccountsUsed: 0,
-            },
-            billing: {
-              amount: 0,
-              currency: "USD",
-              interval: "month",
-            },
+        sendSuccess(res, {
+          id: null,
+          userId,
+          plan: "free",
+          status: "active",
+          currentPeriodStart: null,
+          currentPeriodEnd: null,
+          features: {
+            maxPosts: 10,
+            maxAutomations: 1,
+            maxConnectedAccounts: 2,
+            analytics: false,
+            prioritySupport: false,
           },
-        });
+          usage: {
+            postsUsed: 0,
+            automationsUsed: 0,
+            connectedAccountsUsed: 0,
+          },
+          billing: {
+            amount: 0,
+            currency: "USD",
+            interval: "month",
+          },
+        }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
 
         return;
       }
@@ -117,10 +115,7 @@ export class SubscriptionController {
         status: responseData.status,
       });
 
-      res.json({
-        success: true,
-        data: responseData,
-      });
+      sendSuccess(res, responseData, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error("Failed to fetch current subscription", { userId, error });
       throw AppError.internal("Failed to fetch subscription details");
@@ -218,10 +213,7 @@ export class SubscriptionController {
       },
     ];
 
-    res.json({
-      success: true,
-      data: plans,
-    });
+    sendSuccess(res, plans, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -289,20 +281,17 @@ export class SubscriptionController {
         customerEmail: user.email,
       });
 
-      res.json({
-        success: true,
-        data: {
-          checkoutUrl: checkoutSession.url,
-          sessionId: checkoutSession.id,
-        },
-      });
+      sendSuccess(res, {
+        checkoutUrl: checkoutSession.url,
+        sessionId: checkoutSession.id,
+      }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error("Failed to create checkout session", {
         userId,
         planId,
         error,
       });
-      throw AppError.externalService("Stripe", error);
+      throw AppError.externalService("Stripe", error as Record<string, unknown>);
     }
   });
 
@@ -355,15 +344,11 @@ export class SubscriptionController {
       subscriptionId: subscription._id,
     });
 
-    res.json({
-      success: true,
-      message: "Subscription activated successfully",
-      data: {
-        subscriptionId: subscription._id,
-        plan: subscription.plan,
-        status: subscription.status,
-      },
-    });
+    sendSuccess(res, {
+      subscriptionId: subscription._id,
+      plan: subscription.plan,
+      status: subscription.status,
+    }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -398,17 +383,11 @@ export class SubscriptionController {
       cancelAtPeriodEnd,
     });
 
-    res.json({
-      success: true,
-      message: cancelAtPeriodEnd
-        ? "Subscription will be canceled at the end of the current period"
-        : "Subscription canceled immediately",
-      data: {
-        status: subscription.status,
-        cancelAtPeriodEnd: !!subscription.cancelledAt,
-        currentPeriodEnd: subscription.endDate,
-      },
-    });
+    sendSuccess(res, {
+      status: subscription.status,
+      cancelAtPeriodEnd: !!subscription.cancelledAt,
+      currentPeriodEnd: subscription.endDate,
+    }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -435,14 +414,10 @@ export class SubscriptionController {
       subscriptionId: subscription._id,
     });
 
-    res.json({
-      success: true,
-      message: "Subscription reactivated successfully",
-      data: {
-        status: subscription.status,
-        cancelAtPeriodEnd: !!subscription.cancelledAt,
-      },
-    });
+    sendSuccess(res, {
+      status: subscription.status,
+      cancelAtPeriodEnd: !!subscription.cancelledAt,
+    }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -467,10 +442,7 @@ export class SubscriptionController {
     subscription.paymentMethodId = paymentMethodId;
     await subscription.save();
 
-    res.json({
-      success: true,
-      message: "Payment method updated successfully",
-    });
+    sendSuccess(res, { message: "Payment method updated successfully" }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
@@ -541,18 +513,15 @@ export class SubscriptionController {
         limit: Number(limit)
       });
 
-      res.json({
-        success: true,
-        data: {
-          billingHistory,
-          pagination: {
-            page: Number(page),
-            limit: Number(limit),
-            total: totalPayments,
-            totalPages: Math.ceil(totalPayments / Number(limit))
-          }
+      sendSuccess(res, {
+        billingHistory,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total: totalPayments,
+          totalPages: Math.ceil(totalPayments / Number(limit))
         }
-      });
+      }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Failed to get billing history', { error, userId });
       throw AppError.internal('Failed to fetch billing history');
@@ -654,10 +623,7 @@ export class SubscriptionController {
         accounts: connectedAccountsCount,
       });
 
-      res.json({
-        success: true,
-        data: usageStats,
-      });
+      sendSuccess(res, usageStats, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error("Failed to fetch usage statistics", { userId, error });
       throw AppError.internal("Failed to calculate usage statistics");
@@ -708,7 +674,7 @@ export class SubscriptionController {
           logger.info("Unhandled webhook event type", { type: event.type });
       }
 
-      res.json({ received: true });
+      sendSuccess(res, { received: true }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error("Webhook signature verification failed", { error });
       throw AppError.validation("Invalid webhook signature");

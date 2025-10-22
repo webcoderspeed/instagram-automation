@@ -1,49 +1,34 @@
 import { Request, Response } from 'express';
 import { instagramService } from '../services/instagram';
+import { asyncHandler } from '../middleware/error.middleware';
 import logger from '../utils/logger';
 import { platformAccountService } from '../services/auth/platform-account.service';
+import { sendSuccess, sendError, createMeta } from '../utils/response-builder';
 
 export class InstagramController {
-  async getProfile(req: Request, res: Response): Promise<void> {
-    try {
-      if (!req.user) {
-        res.status(401).json({
-          error: 'Authentication required',
-          message: 'Please authenticate first'
-        });
-        return;
-      }
-
-      const credentials = platformAccountService.getPlatformCredentials(req.user, 'instagram');
-      
-      if (!credentials) {
-        res.status(401).json({
-          error: 'Instagram credentials not found',
-          message: 'Please connect your Instagram account first'
-        });
-        return;
-      }
-
-      // Set access token and get profile
-      instagramService.setConfig({ accessToken: credentials.accessToken });
-      const profile = await instagramService.getUserProfile();
-      res.json(profile);
-    } catch (error) {
-      logger.error('Error fetching Instagram profile:', error);
-      res.status(500).json({
-        error: 'Failed to fetch profile',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
+  getProfile = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      sendError(res, 'Authentication required', 401, createMeta({ requestId: req.headers['x-request-id'] as string }));
+      return;
     }
-  }
+
+    const credentials = platformAccountService.getPlatformCredentials(req.user, 'instagram');
+    
+    if (!credentials) {
+      sendError(res, 'Instagram credentials not found', 401, createMeta({ requestId: req.headers['x-request-id'] as string }));
+      return;
+    }
+
+    // Set access token and get profile
+    instagramService.setConfig({ accessToken: credentials.accessToken });
+    const profile = await instagramService.getUserProfile();
+    sendSuccess(res, profile, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
+  });
 
   async getMedia(req: Request, res: Response): Promise<void> {
     try {
       if (!req.user) {
-        res.status(401).json({
-          error: 'Authentication required',
-          message: 'Please authenticate first'
-        });
+        sendError(res, 'Authentication required', 401, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
@@ -51,23 +36,17 @@ export class InstagramController {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 25;
       
       if (!credentials) {
-        res.status(401).json({
-          error: 'Instagram credentials not found',
-          message: 'Please connect your Instagram account first'
-        });
+        sendError(res, 'Instagram credentials not found', 401, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
       // Set access token and get media
       instagramService.setConfig({ accessToken: credentials.accessToken });
       const media = await instagramService.getUserMedia(limit);
-      res.json(media);
+      sendSuccess(res, media, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Error fetching Instagram media:', error);
-      res.status(500).json({
-        error: 'Failed to fetch media',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
+      sendError(res, error instanceof Error ? error.message : 'Unknown error occurred', 500, createMeta({ requestId: req.headers['x-request-id'] as string }));
     }
   }
 
@@ -77,31 +56,22 @@ export class InstagramController {
       const accessToken = req.query.access_token as string;
       
       if (!accessToken) {
-        res.status(400).json({
-          error: 'Access token is required',
-          message: 'Please provide access_token as a query parameter'
-        });
+        sendError(res, 'Access token is required', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
       if (!id) {
-        res.status(400).json({
-          error: 'Media ID is required',
-          message: 'Please provide a valid media ID'
-        });
+        sendError(res, 'Media ID is required', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
       // Set access token and get media details
       instagramService.setConfig({ accessToken });
       const media = await instagramService.getMediaDetails(id);
-      res.json(media);
+      sendSuccess(res, media, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Error fetching Instagram media by ID:', error);
-      res.status(500).json({
-        error: 'Failed to fetch media',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
+      sendError(res, error instanceof Error ? error.message : 'Unknown error occurred', 500, createMeta({ requestId: req.headers['x-request-id'] as string }));
     }
   }
 
@@ -110,18 +80,12 @@ export class InstagramController {
       const { image_url, caption, access_token } = req.body;
       
       if (!access_token) {
-        res.status(400).json({
-          error: 'Access token is required',
-          message: 'Please provide access_token in the request body'
-        });
+        sendError(res, 'Access token is required', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
       if (!image_url) {
-        res.status(400).json({
-          error: 'Image URL is required',
-          message: 'Please provide image_url in the request body'
-        });
+        sendError(res, 'Image URL is required', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
@@ -135,10 +99,7 @@ export class InstagramController {
       );
 
       if (!containerResponse?.id) {
-        res.status(400).json({
-          error: 'Failed to create media container',
-          message: 'Instagram API did not return a container ID'
-        });
+        sendError(res, 'Failed to create media container', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
@@ -147,18 +108,15 @@ export class InstagramController {
         containerResponse.id
       );
 
-      res.json({
+      sendSuccess(res, {
         success: true,
         container_id: containerResponse.id,
         media_id: publishResponse?.id,
         message: 'Post published successfully'
-      });
+      }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Error publishing Instagram post:', error);
-      res.status(500).json({
-        error: 'Failed to publish post',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
+      sendError(res, error instanceof Error ? error.message : 'Unknown error occurred', 500, createMeta({ requestId: req.headers['x-request-id'] as string }));
     }
   }
 
@@ -168,31 +126,22 @@ export class InstagramController {
       const accessToken = req.query.access_token as string;
       
       if (!accessToken) {
-        res.status(400).json({
-          error: 'Access token is required',
-          message: 'Please provide access_token as a query parameter'
-        });
+        sendError(res, 'Access token is required', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
       if (!id) {
-        res.status(400).json({
-          error: 'Media ID is required',
-          message: 'Please provide a valid media ID'
-        });
+        sendError(res, 'Media ID is required', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
       // Set access token and get insights
       instagramService.setConfig({ accessToken });
       const insights = await instagramService.getMediaInsights(id);
-      res.json(insights);
+      sendSuccess(res, insights, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Error fetching media insights:', error);
-      res.status(500).json({
-        error: 'Failed to fetch media insights',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
+      sendError(res, error instanceof Error ? error.message : 'Unknown error occurred', 500, createMeta({ requestId: req.headers['x-request-id'] as string }));
     }
   }
 
@@ -202,23 +151,17 @@ export class InstagramController {
       const period = req.query.period as 'day' | 'week' | 'days_28' || 'day';
       
       if (!accessToken) {
-        res.status(400).json({
-          error: 'Access token is required',
-          message: 'Please provide access_token as a query parameter'
-        });
+        sendError(res, 'Access token is required', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
       // Set access token and get insights
       instagramService.setConfig({ accessToken });
       const insights = await instagramService.getAccountInsights(period);
-      res.json(insights);
+      sendSuccess(res, insights, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Error fetching account insights:', error);
-      res.status(500).json({
-        error: 'Failed to fetch account insights',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
+      sendError(res, error instanceof Error ? error.message : 'Unknown error occurred', 500, createMeta({ requestId: req.headers['x-request-id'] as string }));
     }
   }
 
@@ -228,44 +171,32 @@ export class InstagramController {
       const accessToken = req.query.access_token as string;
       
       if (!accessToken) {
-        res.status(400).json({
-          error: 'Access token is required',
-          message: 'Please provide access_token as a query parameter'
-        });
+        sendError(res, 'Access token is required', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
       if (!hashtag) {
-        res.status(400).json({
-          error: 'Hashtag is required',
-          message: 'Please provide a valid hashtag'
-        });
+        sendError(res, 'Hashtag is required', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
       // Set access token and get hashtag info
       instagramService.setConfig({ accessToken });
       const hashtagInfo = await instagramService.getHashtagInfo(hashtag);
-      res.json(hashtagInfo);
+      sendSuccess(res, hashtagInfo, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Error fetching hashtag info:', error);
-      res.status(500).json({
-        error: 'Failed to fetch hashtag info',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
+      sendError(res, error instanceof Error ? error.message : 'Unknown error occurred', 500, createMeta({ requestId: req.headers['x-request-id'] as string }));
     }
   }
 
   async getRateLimit(req: Request, res: Response): Promise<void> {
     try {
       const rateLimitInfo = instagramService.getRateLimitStatus();
-      res.json(rateLimitInfo);
+      sendSuccess(res, rateLimitInfo, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
     } catch (error) {
       logger.error('Error fetching rate limit info:', error);
-      res.status(500).json({
-        error: 'Failed to fetch rate limit info',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
+      sendError(res, error instanceof Error ? error.message : 'Unknown error occurred', 500, createMeta({ requestId: req.headers['x-request-id'] as string }));
     }
   }
 }

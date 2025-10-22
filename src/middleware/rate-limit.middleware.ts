@@ -1,4 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
+import { ApiError } from '../utils/api-error';
+import { asyncHandler } from './error.middleware';
 import logger from '../utils/logger';
 
 interface RateLimitStore {
@@ -35,7 +37,7 @@ class RateLimiter {
   }
 
   middleware() {
-    return (req: Request, res: Response, next: NextFunction): void => {
+    return asyncHandler((req: Request, res: Response, next: NextFunction): void => {
       const key = this.getKey(req);
       const now = Date.now();
       
@@ -59,16 +61,22 @@ class RateLimiter {
 
       if (count > this.maxRequests) {
         logger.warn(`Rate limit exceeded for IP: ${key}`);
-        res.status(429).json({
-          error: 'Too Many Requests',
-          message: 'Rate limit exceeded. Please try again later.',
-          retryAfter: Math.ceil((resetTime - now) / 1000)
-        });
-        return;
+        const retryAfter = Math.ceil((resetTime - now) / 1000);
+        
+        // Set Retry-After header
+        res.set('Retry-After', retryAfter.toString());
+        
+        // Throw ApiError to be handled by error middleware
+        const error = ApiError.tooManyRequests(
+          'Rate limit exceeded. Please try again later.',
+          'RATE_LIMIT_EXCEEDED',
+          { retryAfter }
+        );
+        throw error;
       }
 
       next();
-    };
+    });
   }
 }
 

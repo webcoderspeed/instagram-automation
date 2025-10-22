@@ -7,6 +7,8 @@ import { Request, Response, NextFunction } from 'express';
 import { LoginHistoryModel } from '../models/login-history.model';
 import { UserModel } from '../models/user.model';
 import { ApiError } from '../utils/api-error';
+import { sendSuccess, createMeta } from '../utils/response-builder';
+import { asyncHandler } from '../middleware/error.middleware';
 import logger from '../utils/logger';
 import { Types } from 'mongoose';
 
@@ -14,7 +16,7 @@ class AnalyticsController {
   /**
    * Get user login statistics
    */
-  async getUserLoginStats(req: Request, res: Response, next: NextFunction): Promise<void> {
+  getUserLoginStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = req.session.user?.id;
       const days = parseInt(req.query.days as string) || 30;
@@ -37,92 +39,79 @@ class AnalyticsController {
       // Get user's current info
       const user = await UserModel.findById(userId).select('totalLoginCount lastLoginAt lastLoginIP lastLoginUserAgent');
 
-      res.json({
-        success: true,
-        data: {
-          period: `${days} days`,
-          stats,
-          recentLogins,
-          userInfo: {
-            totalLoginCount: user?.totalLoginCount || 0,
-            lastLoginAt: user?.lastLoginAt,
-            lastLoginIP: user?.lastLoginIP,
-            lastLoginUserAgent: user?.lastLoginUserAgent
-          }
+      sendSuccess(res, {
+        period: `${days} days`,
+        stats,
+        recentLogins,
+        userInfo: {
+          totalLoginCount: user?.totalLoginCount || 0,
+          lastLoginAt: user?.lastLoginAt,
+          lastLoginIP: user?.lastLoginIP,
+          lastLoginUserAgent: user?.lastLoginUserAgent
         }
-      });
+      }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
 
     } catch (error: unknown) {
       logger.error('Get user login stats error:', error);
-      next(error);
+      throw error;
     }
-  }
+  });
 
   /**
    * Get login activity by date range
    */
-  async getLoginActivity(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const userId = req.session.user?.id;
-      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
-      
-      if (!userId) {
-        throw ApiError.unauthorized('User not authenticated');
-      }
-
-      const activity = await LoginHistoryModel.aggregate([
-        {
-          $match: {
-            userId: new Types.ObjectId(userId),
-            loginAt: { $gte: startDate, $lte: endDate }
-          }
-        },
-        {
-          $group: {
-            _id: {
-              $dateToString: { format: '%Y-%m-%d', date: '$loginAt' }
-            },
-            loginCount: { $sum: 1 },
-            uniqueDevices: { $addToSet: '$deviceFingerprint' },
-            suspiciousCount: { $sum: { $cond: ['$isSuspicious', 1, 0] } },
-            avgSessionDuration: { $avg: '$sessionDuration' }
-          }
-        },
-        {
-          $project: {
-            date: '$_id',
-            loginCount: 1,
-            uniqueDeviceCount: { $size: '$uniqueDevices' },
-            suspiciousCount: 1,
-            avgSessionDuration: { $round: ['$avgSessionDuration', 2] }
-          }
-        },
-        {
-          $sort: { date: 1 }
-        }
-      ]);
-
-      res.json({
-        success: true,
-        data: {
-          startDate,
-          endDate,
-          activity
-        }
-      });
-
-    } catch (error: unknown) {
-      logger.error('Get login activity error:', error);
-      next(error);
+  getLoginActivity = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const userId = req.session.user?.id;
+    const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+    
+    if (!userId) {
+      throw ApiError.unauthorized('User not authenticated');
     }
-  }
+
+    const activity = await LoginHistoryModel.aggregate([
+      {
+        $match: {
+          userId: new Types.ObjectId(userId),
+          loginAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$loginAt' }
+          },
+          loginCount: { $sum: 1 },
+          uniqueDevices: { $addToSet: '$deviceFingerprint' },
+          suspiciousCount: { $sum: { $cond: ['$isSuspicious', 1, 0] } },
+          avgSessionDuration: { $avg: '$sessionDuration' }
+        }
+      },
+      {
+        $project: {
+          date: '$_id',
+          loginCount: 1,
+          uniqueDeviceCount: { $size: '$uniqueDevices' },
+          suspiciousCount: 1,
+          avgSessionDuration: { $round: ['$avgSessionDuration', 2] }
+        }
+      },
+      {
+        $sort: { date: 1 }
+      }
+    ]);
+
+    sendSuccess(res, {
+      startDate,
+      endDate,
+      activity
+    }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
+  });
 
   /**
    * Get device and browser analytics
    */
-  async getDeviceAnalytics(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
+  getDeviceAnalytics = asyncHandler(async (req: Request, res: Response): Promise<void> => {
       const userId = req.session.user?.id;
       const days = parseInt(req.query.days as string) || 30;
       
@@ -241,29 +230,21 @@ class AnalyticsController {
         }
       ]);
 
-      res.json({
-        success: true,
-        data: {
-          period: `${days} days`,
-          deviceAnalytics: deviceStats[0] || {
-            browserStats: [],
-            deviceStats: [],
-            osStats: []
-          }
+      sendSuccess(res, {
+        period: `${days} days`,
+        deviceAnalytics: deviceStats[0] || {
+          browserStats: [],
+          deviceStats: [],
+          osStats: []
         }
-      });
+      }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
 
-    } catch (error: unknown) {
-      logger.error('Get device analytics error:', error);
-      next(error);
-    }
-  }
+  });
 
   /**
    * Get security insights
    */
-  async getSecurityInsights(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
+  getSecurityInsights = asyncHandler(async (req: Request, res: Response): Promise<void> => {
       const userId = req.session.user?.id;
       const days = parseInt(req.query.days as string) || 30;
       
@@ -310,27 +291,20 @@ class AnalyticsController {
         totalLogins: 0
       };
 
-      res.json({
-        success: true,
-        data: {
-          period: `${days} days`,
-          securityStats: {
-            uniqueIPCount: stats.uniqueIPs.length,
-            uniqueDeviceCount: stats.uniqueDevices.length,
-            suspiciousLoginCount: stats.totalSuspicious,
-            totalLogins: stats.totalLogins,
-            suspiciousPercentage: stats.totalLogins > 0 ? 
-              Math.round((stats.totalSuspicious / stats.totalLogins) * 100) : 0
-          },
-          suspiciousLogins
-        }
-      });
+      sendSuccess(res, {
+        period: `${days} days`,
+        securityStats: {
+          uniqueIPCount: stats.uniqueIPs.length,
+          uniqueDeviceCount: stats.uniqueDevices.length,
+          suspiciousLoginCount: stats.totalSuspicious,
+          totalLogins: stats.totalLogins,
+          suspiciousPercentage: stats.totalLogins > 0 ? 
+            Math.round((stats.totalSuspicious / stats.totalLogins) * 100) : 0
+        },
+        suspiciousLogins
+      }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
 
-    } catch (error: unknown) {
-      logger.error('Get security insights error:', error);
-      next(error);
-    }
-  }
+  });
 }
 
 export const analyticsController = new AnalyticsController();

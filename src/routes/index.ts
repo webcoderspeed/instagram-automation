@@ -12,15 +12,15 @@ import webhookRoutes from './webhook.routes';
 const router = Router();
 
 // Mount route modules
-router.use('/api/analytics', analyticsRoutes);
+router.use('/analytics', analyticsRoutes);
 router.use('/auth', authRoutes);
-router.use('/api/automation', automationRoutes);
-router.use('/api/dashboard', dashboardRoutes);
-router.use('/api/instagram', instagramRoutes);
-router.use('/api/integrations', integrationsRoutes);
-router.use('/api/settings', settingsRoutes);
-router.use('/api/subscriptions', subscriptionRoutes);
-router.use('/api/webhook', webhookRoutes);
+router.use('/automation', automationRoutes);
+router.use('/dashboard', dashboardRoutes);
+router.use('/instagram', instagramRoutes);
+router.use('/integrations', integrationsRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/subscriptions', subscriptionRoutes);
+router.use('/webhook', webhookRoutes);
 router.use('/webhook', webhookRoutes);
 
 export default router;

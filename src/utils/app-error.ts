@@ -13,7 +13,7 @@ export class AppError extends ApiError {
     message: string,
     statusCode: number = 500,
     code?: string,
-    details?: unknown,
+    details?: Record<string, unknown>,
     isOperational = true
   ) {
     super(statusCode, message, code, details, isOperational);
@@ -23,15 +23,15 @@ export class AppError extends ApiError {
   /**
    * Create a validation error (400)
    */
-  static validation(message: string, details?: unknown): AppError {
+  static validation(message: string, details?: Record<string, unknown>): AppError {
     return new AppError(message, 400, 'VALIDATION_ERROR', details);
   }
 
   /**
-   * Create a business logic error (422)
+   * Create a business logic error (400)
    */
-  static businessLogic(message: string, details?: unknown): AppError {
-    return new AppError(message, 422, 'BUSINESS_LOGIC_ERROR', details);
+  static businessLogic(message: string, details?: Record<string, unknown>): AppError {
+    return new AppError(message, 400, 'BUSINESS_LOGIC_ERROR', details);
   }
 
   /**
@@ -58,21 +58,21 @@ export class AppError extends ApiError {
   /**
    * Create a conflict error (409)
    */
-  static conflict(message: string, details?: unknown): AppError {
-    return new AppError(message, 409, 'CONFLICT', details);
+  static conflict(message: string, code?: string, details?: Record<string, unknown>): AppError {
+    return new AppError(message, 409, code || 'CONFLICT_ERROR', details);
   }
 
   /**
    * Create a rate limit error (429)
    */
   static rateLimit(message: string = 'Rate limit exceeded'): AppError {
-    return new AppError(message, 429, 'RATE_LIMIT_EXCEEDED');
+    return new AppError(message, 429, 'RATE_LIMIT_ERROR');
   }
 
   /**
    * Create an external service error (502)
    */
-  static externalService(service: string, details?: unknown): AppError {
+  static externalService(service: string, details?: Record<string, unknown>): AppError {
     return new AppError(
       `External service error: ${service}`,
       502,
