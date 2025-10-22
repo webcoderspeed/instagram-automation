@@ -22,10 +22,5 @@ export {
   webhookRateLimit
 } from './rate-limit.middleware';
 
-// Authentication types and interfaces
-export {
-  AuthenticatedUser
-} from '../types/user.types';
-
 // Authentication guards
 export * from './guards';

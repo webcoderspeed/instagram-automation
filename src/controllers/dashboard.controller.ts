@@ -7,9 +7,12 @@ import { PostModel } from '../models/post.model';
 import { CampaignModel } from '../models/campaign.model';
 import { AutomationModel } from '../models/automation.model';
 import { PlatformAccountModel } from '../models/platform-account.model';
-import { dashboardService } from '../services/dashboard.service';
-import { AuthenticatedRequest } from '../types/user.types';
+import { UserModel } from '../models/user.model';
+import { SubscriptionModel } from '../models/subscription.model';
+import { dashboardServices } from '../services/dashboard';
+import { AuthenticatedUser } from '../types/user.types';
 import logger from '../utils/logger';
+import type { PlatformTypeType } from '../models/analytics.model';
 
 export class DashboardController {
   /**
@@ -631,9 +634,6 @@ export class DashboardController {
 
     try {
       // Get user and subscription documents
-      const UserModel = require('../models/user.model').UserModel;
-      const SubscriptionModel = require('../models/subscription.model').SubscriptionModel;
-      
       const user = await UserModel.findById(userId);
       if (!user) {
         throw ApiError.notFound('User not found');
@@ -641,7 +641,7 @@ export class DashboardController {
       
       const subscription = await SubscriptionModel.findOne({ userId });
       
-      const stats = await dashboardService.getDashboardStats(
+      const stats = await dashboardServices.stats.getDashboardStats(
         user,
         subscription,
         { start: startDate, end: endDate }
@@ -691,9 +691,6 @@ export class DashboardController {
     
     try {
       // Get user and subscription documents
-      const UserModel = require('../models/user.model').UserModel;
-      const SubscriptionModel = require('../models/subscription.model').SubscriptionModel;
-      
       const user = await UserModel.findById(userId);
       if (!user) {
         throw ApiError.notFound('User not found');
@@ -701,11 +698,11 @@ export class DashboardController {
       
       const subscription = await SubscriptionModel.findOne({ userId });
       
-      const analytics = await dashboardService.getAnalyticsData(
+      const analytics = await dashboardServices.analytics.getAnalyticsData(
         user,
         subscription,
         { start: startDate, end: endDate },
-        platform as string
+        platform ? [platform as PlatformTypeType] : undefined
       );
       
       res.json({
@@ -735,9 +732,6 @@ export class DashboardController {
     
     try {
       // Get user and subscription documents
-      const UserModel = require('../models/user.model').UserModel;
-      const SubscriptionModel = require('../models/subscription.model').SubscriptionModel;
-      
       const user = await UserModel.findById(userId);
       if (!user) {
         throw ApiError.notFound('User not found');
@@ -745,7 +739,7 @@ export class DashboardController {
       
       const subscription = await SubscriptionModel.findOne({ userId });
       
-      const calendar = await dashboardService.getContentCalendar(
+      const calendar = await dashboardServices.calendar.getContentCalendar(
         user,
         subscription,
         { start: startDate, end: endDate }

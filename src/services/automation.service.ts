@@ -4,7 +4,7 @@
  */
 
 import { Types } from 'mongoose';
-import cron from 'node-cron';
+import cron, { ScheduledTask } from 'node-cron';
 import { 
   AutomationModel, 
   AutomationDocument, 
@@ -28,7 +28,7 @@ interface ExecutionResult {
 
 interface ScheduledJob {
   automationId: string;
-  task: cron.ScheduledTask;
+  task: ScheduledTask;
 }
 
 export class AutomationService {
@@ -91,7 +91,6 @@ export class AutomationService {
               await this.executeAutomation(automationId);
             },
             {
-              scheduled: true,
               timezone: trigger.schedule.timezone || 'UTC'
             }
           );

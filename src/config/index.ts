@@ -5,6 +5,7 @@
 
 export { default as env } from './env.config';
 export { default as database } from './database.config';
+export { default as databaseConnection } from './database.connection';
 export { default as socialMedia } from './social-media.config';
 export { default as server } from './server.config';
 export { default as redis } from './redis.config';

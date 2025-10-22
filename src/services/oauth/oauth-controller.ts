@@ -291,7 +291,7 @@ export class OAuthController {
   /**
    * Revoke user token
    */
-  revokeToken = async (req: Request, res: Response) => {
+  revokeToken = async (req: Request, res: Response): Promise<any> => {
     try {
       const { userId } = req.params;
 

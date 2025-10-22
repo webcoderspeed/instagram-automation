@@ -66,13 +66,13 @@ class SignupService {
       await user.save();
 
       // Create free subscription
-      await this.createFreeSubscription(user._id);
+      await this.createFreeSubscription(String(user._id));
 
       // Send verification email
       await this.sendVerificationEmail(user);
 
       // Create welcome notification
-      await this.createWelcomeNotification(user._id);
+      await this.createWelcomeNotification(String(user._id));
 
       logger.info(`New user registered: ${user.email}`);
 
@@ -112,7 +112,7 @@ class SignupService {
       await user.save();
 
       // Create verification success notification
-      await this.createEmailVerifiedNotification(user._id);
+      await this.createEmailVerifiedNotification(String(user._id));
 
       logger.info(`Email verified for user: ${user.email}`);
 

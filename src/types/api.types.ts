@@ -3,9 +3,7 @@
  * Types and interfaces for API requests and responses
  */
 
-import { Request } from 'express';
-import { ValidationError, ErrorDetails, PaginationResult } from './common.types';
-import { AuthenticatedUser } from './user.types';
+import { ValidationError, ErrorDetails } from './common.types';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -70,13 +68,6 @@ export interface ApiRequest {
   };
   platform?: string;
   accountId?: string;
-}
-
-export interface PlatformRequest extends Request {
-  user?: AuthenticatedUser;
-  validatedData?: any;
-  platform: string;
-  accountId: string;
 }
 
 // HTTP Status Codes

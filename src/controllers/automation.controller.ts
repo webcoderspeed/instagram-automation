@@ -14,10 +14,20 @@ import logger from '../utils/logger';
 
 export class AutomationController {
   /**
+   * Helper method to get authenticated user
+   */
+  private getAuthenticatedUser(req: Request) {
+    if (!req.user) {
+      throw ApiError.unauthorized('User not authenticated');
+    }
+    return req.user;
+  }
+
+  /**
    * Get all automations for user
    */
   getAutomations = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
     const { 
       page = 1, 
       limit = 10, 
@@ -89,7 +99,7 @@ export class AutomationController {
    */
   getAutomation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
 
     if (!Types.ObjectId.isValid(id)) {
       throw new ApiError(400, 'Invalid automation ID');
@@ -115,7 +125,7 @@ export class AutomationController {
    * Create new automation
    */
   createAutomation = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
     const {
       name,
       description,
@@ -175,7 +185,7 @@ export class AutomationController {
    */
   updateAutomation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
 
     if (!Types.ObjectId.isValid(id)) {
       throw new ApiError(400, 'Invalid automation ID');
@@ -215,7 +225,7 @@ export class AutomationController {
    */
   deleteAutomation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
 
     if (!Types.ObjectId.isValid(id)) {
       throw new ApiError(400, 'Invalid automation ID');
@@ -250,7 +260,7 @@ export class AutomationController {
    */
   startAutomation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
 
     if (!Types.ObjectId.isValid(id)) {
       throw new ApiError(400, 'Invalid automation ID');
@@ -285,7 +295,7 @@ export class AutomationController {
    */
   pauseAutomation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
 
     if (!Types.ObjectId.isValid(id)) {
       throw new ApiError(400, 'Invalid automation ID');
@@ -320,7 +330,7 @@ export class AutomationController {
    */
   stopAutomation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
 
     if (!Types.ObjectId.isValid(id)) {
       throw new ApiError(400, 'Invalid automation ID');
@@ -355,7 +365,7 @@ export class AutomationController {
    */
   executeAutomation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
 
     if (!Types.ObjectId.isValid(id)) {
       throw new ApiError(400, 'Invalid automation ID');
@@ -391,7 +401,7 @@ export class AutomationController {
    * Get automation analytics
    */
   getAutomationAnalytics = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
     const { timeRange = '30d', automationId } = req.query;
 
     // Calculate date range
@@ -552,7 +562,7 @@ export class AutomationController {
    * Get automation statistics
    */
   getAutomationStats = asyncHandler(async (req: Request, res: Response) => {
-    const userId = new Types.ObjectId(req.user.id);
+    const userId = new Types.ObjectId(this.getAuthenticatedUser(req).id);
 
     const stats = await automationService.getAutomationStats(userId);
 

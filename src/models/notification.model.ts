@@ -135,20 +135,17 @@ const notificationSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   type: {
     type: String,
     enum: Object.values(NotificationType),
-    required: true,
-    index: true
+    required: true
   },
   priority: {
     type: String,
     enum: Object.values(NotificationPriority),
-    default: NotificationPriority.MEDIUM,
-    index: true
+    default: NotificationPriority.MEDIUM
   },
   
   // Content
@@ -178,26 +175,21 @@ const notificationSchema = new Schema({
   status: {
     type: String,
     enum: Object.values(NotificationStatus),
-    default: NotificationStatus.PENDING,
-    index: true
+    default: NotificationStatus.PENDING
   },
   
   // Scheduling
   scheduledAt: {
-    type: Date,
-    index: true
+    type: Date
   },
   sentAt: {
-    type: Date,
-    index: true
+    type: Date
   },
   deliveredAt: {
-    type: Date,
-    index: true
+    type: Date
   },
   readAt: {
-    type: Date,
-    index: true
+    type: Date
   },
   
   // Actions
@@ -272,7 +264,7 @@ const notificationSchema = new Schema({
   // Expiration
   expiresAt: {
     type: Date,
-    index: true
+    default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
   }
 }, {
   timestamps: true,
@@ -340,23 +332,5 @@ notificationSchema.methods.markAsFailed = async function(
 notificationSchema.methods.isExpired = function(this: NotificationDocument): boolean {
   return this.expiresAt ? this.expiresAt < new Date() : false;
 };
-
-// Indexes
-notificationSchema.index({ userId: 1, status: 1 });
-notificationSchema.index({ userId: 1, type: 1 });
-notificationSchema.index({ userId: 1, priority: 1 });
-notificationSchema.index({ userId: 1, readAt: 1 });
-notificationSchema.index({ status: 1, scheduledAt: 1 });
-notificationSchema.index({ createdAt: 1 });
-notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-notificationSchema.index({ 'relatedEntity.type': 1, 'relatedEntity.id': 1 });
-
-// Compound indexes for common queries
-notificationSchema.index({ 
-  userId: 1, 
-  status: 1, 
-  priority: 1, 
-  createdAt: -1 
-});
 
 export const NotificationModel = model<NotificationDocument>('Notification', notificationSchema);

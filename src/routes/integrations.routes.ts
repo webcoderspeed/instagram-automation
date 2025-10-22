@@ -7,6 +7,13 @@ import { Router } from 'express';
 import { IntegrationsController } from '../controllers/integrations.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { createProtectedRoute } from '../middleware/guards/protected-routes.middleware';
+import { validate } from '../validators/common.validator';
+import { 
+  connectPlatformSchema, 
+  refreshTokensSchema, 
+  testConnectionSchema, 
+  disconnectPlatformSchema 
+} from '../validators/integrations.validator';
 
 const router = Router();
 const integrationsController = new IntegrationsController();
@@ -51,6 +58,7 @@ router.get('/:id',
  */
 router.post('/:platform/connect',
   createProtectedRoute('CONNECT_ACCOUNT'),
+  validate(connectPlatformSchema),
   integrationsController.initiateConnection
 );
 
@@ -71,6 +79,7 @@ router.get('/:platform/callback',
  */
 router.delete('/:id/disconnect',
   createProtectedRoute('INTEGRATION_MANAGER'),
+  validate(disconnectPlatformSchema),
   integrationsController.disconnectPlatform
 );
 
@@ -81,6 +90,7 @@ router.delete('/:id/disconnect',
  */
 router.post('/:id/refresh',
   createProtectedRoute('INTEGRATION_MANAGER'),
+  validate(refreshTokensSchema),
   integrationsController.refreshTokens
 );
 
@@ -91,6 +101,7 @@ router.post('/:id/refresh',
  */
 router.post('/:id/test',
   createProtectedRoute('INTEGRATION_MANAGER'),
+  validate(testConnectionSchema),
   integrationsController.testConnection
 );
 

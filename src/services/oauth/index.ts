@@ -29,9 +29,6 @@ export function createOAuthConfig(
     clientId,
     clientSecret,
     redirectUri,
-    scopes: scopes.map(scope => ({
-      name: scope,
-      description: `Instagram ${scope} permission`
-    }))
+    scopes
   };
 }

@@ -16,15 +16,34 @@ import { AppError } from "../utils/app-error";
 import asyncHandler from "express-async-handler";
 
 export class SubscriptionController {
-  private stripeService: StripeService;
+  private stripeService: StripeService | null;
+
+  /**
+   * Helper method to get authenticated user
+   */
+  private getAuthenticatedUser(req: Request) {
+    if (!req.user) {
+      throw new AppError('User not authenticated', 401);
+    }
+    return req.user;
+  }
 
   constructor() {
     // Initialize Stripe service
-    this.stripeService = new StripeService({
-      secretKey: process.env.STRIPE_SECRET_KEY || "",
-      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
-      publicKey: process.env.STRIPE_PUBLIC_KEY || "",
-    });
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const publicKey = process.env.STRIPE_PUBLIC_KEY;
+  
+    if (!secretKey || !webhookSecret) {
+      logger.warn('Stripe keys missing; disabling subscription billing endpoints');
+      this.stripeService = null;
+    } else {
+      this.stripeService = new StripeService({
+        secretKey,
+        webhookSecret,
+        publicKey: publicKey || '',
+      });
+    }
   }
 
   /**
@@ -211,6 +230,10 @@ export class SubscriptionController {
   createCheckoutSession = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const { planId, interval = "month" } = req.body;
+
+    if (!this.stripeService) {
+      throw AppError.internal('Stripe is not configured');
+    }
 
     if (!planId || planId === "free") {
       throw new AppError("Invalid plan selected", 400);
@@ -454,7 +477,7 @@ export class SubscriptionController {
    * Get billing history
    */
   getBillingHistory = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user.id;
+    const userId = this.getAuthenticatedUser(req).id;
     const { 
       page = 1, 
       limit = 10, 
@@ -646,6 +669,10 @@ export class SubscriptionController {
    */
   handleStripeWebhook = asyncHandler(async (req: Request, res: Response) => {
     const signature = req.headers["stripe-signature"] as string;
+
+    if (!this.stripeService) {
+      throw AppError.internal('Stripe is not configured');
+    }
 
     try {
       const event = this.stripeService.verifyWebhookSignature(req.body, signature);

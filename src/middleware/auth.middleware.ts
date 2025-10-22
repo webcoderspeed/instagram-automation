@@ -9,7 +9,7 @@ import { UserModel } from '../models/user.model';
 import { ApiError } from '../utils/api-error';
 import { AuthenticatedUser } from '../types/user.types';
 import logger from '../utils/logger';
-import { env } from '@/config';
+import { env } from '../config';
 
 interface JwtPayload {
   userId: string;

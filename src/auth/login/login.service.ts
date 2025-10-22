@@ -33,10 +33,10 @@ export interface RefreshTokenResult {
 }
 
 class LoginService {
-  private readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-  private readonly JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
-  private readonly JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
-  private readonly JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+  private readonly JWT_SECRET: jwt.Secret = process.env.JWT_SECRET || 'your-secret-key';
+  private readonly JWT_REFRESH_SECRET: jwt.Secret = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
+  private readonly JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '15m';
+  private readonly JWT_REFRESH_EXPIRES_IN: string = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
   /**
    * Authenticate user and generate tokens
@@ -172,7 +172,7 @@ class LoginService {
    */
   private generateAccessToken(user: UserDocument): string {
     const payload = {
-      userId: user._id,
+      userId: String(user._id),
       email: user.email,
       username: user.username,
       role: user.role,
@@ -183,7 +183,7 @@ class LoginService {
       expiresIn: this.JWT_EXPIRES_IN,
       issuer: 'social-media-automation',
       audience: 'social-media-automation-users'
-    });
+    } as jwt.SignOptions);
   }
 
   /**
@@ -191,7 +191,7 @@ class LoginService {
    */
   private generateRefreshToken(user: UserDocument): string {
     const payload = {
-      userId: user._id,
+      userId: String(user._id),
       email: user.email,
       tokenType: 'refresh'
     };
@@ -200,7 +200,7 @@ class LoginService {
       expiresIn: this.JWT_REFRESH_EXPIRES_IN,
       issuer: 'social-media-automation',
       audience: 'social-media-automation-users'
-    });
+    } as jwt.SignOptions);
   }
 
   /**

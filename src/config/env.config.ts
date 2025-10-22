@@ -20,10 +20,13 @@ const envSchema = z.object({
   REDIS_URL: z.string().optional(),
   
   // Instagram Configuration
-  INSTAGRAM_APP_ID: z.string(),
-  INSTAGRAM_APP_SECRET: z.string(),
-  INSTAGRAM_REDIRECT_URI: z.string(),
-  INSTAGRAM_WEBHOOK_VERIFY_TOKEN: z.string(),
+  // Provide sensible development defaults to avoid crashing when .env is incomplete
+  INSTAGRAM_APP_ID: z.string().default('dev-instagram-app-id'),
+  INSTAGRAM_APP_SECRET: z.string().default('dev-instagram-app-secret'),
+  INSTAGRAM_REDIRECT_URI: z
+    .string()
+    .default('http://localhost:3000/auth/instagram/callback'),
+  INSTAGRAM_WEBHOOK_VERIFY_TOKEN: z.string().default('dev-webhook-verify-token'),
   
   // Future Social Media Platforms
   FACEBOOK_APP_ID: z.string().optional(),
@@ -50,5 +53,21 @@ const envSchema = z.object({
 
 // Validate environment variables
 const env = envSchema.parse(process.env);
+
+// In production, warn if any Instagram-related defaults are being used
+if (env.NODE_ENV === 'production') {
+  const defaultsUsed = [
+    env.INSTAGRAM_APP_ID === 'dev-instagram-app-id',
+    env.INSTAGRAM_APP_SECRET === 'dev-instagram-app-secret',
+    env.INSTAGRAM_REDIRECT_URI === 'http://localhost:3000/auth/instagram/callback',
+    env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN === 'dev-webhook-verify-token',
+  ];
+  if (defaultsUsed.some(Boolean)) {
+    // eslint-disable-next-line no-console
+    console.error(
+      'Environment validation warning: Instagram credentials appear to be defaults. Please set real values in production.'
+    );
+  }
+}
 
 export default env;

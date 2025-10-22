@@ -135,22 +135,19 @@ const automationSchema = new Schema({
   type: {
     type: String,
     enum: Object.values(AutomationType),
-    required: true,
-    index: true
+    required: true
   },
   status: {
     type: String,
     enum: Object.values(AutomationStatus),
-    default: AutomationStatus.INACTIVE,
-    index: true
+    default: AutomationStatus.INACTIVE
   },
   
   // Ownership
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   platformAccounts: [{
     type: Schema.Types.ObjectId,
@@ -206,12 +203,10 @@ const automationSchema = new Schema({
   
   // Execution
   lastExecutedAt: {
-    type: Date,
-    index: true
+    type: Date
   },
   nextExecutionAt: {
-    type: Date,
-    index: true
+    type: Date
   },
   executionCount: {
     type: Number,
@@ -265,8 +260,7 @@ const automationSchema = new Schema({
   // Soft delete
   deletedAt: {
     type: Date,
-    default: null,
-    index: true
+    default: null
   }
 }, {
   timestamps: true,
@@ -319,13 +313,6 @@ automationSchema.methods.updateAnalytics = async function(
   return this.save();
 };
 
-// Indexes
-automationSchema.index({ userId: 1, status: 1 });
-automationSchema.index({ type: 1, status: 1 });
-automationSchema.index({ nextExecutionAt: 1, status: 1 });
-automationSchema.index({ userId: 1, type: 1 });
-automationSchema.index({ tags: 1 });
-automationSchema.index({ createdAt: 1 });
-automationSchema.index({ deletedAt: 1 });
+
 
 export const AutomationModel = model<AutomationDocument>('Automation', automationSchema);

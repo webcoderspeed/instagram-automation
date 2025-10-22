@@ -25,7 +25,7 @@ export class SettingsController {
    * @desc    Get all user settings
    * @access  Private
    */
-  getSettings = asyncHandler(async (req: Requestequest, res: Response) => {
+  getSettings = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
 
     try {

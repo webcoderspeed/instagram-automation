@@ -7,6 +7,8 @@ import { Router } from 'express';
 import { AutomationController } from '../controllers/automation.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { createProtectedRoute } from '../middleware/guards/protected-routes.middleware';
+import { validate } from '../validators/common.validator';
+import { createAutomationSchema, updateAutomationSchema } from '../validators/automation.validator';
 
 const router = Router();
 const automationController = new AutomationController();
@@ -51,6 +53,7 @@ router.get('/:id',
  */
 router.post('/',
   createProtectedRoute('CREATE_AUTOMATION'),
+  validate(createAutomationSchema),
   automationController.createAutomation
 );
 
@@ -61,6 +64,7 @@ router.post('/',
  */
 router.put('/:id',
   createProtectedRoute('AUTOMATION_MANAGER'),
+  validate(updateAutomationSchema),
   automationController.updateAutomation
 );
 

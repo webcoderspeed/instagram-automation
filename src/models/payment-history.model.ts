@@ -56,30 +56,25 @@ const PaymentHistorySchema = new Schema<PaymentHistoryDocument>({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   subscriptionId: {
     type: Schema.Types.ObjectId,
     ref: 'Subscription',
-    required: true,
-    index: true
+    required: true
   },
   transactionId: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   stripePaymentIntentId: {
     type: String,
-    sparse: true,
-    index: true
+    sparse: true
   },
   stripeInvoiceId: {
     type: String,
-    sparse: true,
-    index: true
+    sparse: true
   },
   amount: {
     type: Number,
@@ -96,8 +91,7 @@ const PaymentHistorySchema = new Schema<PaymentHistoryDocument>({
     type: String,
     enum: Object.values(PaymentStatus),
     required: true,
-    default: PaymentStatus.PENDING,
-    index: true
+    default: PaymentStatus.PENDING
   },
   paymentMethod: {
     type: String,
@@ -112,8 +106,7 @@ const PaymentHistorySchema = new Schema<PaymentHistoryDocument>({
   paymentDate: {
     type: Date,
     required: true,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
   failureReason: {
     type: String
@@ -132,12 +125,6 @@ const PaymentHistorySchema = new Schema<PaymentHistoryDocument>({
   timestamps: true,
   collection: 'payment_history'
 });
-
-// Compound indexes for efficient queries
-PaymentHistorySchema.index({ userId: 1, paymentDate: -1 });
-PaymentHistorySchema.index({ subscriptionId: 1, paymentDate: -1 });
-PaymentHistorySchema.index({ userId: 1, status: 1, paymentDate: -1 });
-PaymentHistorySchema.index({ createdAt: 1 }, { expireAfterSeconds: 31536000 * 7 }); // 7 years retention
 
 // Static methods for common queries
 PaymentHistorySchema.statics.findByUser = function(userId: string, options: {

@@ -91,6 +91,8 @@ export interface PostDocument extends Document {
   
   // Soft delete
   deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
   
   // Post specific methods
   publish(): Promise<PostDocument>;
@@ -116,20 +118,17 @@ const postSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   platformAccountId: {
     type: Schema.Types.ObjectId,
     ref: 'PlatformAccount',
-    required: true,
-    index: true
+    required: true
   },
   platform: {
     type: String,
     enum: ['instagram', 'facebook', 'twitter', 'linkedin', 'youtube', 'tiktok'],
-    required: true,
-    index: true
+    required: true
   },
   
   // Content
@@ -174,26 +173,21 @@ const postSchema = new Schema({
   type: {
     type: String,
     enum: Object.values(ContentType),
-    required: true,
-    index: true
+    required: true
   },
   status: {
     type: String,
     enum: Object.values(PostStatus),
-    default: PostStatus.DRAFT,
-    index: true
+    default: PostStatus.DRAFT
   },
   scheduledAt: {
-    type: Date,
-    index: true
+    type: Date
   },
   publishedAt: {
-    type: Date,
-    index: true
+    type: Date
   },
   platformPostId: {
-    type: String,
-    index: true
+    type: String
   },
   platformData: {
     type: Schema.Types.Mixed,
@@ -247,18 +241,15 @@ const postSchema = new Schema({
   // Campaign and automation
   campaignId: {
     type: Schema.Types.ObjectId,
-    ref: 'Campaign',
-    index: true
+    ref: 'Campaign'
   },
   automationId: {
     type: Schema.Types.ObjectId,
-    ref: 'Automation',
-    index: true
+    ref: 'Automation'
   },
   templateId: {
     type: Schema.Types.ObjectId,
-    ref: 'Template',
-    index: true
+    ref: 'Template'
   },
   
   // Error handling
@@ -282,9 +273,12 @@ const postSchema = new Schema({
   // Soft delete
   deletedAt: {
     type: Date,
-    default: null,
-    index: true
-  }
+    default: null
+  },
+
+  createdAt: Date,
+  updatedAt: Date,
+
 }, {
   timestamps: true,
   collection: 'posts'
@@ -426,23 +420,7 @@ postSchema.statics.findByPlatform = function(platform: SocialPlatform) {
   return this.find({ platform, deletedAt: null });
 };
 
-// Add indexes
-postSchema.index({ userId: 1 });
-postSchema.index({ platformAccountId: 1 });
-postSchema.index({ platform: 1 });
-postSchema.index({ status: 1 });
-postSchema.index({ scheduledAt: 1 });
-postSchema.index({ publishedAt: 1 });
-postSchema.index({ campaignId: 1 });
-postSchema.index({ automationId: 1 });
-postSchema.index({ templateId: 1 });
-postSchema.index({ platformPostId: 1 });
-postSchema.index({ type: 1 });
-postSchema.index({ createdAt: 1 });
-postSchema.index({ deletedAt: 1 });
-postSchema.index({ userId: 1, status: 1 });
-postSchema.index({ platformAccountId: 1, status: 1 });
-postSchema.index({ status: 1, scheduledAt: 1 });
+
 
 // Create and export model
 export const PostModel = model<PostDocument>('Post', postSchema);

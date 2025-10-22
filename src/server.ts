@@ -5,7 +5,7 @@ dotenv.config();
 
 import express from "express";
 import { createServer } from "http";
-import { server as serverConfig } from "./config";
+import { server as serverConfig, databaseConnection } from "./config";
 import { corsMiddleware } from "./middleware/cors.middleware";
 import { errorHandler } from "./middleware/error.middleware";
 import { generalRateLimit } from "./middleware/rate-limit.middleware";
@@ -27,6 +27,18 @@ class Server {
     this.initializeMiddleware();
     this.initializeRoutes();
     this.initializeErrorHandling();
+  }
+
+  /**
+   * Initialize database connection
+   */
+  private async initializeDatabase(): Promise<void> {
+    try {
+      await databaseConnection.connect();
+    } catch (error) {
+      logger.error('Failed to initialize database connection:', error);
+      process.exit(1);
+    }
   }
 
   /**
@@ -77,7 +89,7 @@ class Server {
         message: 'Social Media SaaS Automation API',
         status: 'Server is running successfully!',
         timestamp: new Date().toISOString(),
-        version: process.env.npm_package_version || '1.0.0',
+        version: process.env.npm_package_version ?? '1.0.0',
         documentation: '/api/docs'
       });
     });
@@ -88,7 +100,7 @@ class Server {
    */
   private initializeErrorHandling(): void {
     // 404 handler
-    this.app.use('*', (req, res) => {
+    this.app.use((req, res) => {
       res.status(404).json({
         error: 'Not Found',
         message: `Route ${req.originalUrl} not found`,
@@ -103,33 +115,50 @@ class Server {
   /**
    * Start the server
    */
-  public start(): void {
-    const port = serverConfig.port;
-    
-    this.server = createServer(this.app);
-    
-    this.server.listen(port, () => {
-      logger.info(`🚀 Server started successfully!`, {
-        port,
-        environment: serverConfig.environment,
-        nodeVersion: process.version,
-        timestamp: new Date().toISOString()
+  public async start(): Promise<void> {
+    try {
+      // Initialize database connection first
+      await this.initializeDatabase();
+      
+      const port = serverConfig.port;
+      
+      this.server = createServer(this.app);
+      
+      this.server.listen(port, () => {
+        logger.info(`🚀 Server started successfully!`, {
+          port,
+          environment: serverConfig.environment,
+          nodeVersion: process.version,
+          timestamp: new Date().toISOString()
+        });
       });
-    });
 
-    // Graceful shutdown handling
-    this.setupGracefulShutdown();
+      // Graceful shutdown handling
+      this.setupGracefulShutdown();
+    } catch (error) {
+      logger.error('Failed to start server:', error);
+      process.exit(1);
+    }
   }
 
   /**
    * Setup graceful shutdown handlers
    */
   private setupGracefulShutdown(): void {
-    const gracefulShutdown = (signal: string) => {
+    const gracefulShutdown = async (signal: string) => {
       logger.info(`Received ${signal}. Starting graceful shutdown...`);
       
-      this.server.close(() => {
+      this.server.close(async () => {
         logger.info('HTTP server closed.');
+        
+        // Disconnect from database
+        try {
+          await databaseConnection.disconnect();
+          logger.info('Database disconnected.');
+        } catch (error) {
+          logger.error('Error disconnecting from database:', error);
+        }
+        
         process.exit(0);
       });
 
@@ -155,7 +184,10 @@ class Server {
 // Start the server if this file is run directly
 if (require.main === module) {
   const server = new Server();
-  server.start();
+  server.start().catch((error) => {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  });
 }
 
 export { Server };

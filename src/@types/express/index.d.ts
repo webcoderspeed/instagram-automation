@@ -1,14 +1,9 @@
-/**
- * Express module augmentation
- * Extends the built-in Express Request interface
- */
-
-import { AuthenticatedUser } from './user.types';
+import { AuthenticatedUser } from "../../types/user.types";
 
 declare global {
   namespace Express {
     interface Request {
-      user: AuthenticatedUser;
+      user?: AuthenticatedUser;
       validatedData?: any;
       subscription?: {
         tier: string;
@@ -17,3 +12,6 @@ declare global {
     }
   }
 }
+
+export {};
+

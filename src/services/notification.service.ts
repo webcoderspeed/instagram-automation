@@ -1,4 +1,4 @@
-import { UserModel } from '../models/user.model';
+import { UserModel, UserDocument } from '../models/user.model';
 import { 
   NotificationSettings, 
   EmailNotificationType,
@@ -21,6 +21,26 @@ export type NotificationType =
   | 'subscription_updated'
   | 'security_alert';
 
+export interface NotificationData {
+  title: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+  priority?: 'low' | 'normal' | 'high';
+  actionUrl?: string;
+}
+
+export interface NotificationHistoryItem {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  channel: 'email' | 'push' | 'sms' | 'in_app';
+  status: 'sent' | 'delivered' | 'failed' | 'read';
+  createdAt: Date;
+  readAt?: Date;
+  metadata?: Record<string, unknown>;
+}
+
 /**
  * Notification Service
  * 
@@ -34,13 +54,7 @@ export class NotificationService {
   async sendNotification(
     userId: string,
     type: NotificationType,
-    data: {
-      title: string;
-      message: string;
-      metadata?: Record<string, any>;
-      priority?: 'low' | 'normal' | 'high';
-      actionUrl?: string;
-    }
+    data: NotificationData
   ): Promise<void> {
     try {
       const user = await UserModel.findById(userId);
@@ -109,13 +123,7 @@ export class NotificationService {
   async sendBulkNotification(
     userIds: string[],
     type: NotificationType,
-    data: {
-      title: string;
-      message: string;
-      metadata?: Record<string, any>;
-      priority?: 'low' | 'normal' | 'high';
-      actionUrl?: string;
-    }
+    data: NotificationData
   ): Promise<void> {
     try {
       const promises = userIds.map(userId => 
@@ -155,7 +163,7 @@ export class NotificationService {
       endDate?: Date;
     } = {}
   ): Promise<{
-    notifications: any[];
+    notifications: NotificationHistoryItem[];
     pagination: {
       page: number;
       limit: number;
@@ -291,15 +299,9 @@ export class NotificationService {
    * Send email notification
    */
   private async sendEmailNotification(
-    user: any,
+    user: UserDocument,
     type: NotificationType,
-    data: {
-      title: string;
-      message: string;
-      metadata?: Record<string, any>;
-      priority?: 'low' | 'normal' | 'high';
-      actionUrl?: string;
-    }
+    data: NotificationData
   ): Promise<void> {
     try {
       // This would integrate with an email service (SendGrid, AWS SES, etc.)
@@ -334,15 +336,9 @@ export class NotificationService {
    * Send push notification
    */
   private async sendPushNotification(
-    user: any,
+    user: UserDocument,
     type: NotificationType,
-    data: {
-      title: string;
-      message: string;
-      metadata?: Record<string, any>;
-      priority?: 'low' | 'normal' | 'high';
-      actionUrl?: string;
-    }
+    data: NotificationData
   ): Promise<void> {
     try {
       // This would integrate with a push notification service (FCM, APNs, etc.)
@@ -375,18 +371,12 @@ export class NotificationService {
    * Send SMS notification
    */
   private async sendSmsNotification(
-    user: any,
+    user: UserDocument,
     type: NotificationType,
-    data: {
-      title: string;
-      message: string;
-      metadata?: Record<string, any>;
-      priority?: 'low' | 'normal' | 'high';
-      actionUrl?: string;
-    }
+    data: NotificationData
   ): Promise<void> {
     try {
-      const phoneNumber = user.preferences?.notifications?.sms?.phoneNumber;
+      const phoneNumber = user.phoneNumber;
       if (!phoneNumber) {
         logger.warn('No phone number configured for SMS notifications', {
           userId: user._id,
@@ -422,15 +412,9 @@ export class NotificationService {
    * Send in-app notification
    */
   private async sendInAppNotification(
-    user: any,
+    user: UserDocument,
     type: NotificationType,
-    data: {
-      title: string;
-      message: string;
-      metadata?: Record<string, any>;
-      priority?: 'low' | 'normal' | 'high';
-      actionUrl?: string;
-    }
+    data: NotificationData
   ): Promise<void> {
     try {
       // This would store the notification in a database for in-app display

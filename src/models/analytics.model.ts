@@ -97,28 +97,24 @@ const analyticsSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   platformAccountId: {
     type: Schema.Types.ObjectId,
     ref: 'PlatformAccount',
-    required: true,
-    index: true
+    required: true
   },
   platform: {
     type: String,
     enum: Object.values(PlatformType),
-    required: true,
-    index: true
+    required: true
   },
   
   // Metric Info
   metricType: {
     type: String,
     enum: Object.values(MetricType),
-    required: true,
-    index: true
+    required: true
   },
   value: {
     type: Number,
@@ -137,34 +133,28 @@ const analyticsSchema = new Schema({
   period: {
     type: String,
     enum: Object.values(TimePeriod),
-    required: true,
-    index: true
+    required: true
   },
   date: {
     type: Date,
-    required: true,
-    index: true
+    required: true
   },
   timestamp: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
   
   // Content Reference
   postId: {
     type: Schema.Types.ObjectId,
-    ref: 'Post',
-    index: true
+    ref: 'Post'
   },
   contentId: {
-    type: String,
-    index: true
+    type: String
   },
   contentType: {
     type: String,
-    enum: ['post', 'story', 'reel', 'video', 'carousel', 'live'],
-    index: true
+    enum: ['post', 'story', 'reel', 'video', 'carousel', 'live']
   },
   
   // Demographic Data
@@ -223,23 +213,6 @@ analyticsSchema.methods.getGrowthRate = function(this: AnalyticsDocument): numbe
   return this.calculateChange();
 };
 
-// Indexes
-analyticsSchema.index({ userId: 1, platform: 1, metricType: 1, date: 1 });
-analyticsSchema.index({ platformAccountId: 1, metricType: 1, date: 1 });
-analyticsSchema.index({ userId: 1, date: 1 });
-analyticsSchema.index({ platform: 1, metricType: 1, period: 1 });
-analyticsSchema.index({ postId: 1, metricType: 1 });
-analyticsSchema.index({ contentId: 1, platform: 1 });
-analyticsSchema.index({ timestamp: 1 });
-analyticsSchema.index({ date: 1, period: 1 });
 
-// Compound indexes for common queries
-analyticsSchema.index({ 
-  userId: 1, 
-  platform: 1, 
-  metricType: 1, 
-  period: 1, 
-  date: -1 
-});
 
 export const AnalyticsModel = model<AnalyticsDocument>('Analytics', analyticsSchema);

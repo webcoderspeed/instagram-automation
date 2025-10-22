@@ -36,6 +36,7 @@ export interface UserDocument extends Document {
   bio?: string;
   website?: string;
   location?: string;
+  phoneNumber?: string;
   timezone: string;
   language: string;
 
@@ -115,7 +116,6 @@ const userSchema = new Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      index: true,
     },
     username: {
       type: String,
@@ -124,7 +124,6 @@ const userSchema = new Schema(
       trim: true,
       minlength: 3,
       maxlength: 30,
-      index: true,
     },
     passwordHash: {
       type: String,
@@ -134,7 +133,6 @@ const userSchema = new Schema(
     isEmailVerified: {
       type: Boolean,
       default: false,
-      index: true,
     },
     emailVerificationToken: {
       type: String,
@@ -187,6 +185,11 @@ const userSchema = new Schema(
       trim: true,
       maxlength: 100,
     },
+    phoneNumber: {
+      type: String,
+      trim: true,
+      maxlength: 20,
+    },
     timezone: {
       type: String,
       default: "UTC",
@@ -201,7 +204,6 @@ const userSchema = new Schema(
       type: String,
       enum: Object.values(UserRole),
       default: UserRole.USER,
-      index: true,
     },
     permissions: [
       {
@@ -214,13 +216,11 @@ const userSchema = new Schema(
     subscriptionId: {
       type: Schema.Types.ObjectId,
       ref: "Subscription",
-      index: true,
     },
-    
-    // Stripe Integration
+
+    // Stripe
     stripeCustomerId: {
       type: String,
-      index: true,
     },
 
     // Security
@@ -234,7 +234,6 @@ const userSchema = new Schema(
     },
     lastLoginAt: {
       type: Date,
-      index: true,
     },
     lastLoginIP: {
       type: String,
@@ -249,7 +248,6 @@ const userSchema = new Schema(
     // Activity tracking
     lastActiveAt: {
       type: Date,
-      index: true,
     },
     totalPosts: {
       type: Number,
@@ -316,19 +314,16 @@ const userSchema = new Schema(
     deletedAt: {
       type: Date,
       default: null,
-      index: true,
     },
 
     createdAt: {
       type: Date,
       default: Date.now,
-      index: true,
     },
 
     updatedAt: {
       type: Date,
       default: Date.now,
-      index: true,
     },
   },
   {
@@ -416,18 +411,6 @@ userSchema.methods.toPublicJSON = function (
   delete obj.twoFactorSecret;
   return obj;
 };
-
-// Indexes
-userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
-userSchema.index({ role: 1 });
-userSchema.index({ subscriptionId: 1 });
-userSchema.index({ isEmailVerified: 1 });
-userSchema.index({ lastActiveAt: 1 });
-userSchema.index({ createdAt: 1 });
-userSchema.index({ deletedAt: 1 });
-userSchema.index({ email: 1, deletedAt: 1 });
-userSchema.index({ username: 1, deletedAt: 1 });
 
 // Export the model
 export const UserModel = model<UserDocument>("User", userSchema);

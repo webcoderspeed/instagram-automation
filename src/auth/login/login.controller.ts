@@ -153,15 +153,13 @@ class LoginController {
    */
   async getProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user?.id;
+      const user = req.user;
 
-      if (!userId) {
+      if (!user) {
         throw ApiError.unauthorized('User not authenticated');
       }
 
       // In a real app, you might want to fetch fresh user data
-      const user = req.user;
-
       res.status(200).json({
         success: true,
         data: {

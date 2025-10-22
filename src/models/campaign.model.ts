@@ -123,8 +123,7 @@ const campaignSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   name: {
     type: String,
@@ -140,8 +139,7 @@ const campaignSchema = new Schema({
   status: {
     type: String,
     enum: Object.values(CampaignStatus),
-    default: CampaignStatus.DRAFT,
-    index: true
+    default: CampaignStatus.DRAFT
   },
   
   // Platform targeting
@@ -157,12 +155,10 @@ const campaignSchema = new Schema({
   // Scheduling
   startDate: {
     type: Date,
-    required: true,
-    index: true
+    required: true
   },
   endDate: {
-    type: Date,
-    index: true
+    type: Date
   },
   timezone: {
     type: String,
@@ -333,20 +329,16 @@ const campaignSchema = new Schema({
   // Soft delete
   deletedAt: {
     type: Date,
-    default: null,
-    index: true
+    default: null
   },
-
 
   createdAt: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
   updatedAt: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   }
 }, {
   timestamps: true,
@@ -525,17 +517,7 @@ campaignSchema.statics.findByCollaborator = function(userId: string | Types.Obje
   });
 };
 
-// Add indexes
-campaignSchema.index({ userId: 1 });
-campaignSchema.index({ status: 1 });
-campaignSchema.index({ startDate: 1 });
-campaignSchema.index({ endDate: 1 });
-campaignSchema.index({ platforms: 1 });
-campaignSchema.index({ 'collaborators.userId': 1 });
-campaignSchema.index({ createdAt: 1 });
-campaignSchema.index({ deletedAt: 1 });
-campaignSchema.index({ userId: 1, status: 1 });
-campaignSchema.index({ status: 1, startDate: 1 });
+
 
 // Create and export model
 export const CampaignModel = model<CampaignDocument>('Campaign', campaignSchema);

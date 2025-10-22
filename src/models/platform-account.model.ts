@@ -89,19 +89,16 @@ const platformAccountSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   platform: {
     type: String,
     enum: ['instagram', 'facebook', 'twitter', 'linkedin', 'youtube', 'tiktok'],
-    required: true,
-    index: true
+    required: true
   },
   platformId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   platformUsername: {
     type: String,
@@ -128,8 +125,7 @@ const platformAccountSchema = new Schema({
     select: false
   },
   tokenExpiresAt: {
-    type: Date,
-    index: true
+    type: Date
   },
   scopes: [{
     type: String,
@@ -140,17 +136,14 @@ const platformAccountSchema = new Schema({
   status: {
     type: String,
     enum: Object.values(PlatformAccountStatus),
-    default: PlatformAccountStatus.ACTIVE,
-    index: true
+    default: PlatformAccountStatus.ACTIVE
   },
   isActive: {
     type: Boolean,
-    default: true,
-    index: true
+    default: true
   },
   lastSyncAt: {
-    type: Date,
-    index: true
+    type: Date
   },
   lastErrorAt: Date,
   lastError: String,
@@ -222,8 +215,7 @@ const platformAccountSchema = new Schema({
   // Soft delete
   deletedAt: {
     type: Date,
-    default: null,
-    index: true
+    default: null
   }
 }, {
   timestamps: true,
@@ -324,17 +316,7 @@ platformAccountSchema.statics.findByPlatform = function(platform: SocialPlatform
   return this.find({ platform, deletedAt: null });
 };
 
-// Add indexes
-platformAccountSchema.index({ userId: 1, platform: 1 }, { unique: true });
-platformAccountSchema.index({ platform: 1, platformId: 1 }, { unique: true });
-platformAccountSchema.index({ userId: 1 });
-platformAccountSchema.index({ platform: 1 });
-platformAccountSchema.index({ status: 1 });
-platformAccountSchema.index({ isActive: 1 });
-platformAccountSchema.index({ tokenExpiresAt: 1 });
-platformAccountSchema.index({ lastSyncAt: 1 });
-platformAccountSchema.index({ createdAt: 1 });
-platformAccountSchema.index({ deletedAt: 1 });
+
 
 // Create and export model
 export const PlatformAccountModel = model<PlatformAccountDocument>('PlatformAccount', platformAccountSchema);

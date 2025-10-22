@@ -124,20 +124,17 @@ const subscriptionSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   plan: {
     type: String,
     enum: Object.values(SubscriptionPlan),
-    default: SubscriptionPlan.FREE,
-    index: true
+    default: SubscriptionPlan.FREE
   },
   status: {
     type: String,
     enum: Object.values(SubscriptionStatus),
-    default: SubscriptionStatus.ACTIVE,
-    index: true
+    default: SubscriptionStatus.ACTIVE
   },
   billingCycle: {
     type: String,
@@ -160,16 +157,13 @@ const subscriptionSchema = new Schema({
   // Dates
   startDate: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
   endDate: {
-    type: Date,
-    index: true
+    type: Date
   },
   trialEndDate: {
-    type: Date,
-    index: true
+    type: Date
   },
   cancelledAt: Date,
   pausedAt: Date,
@@ -251,13 +245,11 @@ const subscriptionSchema = new Schema({
   
   // Billing
   stripeSubscriptionId: {
-    type: String,
-    index: true
+    type: String
   },
   paymentMethodId: String,
   nextBillingDate: {
-    type: Date,
-    index: true
+    type: Date
   },
   lastBillingDate: Date,
   
@@ -353,13 +345,5 @@ subscriptionSchema.methods.upgrade = async function(
   // This would be implemented based on your plan configuration
   return this.save();
 };
-
-// Indexes
-subscriptionSchema.index({ userId: 1 }, { unique: true });
-subscriptionSchema.index({ status: 1, endDate: 1 });
-subscriptionSchema.index({ plan: 1, status: 1 });
-subscriptionSchema.index({ stripeSubscriptionId: 1 });
-subscriptionSchema.index({ nextBillingDate: 1 });
-subscriptionSchema.index({ trialEndDate: 1 });
 
 export const SubscriptionModel = model<SubscriptionDocument>('Subscription', subscriptionSchema);

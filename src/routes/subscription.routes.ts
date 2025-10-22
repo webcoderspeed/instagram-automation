@@ -7,6 +7,14 @@ import { Router } from 'express';
 import { SubscriptionController } from '../controllers/subscription.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { createProtectedRoute } from '../middleware/guards/protected-routes.middleware';
+import { validate } from '../validators/common.validator';
+import { 
+  createCheckoutSessionSchema, 
+  activateSubscriptionSchema, 
+  cancelSubscriptionSchema, 
+  reactivateSubscriptionSchema, 
+  updatePaymentMethodSchema 
+} from '../validators/subscription.validator';
 
 const router = Router();
 const subscriptionController = new SubscriptionController();
@@ -44,6 +52,7 @@ router.get(
 router.post(
   '/checkout',
   createProtectedRoute('VERIFIED_USER'),
+  validate(createCheckoutSessionSchema),
   subscriptionController.createCheckoutSession
 );
 
@@ -55,6 +64,7 @@ router.post(
 router.post(
   '/activate',
   createProtectedRoute('VERIFIED_USER'),
+  validate(activateSubscriptionSchema),
   subscriptionController.activateSubscription
 );
 
@@ -66,6 +76,7 @@ router.post(
 router.post(
   '/cancel',
   createProtectedRoute('VERIFIED_USER'),
+  validate(cancelSubscriptionSchema),
   subscriptionController.cancelSubscription
 );
 
@@ -77,6 +88,7 @@ router.post(
 router.post(
   '/reactivate',
   createProtectedRoute('VERIFIED_USER'),
+  validate(reactivateSubscriptionSchema),
   subscriptionController.reactivateSubscription
 );
 
@@ -88,6 +100,7 @@ router.post(
 router.put(
   '/payment-method',
   createProtectedRoute('VERIFIED_USER'),
+  validate(updatePaymentMethodSchema),
   subscriptionController.updatePaymentMethod
 );
 
