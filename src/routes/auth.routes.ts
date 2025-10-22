@@ -25,12 +25,14 @@ router.post('/resend-verification', rateLimitMiddleware.emailVerification, signu
 
 // Login routes
 router.post('/login', rateLimitMiddleware.login, validate(loginSchema), loginController.login);
-router.post('/refresh-token', rateLimitMiddleware.refreshToken, loginController.refreshToken);
 router.post('/logout', authMiddleware.authenticate, loginController.logout);
+
+// Session management routes
+router.get('/session', loginController.checkSession);
+router.post('/session/refresh', authMiddleware.authenticate, loginController.refreshSession);
 
 // Profile routes (protected)
 router.get('/profile', authMiddleware.authenticate, loginController.getProfile);
-router.post('/verify-token', authMiddleware.authenticate, loginController.verifyToken);
 
 // Password reset routes
 router.post('/forgot-password', rateLimitMiddleware.passwordReset, passwordResetController.forgotPassword);

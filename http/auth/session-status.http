@@ -1,0 +1,89 @@
+### Session Status API Tests
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+### 1. Check Session Status Without Login (Should be Unauthorized)
+GET {{baseUrl}}/api/auth/session
+
+### 2. Login to Establish Session
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!"
+}
+
+### 3. Check Session Status After Login (Should be Active)
+GET {{baseUrl}}/api/auth/session
+
+### 4. Refresh Session
+POST {{baseUrl}}/api/auth/session/refresh
+Content-Type: {{contentType}}
+
+### 5. Check Session Status After Refresh (Should Still be Active)
+GET {{baseUrl}}/api/auth/session
+
+### 6. Logout to End Session
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}
+
+### 7. Check Session Status After Logout (Should be Unauthorized)
+GET {{baseUrl}}/api/auth/session
+
+### 8. Login with Remember Me for Extended Session
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!",
+  "rememberMe": true
+}
+
+### 9. Check Extended Session Status (Should be Active with Extended Expiry)
+GET {{baseUrl}}/api/auth/session
+
+### 10. Refresh Extended Session
+POST {{baseUrl}}/api/auth/session/refresh
+Content-Type: {{contentType}}
+
+### 11. Check Extended Session Status After Refresh
+GET {{baseUrl}}/api/auth/session
+
+### 12. Logout Extended Session
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}
+
+### 13. Verify Session is Terminated After Extended Session Logout
+GET {{baseUrl}}/api/auth/session
+
+### 14. Test Multiple Login Attempts (Session Replacement)
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!"
+}
+
+### 15. Check First Session Status
+GET {{baseUrl}}/api/auth/session
+
+### 16. Login Again (Should Replace Previous Session)
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!",
+  "rememberMe": true
+}
+
+### 17. Check New Session Status (Should Show New Session)
+GET {{baseUrl}}/api/auth/session
+
+### 18. Final Cleanup - Logout
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}

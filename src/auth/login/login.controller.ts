@@ -1,6 +1,6 @@
 /**
  * Login Controller
- * Handles HTTP requests for user authentication and token management
+ * Handles HTTP requests for user authentication and session management
  */
 
 import { Request, Response, NextFunction } from 'express';
@@ -12,10 +12,6 @@ export interface LoginRequest {
   email: string;
   password: string;
   rememberMe?: boolean;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
 }
 
 class LoginController {
@@ -30,17 +26,9 @@ class LoginController {
         email: email.toLowerCase().trim(),
         password,
         rememberMe: rememberMe ?? false
-      });
+      }, req);
 
       logger.info(`User login successful: ${email}`);
-
-      // Set refresh token as httpOnly cookie
-      res.cookie('refreshToken', result.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: result.expiresIn * 1000 // Convert to milliseconds
-      });
 
       res.status(200).json({
         success: true,
@@ -55,9 +43,7 @@ class LoginController {
             role: result.user.role,
             isEmailVerified: result.user.isEmailVerified,
             lastLoginAt: result.user.lastLoginAt
-          },
-          accessToken: result.accessToken,
-          expiresIn: result.expiresIn
+          }
         }
       });
 
@@ -68,61 +54,13 @@ class LoginController {
   }
 
   /**
-   * Handle token refresh
-   */
-  async refreshToken(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { refreshToken }: RefreshTokenRequest = req.body;
-      
-      // Try to get refresh token from cookie if not in body
-      const tokenToUse = refreshToken || req.cookies?.refreshToken;
-
-      if (!tokenToUse) {
-        throw ApiError.unauthorized('Refresh token is required');
-      }
-
-      const result = await loginService.refreshToken({
-        refreshToken: tokenToUse
-      });
-
-      logger.info('Token refreshed successfully');
-
-      // Set new refresh token as httpOnly cookie
-      res.cookie('refreshToken', result.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: result.expiresIn * 1000
-      });
-
-      res.status(200).json({
-        success: true,
-        message: 'Token refreshed successfully',
-        data: {
-          accessToken: result.accessToken,
-          expiresIn: result.expiresIn
-        }
-      });
-
-    } catch (error: unknown) {
-      logger.error('Token refresh controller error:', error);
-      next(error);
-    }
-  }
-
-  /**
    * Handle user logout
    */
   async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user?.id;
+      const userId = req.session?.user?.id;
 
-      if (userId) {
-        await loginService.logout(userId);
-      }
-
-      // Clear refresh token cookie
-      res.clearCookie('refreshToken');
+      await loginService.logout(req);
 
       logger.info(`User logout: ${userId || 'unknown'}`);
 
@@ -148,7 +86,6 @@ class LoginController {
         throw ApiError.unauthorized('User not authenticated');
       }
 
-      // In a real app, you might want to fetch fresh user data
       res.status(200).json({
         success: true,
         data: {
@@ -173,32 +110,45 @@ class LoginController {
   }
 
   /**
-   * Verify token endpoint
+   * Check session status
    */
-  async verifyToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async checkSession(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const authHeader = req.headers.authorization;
-      
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw ApiError.unauthorized('Access token is required');
-      }
-
-      const token = authHeader.substring(7);
-      const decoded = loginService.verifyAccessToken(token);
+      const isAuthenticated = loginService.isAuthenticated(req);
+      const user = loginService.getCurrentUser(req);
 
       res.status(200).json({
         success: true,
-        message: 'Token is valid',
         data: {
-          userId: decoded.userId,
-          email: decoded.email,
-          role: decoded.role,
-          expiresAt: new Date(decoded.exp * 1000)
+          isAuthenticated,
+          user: isAuthenticated ? user : null
         }
       });
 
     } catch (error: unknown) {
-      logger.error('Token verification controller error:', error);
+      logger.error('Check session controller error:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Refresh session (extend expiration)
+   */
+  async refreshSession(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!loginService.isAuthenticated(req)) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+
+      loginService.refreshSession(req);
+
+      res.status(200).json({
+        success: true,
+        message: 'Session refreshed successfully'
+      });
+
+    } catch (error: unknown) {
+      logger.error('Refresh session controller error:', error);
       next(error);
     }
   }

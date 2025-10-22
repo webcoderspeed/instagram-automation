@@ -1,44 +1,54 @@
-### Refresh Token API Tests
+### Session Refresh API Tests (Session-Based Authentication)
 
 @baseUrl = http://localhost:3000
 @contentType = application/json
 
-### 1. Refresh Token - Valid Refresh Token
-POST {{baseUrl}}/api/auth/refresh-token
+### 1. Login First to Establish Session
+POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
 {
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGY4YmVjZTc4OWI4ZDIzODhlMmM1YWUiLCJlbWFpbCI6InRlc3QtdGVybWluYWwtdmVyaWZ5QGV4YW1wbGUuY29tIiwidG9rZW5UeXBlIjoicmVmcmVzaCIsImlhdCI6MTc2MTEzMjQ3MiwiZXhwIjoxNzYxNzM3MjcyLCJhdWQiOiJzb2NpYWwtbWVkaWEtYXV0b21hdGlvbi11c2VycyIsImlzcyI6InNvY2lhbC1tZWRpYS1hdXRvbWF0aW9uIn0.VGDZ5R6RSPDo0c_4sDPAVoUiTKkt-QcjN1uxQbHmKVQ"
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!"
 }
 
-### 2. Refresh Token - Valid JWT Format
-POST {{baseUrl}}/api/auth/refresh-token
+### 2. Check Current Session Status
+GET {{baseUrl}}/api/auth/session
+
+### 3. Refresh Session - Valid Session
+POST {{baseUrl}}/api/auth/session/refresh
+Content-Type: {{contentType}}
+
+### 4. Check Session Status After Refresh
+GET {{baseUrl}}/api/auth/session
+
+### 5. Get User Profile After Session Refresh
+GET {{baseUrl}}/api/auth/profile
+
+### 6. Logout to End Session
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}
+
+### 7. Try to Refresh Session After Logout (Should Fail)
+POST {{baseUrl}}/api/auth/session/refresh
+Content-Type: {{contentType}}
+
+### 8. Check Session Status After Logout
+GET {{baseUrl}}/api/auth/session
+
+### 9. Login with Remember Me for Extended Session
+POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
 {
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!",
+  "rememberMe": true
 }
 
-### 3. Refresh Token - Valid Long Token
-POST {{baseUrl}}/api/auth/refresh-token
+### 10. Refresh Extended Session
+POST {{baseUrl}}/api/auth/session/refresh
 Content-Type: {{contentType}}
 
-{
-  "refreshToken": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz567890abcdef"
-}
-
-### 4. Refresh Token - Valid UUID Format
-POST {{baseUrl}}/api/auth/refresh-token
-Content-Type: {{contentType}}
-
-{
-  "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
-}
-
-### 5. Refresh Token - Valid Alphanumeric Token
-POST {{baseUrl}}/api/auth/refresh-token
-Content-Type: {{contentType}}
-
-{
-  "refreshToken": "REFRESH2024ABC123DEF456GHI789"
-}
+### 11. Check Extended Session Status
+GET {{baseUrl}}/api/auth/session

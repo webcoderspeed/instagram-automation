@@ -8,6 +8,7 @@ export * from './base.model';
 
 // Core models
 export * from './user.model';
+export * from './session.model';
 export * from './platform-account.model';
 export * from './post.model';
 export * from './campaign.model';

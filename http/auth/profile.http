@@ -1,37 +1,59 @@
-### User Profile API Tests
+### User Profile API Tests (Session-Based Authentication)
 
 @baseUrl = http://localhost:3000
 @contentType = application/json
-@authToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGY4YmVjZTc4OWI4ZDIzODhlMmM1YWUiLCJlbWFpbCI6InRlc3QtdGVybWluYWwtdmVyaWZ5QGV4YW1wbGUuY29tIiwidXNlcm5hbWUiOiJ0ZXN0dGVybWluYWx1c2VyIiwicm9sZSI6InVzZXIiLCJwZXJtaXNzaW9ucyI6W10sImlhdCI6MTc2MTEzMjMxNCwiZXhwIjoxNzYxMTMzMjE0LCJhdWQiOiJzb2NpYWwtbWVkaWEtYXV0b21hdGlvbi11c2VycyIsImlzcyI6InNvY2lhbC1tZWRpYS1hdXRvbWF0aW9uIn0.hAq_zRGzc3gQHiWPJNz4t_G6S3QEIqaYAsMMz7IIqQw
 
-### 1. Get Profile - Valid Authentication Token
+### 1. Login First to Establish Session
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!"
+}
+
+### 2. Get Profile - Valid Session
 GET {{baseUrl}}/api/auth/profile
-Authorization: {{authToken}}
 
-### 2. Get Profile - Valid Authentication Token (Alternative)
+### 3. Check Session Status
+GET {{baseUrl}}/api/auth/session
+
+### 4. Refresh Session
+POST {{baseUrl}}/api/auth/session/refresh
+Content-Type: {{contentType}}
+
+### 5. Get Profile After Session Refresh
 GET {{baseUrl}}/api/auth/profile
-Authorization: Bearer valid-jwt-token-here
 
-### 3. Get Profile - Valid Authentication Token (Long Format)
+### 6. Logout to End Session
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}
+
+### 7. Try to Get Profile After Logout (Should be Unauthorized)
 GET {{baseUrl}}/api/auth/profile
-Authorization: Bearer abc123def456ghi789jkl012mno345pqr678stu901vwx234yz567890abcdef
 
-### 4. Verify Token - Valid Authentication Token
-POST {{baseUrl}}/api/auth/verify-token
-Content-Type: {{contentType}}
-Authorization: {{authToken}}
+### 8. Check Session Status After Logout (Should be Unauthorized)
+GET {{baseUrl}}/api/auth/session
 
-### 5. Verify Token - Valid Authentication Token (Alternative)
-POST {{baseUrl}}/api/auth/verify-token
+### 9. Login with Remember Me for Extended Session
+POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
-Authorization: Bearer valid-jwt-token-here
 
-### 6. Verify Token - Valid Authentication Token (UUID Format)
-POST {{baseUrl}}/api/auth/verify-token
-Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGY4YmVjZTc4OWI4ZDIzODhlMmM1YWUiLCJlbWFpbCI6InRlc3QtdGVybWluYWwtdmVyaWZ5QGV4YW1wbGUuY29tIiwidXNlcm5hbWUiOiJ0ZXN0dGVybWluYWx1c2VyIiwicm9sZSI6InVzZXIiLCJwZXJtaXNzaW9ucyI6W10sImlhdCI6MTc2MTEzMjMxNCwiZXhwIjoxNzYxMTMzMjE0LCJhdWQiOiJzb2NpYWwtbWVkaWEtYXV0b21hdGlvbi11c2VycyIsImlzcyI6InNvY2lhbC1tZWRpYS1hdXRvbWF0aW9uIn0.hAq_zRGzc3gQHiWPJNz4t_G6S3QEIqaYAsMMz7IIqQw
+{
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!",
+  "rememberMe": true
+}
 
-### 7. Verify Token - Valid Authentication Token (Alphanumeric)
-POST {{baseUrl}}/api/auth/verify-token
+### 10. Get Profile with Extended Session
+GET {{baseUrl}}/api/auth/profile
+
+### 11. Check Extended Session Status
+GET {{baseUrl}}/api/auth/session
+
+### 12. Logout Extended Session
+POST {{baseUrl}}/api/auth/logout
 Content-Type: {{contentType}}
-Authorization: Bearer AUTH2024ABC123DEF456GHI789
+
+### 13. Verify Profile Access is Denied After Extended Session Logout
+GET {{baseUrl}}/api/auth/profile

@@ -1,62 +1,58 @@
 /**
  * Authentication Middleware
- * Handles JWT token verification and user authentication
+ * Handles session-based authentication
  */
 
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
 import { UserModel } from '../models/user.model';
 import { ApiError } from '../utils/api-error';
 import { AuthenticatedUser } from '../types/user.types';
 import logger from '../utils/logger';
-import { env } from '../config';
-
-interface JwtPayload {
-  userId: string;
-  email: string;
-  role: string;
-  iat: number;
-  exp: number;
-}
 
 class AuthMiddleware {
   /**
-   * Authenticate user using JWT token
+   * Authenticate user using session
    */
   async authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      // Get token from Authorization header or cookies
-      let token = req.headers.authorization?.replace('Bearer ', '');
-      
-      if (!token) {
-        token = req.cookies?.accessToken;
+      // Check if session exists and user is authenticated
+      if (!req.session || !req.session.isAuthenticated || !req.session.user) {
+        throw ApiError.unauthorized('Authentication required');
       }
 
-      if (!token) {
-        throw ApiError.unauthorized('Access token is required');
-      }
+      const sessionUser = req.session.user;
 
-      // Verify JWT token
-      const jwtSecret = process.env.JWT_SECRET;
-      if (!jwtSecret) {
-        throw new Error('JWT_SECRET is not configured');
-      }
-
-      const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
-
-      // Get user from database
-      const user = await UserModel.findById(decoded.userId).select('-password');
+      // Get fresh user data from database
+      const user = await UserModel.findById(sessionUser.id).select('-passwordHash');
       if (!user) {
+        // User not found, destroy session
+        req.session.destroy(() => {});
         throw ApiError.unauthorized('User not found');
       }
 
       // Check if user is deleted
       if (user.deletedAt) {
+        req.session.destroy(() => {});
         throw ApiError.unauthorized('Account is deactivated');
       }
 
+      // Check if email is verified
+      if (!user.isEmailVerified) {
+        throw ApiError.unauthorized('Email verification required');
+      }
+
+      // Update session with fresh user data
+      req.session.user = {
+        id: String(user._id),
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        permissions: user.permissions
+      };
+
+      // Attach user to request
       req.user = {
-        id: user.id,
+        id: String(user._id),
         email: user.email,
         username: user.username,
         firstName: user.firstName,
@@ -70,16 +66,8 @@ class AuthMiddleware {
 
       next();
     } catch (error: unknown) {
-      if (error instanceof jwt.JsonWebTokenError) {
-        logger.error('JWT verification failed:', error.message);
-        next(ApiError.unauthorized('Invalid access token'));
-      } else if (error instanceof jwt.TokenExpiredError) {
-        logger.error('JWT token expired:', error.message);
-        next(ApiError.unauthorized('Access token has expired'));
-      } else {
-        logger.error('Authentication middleware error:', error);
-        next(error);
-      }
+      logger.error('Authentication middleware error:', error);
+      next(error);
     }
   }
 
@@ -136,38 +124,25 @@ class AuthMiddleware {
   }
 
   /**
-   * Optional authentication - doesn't fail if no token
+   * Optional authentication - doesn't fail if no session
    */
   async optionalAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      // Get token from Authorization header or cookies
-      let token = req.headers.authorization?.replace('Bearer ', '');
-      
-      if (!token) {
-        token = req.cookies?.accessToken;
-      }
-
-      if (!token) {
-        // No token provided, continue without authentication
+      // Check if session exists and user is authenticated
+      if (!req.session || !req.session.isAuthenticated || !req.session.user) {
+        // No session, continue without authentication
         next();
         return;
       }
 
-      // Verify JWT token
-      const jwtSecret = env.JWT_SECRET;
-      if (!jwtSecret) {
-        next();
-        return;
-      }
-
-      const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+      const sessionUser = req.session.user;
 
       // Get user from database
-      const user = await UserModel.findById(decoded.userId).select('-password');
-      if (user && !user.deletedAt) {
+      const user = await UserModel.findById(sessionUser.id).select('-passwordHash');
+      if (user && !user.deletedAt && user.isEmailVerified) {
         // Attach user to request
         req.user = {
-          id: user.id,
+          id: String(user._id),
           email: user.email,
           username: user.username,
           firstName: user.firstName,
@@ -182,10 +157,27 @@ class AuthMiddleware {
 
       next();
     } catch (error: unknown) {
-      // For optional auth, we don't fail on token errors
+      // For optional auth, we don't fail on errors
       logger.debug('Optional auth failed:', error);
       next();
     }
+  }
+
+  /**
+   * Check if user is authenticated (session-based)
+   */
+  isAuthenticated(req: Request): boolean {
+    return !!(req.session && req.session.isAuthenticated && req.session.user);
+  }
+
+  /**
+   * Get current user from session
+   */
+  getCurrentUser(req: Request): any {
+    if (this.isAuthenticated(req)) {
+      return req.session.user;
+    }
+    return null;
   }
 }
 

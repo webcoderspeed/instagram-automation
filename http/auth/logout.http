@@ -1,30 +1,53 @@
-### User Logout API Tests
+### User Logout API Tests (Session-Based Authentication)
 
 @baseUrl = http://localhost:3000
 @contentType = application/json
-@authToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
 
-### 1. Logout - Valid Authentication Token
+### 1. Login First to Establish Session
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!"
+}
+
+### 2. Check Session Status Before Logout
+GET {{baseUrl}}/api/auth/session
+
+### 3. Get User Profile Before Logout
+GET {{baseUrl}}/api/auth/profile
+
+### 4. Logout - Valid Session
 POST {{baseUrl}}/api/auth/logout
 Content-Type: {{contentType}}
-Authorization: {{authToken}}
 
-### 2. Logout - Valid Authentication Token (Alternative)
+### 5. Check Session Status After Logout (Should be Unauthorized)
+GET {{baseUrl}}/api/auth/session
+
+### 6. Try to Access Profile After Logout (Should be Unauthorized)
+GET {{baseUrl}}/api/auth/profile
+
+### 7. Try to Logout Again (Should be Unauthorized)
 POST {{baseUrl}}/api/auth/logout
 Content-Type: {{contentType}}
-Authorization: Bearer valid-jwt-token-here
 
-### 3. Logout - Valid Authentication Token (Long Format)
+### 8. Login with Remember Me
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!",
+  "rememberMe": true
+}
+
+### 9. Check Extended Session Status
+GET {{baseUrl}}/api/auth/session
+
+### 10. Logout Extended Session
 POST {{baseUrl}}/api/auth/logout
 Content-Type: {{contentType}}
-Authorization: Bearer abc123def456ghi789jkl012mno345pqr678stu901vwx234yz567890abcdef
 
-### 4. Logout - Valid Authentication Token (UUID Format)
-POST {{baseUrl}}/api/auth/logout
-Content-Type: {{contentType}}
-Authorization: Bearer 550e8400-e29b-41d4-a716-446655440000
-
-### 5. Logout - Valid Authentication Token (Alphanumeric)
-POST {{baseUrl}}/api/auth/logout
-Content-Type: {{contentType}}
-Authorization: Bearer AUTH2024ABC123DEF456GHI789
+### 11. Verify Extended Session is Terminated
+GET {{baseUrl}}/api/auth/session

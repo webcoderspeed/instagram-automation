@@ -37,18 +37,11 @@ const envSchema = z.object({
   LINKEDIN_CLIENT_SECRET: z.string().optional(),
   
   // Security
-  JWT_SECRET: z.string().default('your-super-secret-jwt-key'),
   ENCRYPTION_KEY: z.string().default('your-encryption-key'),
   
   // External Services
   WEBHOOK_BASE_URL: z.string().optional(),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
-
-
-  // JWT Configuration
-  JWT_EXPIRATION: z.string().default('1h'),
-  JWT_REFRESH_EXPIRATION: z.string().default('7d'),
-  JWT_ALGORITHM: z.string().default('HS256'),
 });
 
 // Validate environment variables

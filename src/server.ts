@@ -5,7 +5,8 @@ dotenv.config();
 
 import express from "express";
 import { createServer } from "http";
-import { server as serverConfig, databaseConnection } from "./config";
+import session from "express-session";
+import { server as serverConfig, databaseConnection, sessionConfig } from "./config";
 import { corsMiddleware } from "./middleware/cors.middleware";
 import { errorHandler } from "./middleware/error.middleware";
 import { generalRateLimit } from "./middleware/rate-limit.middleware";
@@ -19,8 +20,8 @@ import logger from "./utils/logger";
  * with all necessary middleware, routes, and error handling.
  */
 class Server {
-  private app: express.Application;
-  private server: any;
+  private readonly app: express.Application;
+  private server!: ReturnType<typeof createServer>;
 
   constructor() {
     this.app = express();
@@ -42,7 +43,7 @@ class Server {
   }
 
   /**
-   * Initialize all middleware in the correct order
+   * Initialize basic middleware (before database connection)
    */
   private initializeMiddleware(): void {
     // Request parsing middleware
@@ -64,6 +65,14 @@ class Server {
       });
       next();
     });
+  }
+
+  /**
+   * Initialize session middleware (after database connection)
+   */
+  private initializeSessionMiddleware(): void {
+    // Session middleware
+    this.app.use(session(sessionConfig));
   }
 
   /**
@@ -119,6 +128,9 @@ class Server {
     try {
       // Initialize database connection first
       await this.initializeDatabase();
+      
+      // Initialize session middleware after database connection
+      this.initializeSessionMiddleware();
       
       const port = serverConfig.port;
       

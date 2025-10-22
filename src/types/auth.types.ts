@@ -62,17 +62,7 @@ export interface OAuthTokenData {
   username?: string;
 }
 
-export interface JWTPayload {
-  sub: string; // user id
-  email: string;
-  name: string;
-  role: string;
-  permissions: string[];
-  iat: number;
-  exp: number;
-  iss: string;
-  aud: string;
-}
+
 
 export interface AuthSession extends BaseEntity {
   userId: string;

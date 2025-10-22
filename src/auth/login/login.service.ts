@@ -1,10 +1,10 @@
 /**
  * Login Service
- * Handles user authentication, JWT token generation, and login security
+ * Handles user authentication and session management
  */
 
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { Request } from 'express';
 import { UserModel, UserDocument } from '../../models/user.model';
 import { ApiError } from '../../utils/api-error';
 import logger from '../../utils/logger';
@@ -17,31 +17,15 @@ export interface LoginData {
 
 export interface LoginResult {
   user: UserDocument;
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-}
-
-export interface RefreshTokenData {
-  refreshToken: string;
-}
-
-export interface RefreshTokenResult {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
+  success: boolean;
+  message: string;
 }
 
 class LoginService {
-  private readonly JWT_SECRET: jwt.Secret = process.env.JWT_SECRET || 'your-secret-key';
-  private readonly JWT_REFRESH_SECRET: jwt.Secret = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
-  private readonly JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '15m';
-  private readonly JWT_REFRESH_EXPIRES_IN: string = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
-
   /**
-   * Authenticate user and generate tokens
+   * Authenticate user and create session
    */
-  async login(data: LoginData): Promise<LoginResult> {
+  async login(data: LoginData, req: Request): Promise<LoginResult> {
     try {
       const { email, password, rememberMe = false } = data;
 
@@ -80,22 +64,29 @@ class LoginService {
       // Update last login
       await user.updateLastLogin();
 
-      // Generate tokens
-      const accessToken = this.generateAccessToken(user);
-      const refreshToken = this.generateRefreshToken(user);
+      // Create session
+      req.session.user = {
+        id: String(user._id),
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        permissions: user.permissions
+      };
+      req.session.isAuthenticated = true;
 
-      // Calculate expiration time
-      const expiresIn = rememberMe ? 
-        this.parseTimeToSeconds(this.JWT_REFRESH_EXPIRES_IN) : 
-        this.parseTimeToSeconds(this.JWT_EXPIRES_IN);
+      // Set session expiration based on rememberMe
+      if (rememberMe) {
+        req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+      } else {
+        req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours
+      }
 
       logger.info(`User logged in successfully: ${user.email}`);
 
       return {
         user,
-        accessToken,
-        refreshToken,
-        expiresIn
+        success: true,
+        message: 'Login successful'
       };
 
     } catch (error: unknown) {
@@ -108,58 +99,21 @@ class LoginService {
   }
 
   /**
-   * Refresh access token
+   * Logout user (destroy session)
    */
-  async refreshToken(data: RefreshTokenData): Promise<RefreshTokenResult> {
+  async logout(req: Request): Promise<void> {
     try {
-      const { refreshToken } = data;
-
-      // Verify refresh token
-      const decoded = jwt.verify(refreshToken, this.JWT_REFRESH_SECRET) as any;
+      const userId = req.session.user?.id;
       
-      // Find user
-      const user = await UserModel.findById(decoded.userId);
-      
-      if (!user || user.deletedAt) {
-        throw ApiError.unauthorized('Invalid refresh token');
-      }
+      // Destroy session
+      req.session.destroy((err) => {
+        if (err) {
+          logger.error('Session destruction error:', err);
+          throw ApiError.internal('Logout failed');
+        }
+      });
 
-      // Generate new tokens
-      const newAccessToken = this.generateAccessToken(user);
-      const newRefreshToken = this.generateRefreshToken(user);
-      const expiresIn = this.parseTimeToSeconds(this.JWT_EXPIRES_IN);
-
-      logger.info(`Token refreshed for user: ${user.email}`);
-
-      return {
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-        expiresIn
-      };
-
-    } catch (error: unknown) {
-      logger.error('Token refresh error:', error);
-      if (error instanceof jwt.JsonWebTokenError) {
-        throw ApiError.unauthorized('Invalid refresh token');
-      }
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw ApiError.internal('Token refresh failed');
-    }
-  }
-
-  /**
-   * Logout user (invalidate tokens)
-   */
-  async logout(userId: string): Promise<void> {
-    try {
-      // In a production app, you might want to maintain a blacklist of tokens
-      // or store tokens in Redis with expiration
       logger.info(`User logged out: ${userId}`);
-      
-      // For now, we'll just log the logout
-      // In production, implement token blacklisting or Redis-based session management
       
     } catch (error: unknown) {
       logger.error('Logout error:', error);
@@ -168,76 +122,28 @@ class LoginService {
   }
 
   /**
-   * Generate access token
+   * Check if user is authenticated
    */
-  private generateAccessToken(user: UserDocument): string {
-    const payload = {
-      userId: String(user._id),
-      email: user.email,
-      username: user.username,
-      role: user.role,
-      permissions: user.permissions
-    };
-
-    return jwt.sign(payload, this.JWT_SECRET, {
-      expiresIn: this.JWT_EXPIRES_IN,
-      issuer: 'social-media-automation',
-      audience: 'social-media-automation-users'
-    } as jwt.SignOptions);
+  isAuthenticated(req: Request): boolean {
+    return !!(req.session && req.session.isAuthenticated && req.session.user);
   }
 
   /**
-   * Generate refresh token
+   * Get current user from session
    */
-  private generateRefreshToken(user: UserDocument): string {
-    const payload = {
-      userId: String(user._id),
-      email: user.email,
-      tokenType: 'refresh'
-    };
-
-    return jwt.sign(payload, this.JWT_REFRESH_SECRET, {
-      expiresIn: this.JWT_REFRESH_EXPIRES_IN,
-      issuer: 'social-media-automation',
-      audience: 'social-media-automation-users'
-    } as jwt.SignOptions);
-  }
-
-  /**
-   * Parse time string to seconds
-   */
-  private parseTimeToSeconds(timeString: string): number {
-    const timeValue = parseInt(timeString);
-    const timeUnit = timeString.slice(-1);
-
-    switch (timeUnit) {
-      case 's': return timeValue;
-      case 'm': return timeValue * 60;
-      case 'h': return timeValue * 60 * 60;
-      case 'd': return timeValue * 24 * 60 * 60;
-      default: return timeValue;
+  getCurrentUser(req: Request): any {
+    if (this.isAuthenticated(req)) {
+      return req.session.user;
     }
+    return null;
   }
 
   /**
-   * Verify access token
+   * Refresh session (extend expiration)
    */
-  verifyAccessToken(token: string): any {
-    try {
-      return jwt.verify(token, this.JWT_SECRET);
-    } catch (error) {
-      throw ApiError.unauthorized('Invalid access token');
-    }
-  }
-
-  /**
-   * Verify refresh token
-   */
-  verifyRefreshToken(token: string): any {
-    try {
-      return jwt.verify(token, this.JWT_REFRESH_SECRET);
-    } catch (error) {
-      throw ApiError.unauthorized('Invalid refresh token');
+  refreshSession(req: Request): void {
+    if (this.isAuthenticated(req)) {
+      req.session.touch();
     }
   }
 }

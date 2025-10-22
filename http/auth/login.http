@@ -1,4 +1,4 @@
-### User Login API Tests
+### User Login API Tests (Session-Based Authentication)
 
 @baseUrl = http://localhost:3000
 @contentType = application/json
@@ -12,7 +12,17 @@ Content-Type: {{contentType}}
   "password": "TestPassword123!"
 }
 
-### 2. User Login - Invalid Email
+### 2. User Login - Valid Credentials with Remember Me
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test-terminal-verify@example.com",
+  "password": "TestPassword123!",
+  "rememberMe": true
+}
+
+### 3. User Login - Invalid Email
 POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
@@ -21,7 +31,7 @@ Content-Type: {{contentType}}
   "password": "SecurePassword123!"
 }
 
-### 3. User Login - Invalid Password
+### 4. User Login - Invalid Password
 POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
@@ -30,7 +40,7 @@ Content-Type: {{contentType}}
   "password": "WrongPassword123!"
 }
 
-### 4. User Login - Missing Email
+### 5. User Login - Missing Email
 POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
@@ -38,7 +48,7 @@ Content-Type: {{contentType}}
   "password": "SecurePassword123!"
 }
 
-### 5. User Login - Missing Password
+### 6. User Login - Missing Password
 POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
@@ -46,34 +56,28 @@ Content-Type: {{contentType}}
   "email": "test@example.com"
 }
 
-### 6. User Login - Empty Request Body
+### 7. User Login - Empty Request Body
 POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
 {}
 
-### 7. Get Current User Profile (Requires Authentication)
-# @name loginRequest
-POST {{baseUrl}}/api/auth/login
+### 8. Check Session Status (After Login)
+GET {{baseUrl}}/api/auth/session
+
+### 9. Get User Profile (Session-Based)
+GET {{baseUrl}}/api/auth/profile
+
+### 10. Refresh Session
+POST {{baseUrl}}/api/auth/session/refresh
 Content-Type: {{contentType}}
 
-{
-  "email": "test@example.com",
-  "password": "SecurePassword123!"
-}
-
-### Extract token from login response
-@authToken = {{loginRequest.response.body.data.token}}
-
-### 8. Get User Profile with Valid Token
-GET {{baseUrl}}/api/auth/profile
-Authorization: Bearer {{authToken}}
-
-### 9. Get User Profile with Invalid Token
-GET {{baseUrl}}/api/auth/profile
-Authorization: Bearer invalid_token_here
-
-### 10. Logout User
+### 11. Logout User (Session-Based)
 POST {{baseUrl}}/api/auth/logout
-Authorization: Bearer {{authToken}}
 Content-Type: {{contentType}}
+
+### 12. Check Session Status (After Logout)
+GET {{baseUrl}}/api/auth/session
+
+### 13. Try to Access Profile After Logout
+GET {{baseUrl}}/api/auth/profile
