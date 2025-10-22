@@ -16,7 +16,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   
   // Database Configuration
-  DATABASE_URL: z.string().optional(),
+  DATABASE_URL: z.string().default('mongodb://localhost:27017/postengage'),
   REDIS_URL: z.string().optional(),
   
   // Instagram Configuration
@@ -38,9 +38,20 @@ const envSchema = z.object({
   
   // Security
   ENCRYPTION_KEY: z.string().default('your-encryption-key'),
+  SESSION_SECRET: z.string().default('your-super-secret-session-key-change-in-production'),
+  
+  // Email Configuration
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_SECURE: z.coerce.boolean().default(false), // true for 465, false for other ports
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().default('noreply@instagram-automation.com'),
+  EMAIL_FROM_NAME: z.string().default('Instagram Automation'),
   
   // External Services
   WEBHOOK_BASE_URL: z.string().optional(),
+  FRONTEND_URL: z.string().default('http://localhost:3000'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });
 

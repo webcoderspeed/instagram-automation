@@ -4,6 +4,7 @@
  */
 
 import logger from '../utils/logger';
+import { mailerService, EmailOptions } from './mailer.service';
 
 export interface VerificationEmailData {
   to: string;
@@ -28,38 +29,33 @@ class EmailService {
    */
   async sendVerificationEmail(data: VerificationEmailData): Promise<void> {
     try {
-      // TODO: Implement actual email sending with your preferred service
-      // For now, just log the email details
       logger.info('Sending verification email:', {
         to: data.to,
         name: data.name,
         verificationUrl: data.verificationUrl
       });
 
-      // In production, you would use services like:
-      // - SendGrid
-      // - AWS SES
-      // - Mailgun
-      // - Nodemailer with SMTP
-      
-      // Example with console log for development:
-      console.log(`
-        📧 Verification Email
-        To: ${data.to}
-        Subject: Verify your email address
-        
-        Hi ${data.name},
-        
-        Please click the link below to verify your email address:
-        ${data.verificationUrl}
-        
-        This link will expire in 24 hours.
-        
-        If you didn't create an account, please ignore this email.
-        
-        Best regards,
-        SocialMedia Automation Team
-      `);
+      const emailOptions: EmailOptions = {
+        to: data.to,
+        subject: 'Verify your email address',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Verify your email address</h2>
+            <p>Hi ${data.name},</p>
+            <p>Please click the link below to verify your email address:</p>
+            <a href="${data.verificationUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Verify Email</a>
+            <p>This link will expire in 24 hours.</p>
+            <p>If you didn't create an account, please ignore this email.</p>
+            <p>Best regards,<br>PostEngage.ai Team</p>
+          </div>
+        `,
+        text: `Hi ${data.name},\n\nPlease click the link below to verify your email address:\n${data.verificationUrl}\n\nThis link will expire in 24 hours.\n\nIf you didn't create an account, please ignore this email.\n\nBest regards,\nPostEngage.ai Team`
+      };
+
+      const success = await mailerService.sendEmail(emailOptions);
+      if (!success) {
+        throw new Error('Failed to send verification email through mailer service');
+      }
 
     } catch (error) {
       logger.error('Failed to send verification email:', error);
@@ -78,23 +74,27 @@ class EmailService {
         resetUrl: data.resetUrl
       });
 
-      console.log(`
-        📧 Password Reset Email
-        To: ${data.to}
-        Subject: Reset your password
-        
-        Hi ${data.name},
-        
-        You requested to reset your password. Click the link below:
-        ${data.resetUrl}
-        
-        This link will expire in 1 hour.
-        
-        If you didn't request this, please ignore this email.
-        
-        Best regards,
-        SocialMedia Automation Team
-      `);
+      const emailOptions: EmailOptions = {
+        to: data.to,
+        subject: 'Reset your password',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Reset your password</h2>
+            <p>Hi ${data.name},</p>
+            <p>You requested to reset your password. Click the link below:</p>
+            <a href="${data.resetUrl}" style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+            <p>This link will expire in 1 hour.</p>
+            <p>If you didn't request this, please ignore this email.</p>
+            <p>Best regards,<br>PostEngage.ai Team</p>
+          </div>
+        `,
+        text: `Hi ${data.name},\n\nYou requested to reset your password. Click the link below:\n${data.resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this, please ignore this email.\n\nBest regards,\nPostEngage.ai Team`
+      };
+
+      const success = await mailerService.sendEmail(emailOptions);
+      if (!success) {
+        throw new Error('Failed to send password reset email through mailer service');
+      }
 
     } catch (error) {
       logger.error('Failed to send password reset email:', error);
@@ -112,26 +112,32 @@ class EmailService {
         name: data.name
       });
 
-      console.log(`
-        📧 Welcome Email
-        To: ${data.to}
-        Subject: Welcome to SocialMedia Automation!
-        
-        Hi ${data.name},
-        
-        Welcome to SocialMedia Automation! We're excited to have you on board.
-        
-        Here's what you can do next:
-        1. Connect your social media accounts
-        2. Set up your first automation
-        3. Schedule your content
-        4. Monitor your analytics
-        
-        If you have any questions, feel free to reach out to our support team.
-        
-        Best regards,
-        SocialMedia Automation Team
-      `);
+      const emailOptions: EmailOptions = {
+        to: data.to,
+        subject: 'Welcome to PostEngage.ai!',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Welcome to PostEngage.ai!</h2>
+            <p>Hi ${data.name},</p>
+            <p>Welcome to PostEngage.ai! We're excited to have you on board.</p>
+            <h3>Here's what you can do next:</h3>
+            <ol>
+              <li>Connect your social media accounts</li>
+              <li>Set up your first automation</li>
+              <li>Schedule your content</li>
+              <li>Monitor your analytics</li>
+            </ol>
+            <p>If you have any questions, feel free to reach out to our support team.</p>
+            <p>Best regards,<br>PostEngage.ai Team</p>
+          </div>
+        `,
+        text: `Hi ${data.name},\n\nWelcome to PostEngage.ai! We're excited to have you on board.\n\nHere's what you can do next:\n1. Connect your social media accounts\n2. Set up your first automation\n3. Schedule your content\n4. Monitor your analytics\n\nIf you have any questions, feel free to reach out to our support team.\n\nBest regards,\nPostEngage.ai Team`
+      };
+
+      const success = await mailerService.sendEmail(emailOptions);
+      if (!success) {
+        throw new Error('Failed to send welcome email through mailer service');
+      }
 
     } catch (error) {
       logger.error('Failed to send welcome email:', error);
@@ -149,16 +155,25 @@ class EmailService {
         subject
       });
 
-      console.log(`
-        📧 Notification Email
-        To: ${to}
-        Subject: ${subject}
-        
-        ${message}
-        
-        Best regards,
-        SocialMedia Automation Team
-      `);
+      const emailOptions: EmailOptions = {
+        to,
+        subject,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>${subject}</h2>
+            <div style="margin: 20px 0;">
+              ${message.replace(/\n/g, '<br>')}
+            </div>
+            <p>Best regards,<br>PostEngage.ai Team</p>
+          </div>
+        `,
+        text: `${message}\n\nBest regards,\nPostEngage.ai Team`
+      };
+
+      const success = await mailerService.sendEmail(emailOptions);
+      if (!success) {
+        throw new Error('Failed to send notification email through mailer service');
+      }
 
     } catch (error) {
       logger.error('Failed to send notification email:', error);

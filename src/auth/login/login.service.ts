@@ -3,11 +3,20 @@
  * Handles user authentication and session management
  */
 
-import bcrypt from 'bcryptjs';
 import { Request } from 'express';
 import { UserModel, UserDocument } from '../../models/user.model';
+import { LoginHistoryModel } from '../../models/login-history.model';
 import { ApiError } from '../../utils/api-error';
 import logger from '../../utils/logger';
+import { 
+  generateDeviceFingerprint, 
+  getClientIP, 
+  getLocationFromIP,
+  formatLocationForDisplay,
+  formatUserAgentForDisplay,
+  isSuspiciousLogin,
+  parseUserAgent
+} from '../../utils/device-tracking';
 
 export interface LoginData {
   email: string;
@@ -61,8 +70,74 @@ class LoginService {
       // Reset login attempts on successful login
       await user.resetLoginAttempts();
 
-      // Update last login
-      await user.updateLastLogin();
+      // Capture comprehensive login tracking data
+      const clientIP = getClientIP(req);
+      const userAgent = req.get('User-Agent') || '';
+      const deviceFingerprint = generateDeviceFingerprint(req);
+      const locationData = await getLocationFromIP(clientIP);
+      const location = formatLocationForDisplay(locationData);
+      
+      // Check for suspicious login patterns
+      const suspiciousCheck = isSuspiciousLogin(
+        clientIP,
+        deviceFingerprint,
+        user.lastLoginIP,
+        user.trustedDevices
+      );
+      
+      if (suspiciousCheck.isSuspicious) {
+        logger.warn(`Suspicious login detected for user ${user.email}:`, {
+          ip: clientIP,
+          userAgent: formatUserAgentForDisplay(userAgent),
+          reasons: suspiciousCheck.reasons,
+          deviceFingerprint
+        });
+        
+        // You could add additional security measures here:
+        // - Send email notification
+        // - Require additional verification
+        // - Log to security audit trail
+      }
+
+      // Update last login with comprehensive data
+      await user.updateLastLogin({
+        ip: clientIP,
+        userAgent,
+        location,
+        deviceFingerprint
+      });
+
+      // Parse user agent for detailed device info
+      const deviceInfo = parseUserAgent(userAgent);
+      
+      // Create login history record for analytics
+      const loginHistory = new LoginHistoryModel({
+        userId: user._id,
+        loginAt: new Date(),
+        ipAddress: clientIP,
+        userAgent,
+        deviceFingerprint,
+        browser: deviceInfo.browser,
+        os: deviceInfo.os,
+        device: deviceInfo.device,
+        location,
+        country: locationData?.country,
+        city: locationData?.city,
+        timezone: locationData?.timezone,
+        isSuspicious: suspiciousCheck.isSuspicious,
+        suspiciousReasons: suspiciousCheck.reasons,
+        isNewDevice: !user.trustedDevices.includes(deviceFingerprint),
+        isNewLocation: user.lastLoginIP !== clientIP,
+        rememberMe: rememberMe || false,
+        sessionId: req.sessionID,
+        status: 'active',
+        metadata: {
+          loginMethod: 'email_password',
+          timestamp: new Date().toISOString(),
+        }
+      });
+      
+      await loginHistory.save();
 
       // Create session
       req.session.user = {
@@ -104,6 +179,24 @@ class LoginService {
   async logout(req: Request): Promise<void> {
     try {
       const userId = req.session.user?.id;
+      const sessionId = req.sessionID;
+      
+      // Update login history to mark session as logged out
+      if (userId && sessionId) {
+        await LoginHistoryModel.findOneAndUpdate(
+          { 
+            userId, 
+            sessionId, 
+            status: 'active' 
+          },
+          { 
+            $set: { 
+              status: 'logged_out',
+              logoutAt: new Date()
+            }
+          }
+        );
+      }
       
       // Destroy session
       req.session.destroy((err) => {

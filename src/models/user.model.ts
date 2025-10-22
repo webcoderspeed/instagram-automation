@@ -57,8 +57,15 @@ export interface UserDocument extends Document {
   twoFactorSecret?: string;
   lastLoginAt?: Date;
   lastLoginIP?: string;
+  lastLoginUserAgent?: string;
+  lastLoginLocation?: string;
   loginAttempts: number;
+  totalLoginCount: number;
   lockUntil?: Date;
+  
+  // Device & Browser tracking
+  deviceFingerprint?: string;
+  trustedDevices: string[];
 
   // Activity tracking
   lastActiveAt?: Date;
@@ -102,7 +109,12 @@ export interface UserDocument extends Document {
   isAccountLocked(): boolean;
   incrementLoginAttempts(): Promise<UserDocument>;
   resetLoginAttempts(): Promise<UserDocument>;
-  updateLastLogin(ip?: string): Promise<UserDocument>;
+  updateLastLogin(loginData?: {
+    ip?: string;
+    userAgent?: string;
+    location?: string;
+    deviceFingerprint?: string;
+  }): Promise<UserDocument>;
   softDelete(): Promise<UserDocument>;
   restore(): Promise<UserDocument>;
   toPublicJSON(): Record<string, unknown>;
@@ -241,11 +253,33 @@ const userSchema = new Schema(
       type: String,
       trim: true,
     },
+    lastLoginUserAgent: {
+      type: String,
+      trim: true,
+    },
+    lastLoginLocation: {
+      type: String,
+      trim: true,
+    },
     loginAttempts: {
       type: Number,
       default: 0,
     },
+    totalLoginCount: {
+      type: Number,
+      default: 0,
+    },
     lockUntil: Date,
+    
+    // Device & Browser tracking
+    deviceFingerprint: {
+      type: String,
+      trim: true,
+    },
+    trustedDevices: [{
+      type: String,
+      trim: true,
+    }],
 
     // Activity tracking
     lastActiveAt: {
@@ -384,11 +418,34 @@ userSchema.methods.resetLoginAttempts = async function (
 
 userSchema.methods.updateLastLogin = async function (
   this: UserDocument,
-  ip?: string
+  loginData?: {
+    ip?: string;
+    userAgent?: string;
+    location?: string;
+    deviceFingerprint?: string;
+  }
 ): Promise<UserDocument> {
   this.lastLoginAt = new Date();
   this.lastActiveAt = new Date();
-  if (ip) this.lastLoginIP = ip;
+  this.totalLoginCount = (this.totalLoginCount || 0) + 1;
+  
+  if (loginData?.ip) this.lastLoginIP = loginData.ip;
+  if (loginData?.userAgent) this.lastLoginUserAgent = loginData.userAgent;
+  if (loginData?.location) this.lastLoginLocation = loginData.location;
+  if (loginData?.deviceFingerprint) {
+    this.deviceFingerprint = loginData.deviceFingerprint;
+    
+    // Add to trusted devices if not already present
+    if (!this.trustedDevices.includes(loginData.deviceFingerprint)) {
+      this.trustedDevices.push(loginData.deviceFingerprint);
+      
+      // Keep only last 5 trusted devices
+      if (this.trustedDevices.length > 5) {
+        this.trustedDevices = this.trustedDevices.slice(-5);
+      }
+    }
+  }
+  
   return this.save();
 };
 

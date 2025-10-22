@@ -217,7 +217,8 @@ class SignupService {
    */
   private async sendVerificationEmail(user: UserDocument, originalToken: string): Promise<void> {
     try {
-      const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${originalToken}`;
+      // Use API endpoint for verification instead of frontend URL
+      const verificationUrl = `http://localhost:3000/api/auth/verify-email?token=${originalToken}`;
       
       await emailService.sendVerificationEmail({
         to: user.email,
@@ -239,7 +240,7 @@ class SignupService {
         userId,
         type: NotificationType.SYSTEM,
         priority: NotificationPriority.MEDIUM,
-        title: 'Welcome to SocialMedia Automation!',
+        title: 'Welcome to PostEngage.ai!',
         message: 'Your account has been created successfully. Please verify your email to get started.',
         channels: [NotificationChannel.IN_APP],
         actions: [

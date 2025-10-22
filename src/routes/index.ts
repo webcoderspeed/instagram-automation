@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import analyticsRoutes from './analytics.routes';
 import authRoutes from './auth.routes';
 import automationRoutes from './automation.routes';
 import dashboardRoutes from './dashboard.routes';
@@ -11,6 +12,7 @@ import webhookRoutes from './webhook.routes';
 const router = Router();
 
 // Mount route modules
+router.use('/api/analytics', analyticsRoutes);
 router.use('/auth', authRoutes);
 router.use('/api/automation', automationRoutes);
 router.use('/api/dashboard', dashboardRoutes);
