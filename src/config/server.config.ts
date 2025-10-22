@@ -8,6 +8,7 @@ import env from './env.config';
 export interface ServerConfig {
   port: number;
   host: string;
+  environment: string;
   cors: {
     origin: string | string[];
     credentials: boolean;
@@ -34,6 +35,7 @@ export interface ServerConfig {
 const serverConfig: ServerConfig = {
   port: env.PORT,
   host: '0.0.0.0',
+  environment: env.NODE_ENV,
   cors: {
     origin: env.NODE_ENV === 'production' 
       ? ['https://yourdomain.com'] 

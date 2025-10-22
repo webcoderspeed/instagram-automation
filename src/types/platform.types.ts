@@ -1,9 +1,13 @@
 /**
  * Platform Types
- * Types and interfaces for social media platforms
+ * 
+ * Unified type definitions for all social media platforms.
+ * These types are designed to be platform-agnostic while
+ * accommodating platform-specific features through optional fields.
  */
 
 import { BaseEntity, SocialPlatform, MediaFile } from './common.types';
+import { Platform, MediaType } from '../validators/platform.validator';
 
 export interface PlatformCredentials {
   accessToken: string;
@@ -139,4 +143,119 @@ export interface PlatformCapabilities {
   supportsStories: boolean;
   supportsReels: boolean;
   supportsLiveStreaming: boolean;
+}
+
+/**
+ * Additional types for adapter pattern
+ */
+
+/**
+ * Rate limit information
+ */
+export interface RateLimit {
+  platform: Platform;
+  endpoint?: string;
+  remaining: number;
+  limit: number;
+  resetTime: Date;
+  retryAfter?: number;
+}
+
+/**
+ * Platform connection status
+ */
+export interface PlatformConnection {
+  id: string;
+  userId: string;
+  platform: Platform;
+  accountId: string;
+  status: 'connected' | 'disconnected' | 'error' | 'expired';
+  credentials: PlatformCredentials;
+  account: PlatformAccount;
+  lastError?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Batch operation request
+ */
+export interface BatchRequest {
+  platform: Platform;
+  operations: Array<{
+    id: string;
+    type: 'create' | 'update' | 'delete';
+    data: any;
+  }>;
+  
+  // Platform-specific batch options
+  platformOptions?: Record<string, any>;
+}
+
+/**
+ * Batch operation result
+ */
+export interface BatchResult {
+  platform: Platform;
+  results: Array<{
+    id: string;
+    success: boolean;
+    data?: any;
+    error?: string;
+  }>;
+  summary: {
+    total: number;
+    successful: number;
+    failed: number;
+  };
+}
+
+/**
+ * Platform error types
+ */
+export interface PlatformError {
+  platform: Platform;
+  type: 'authentication' | 'rate_limit' | 'validation' | 'api' | 'network' | 'unknown';
+  code?: string;
+  message: string;
+  details?: any;
+  retryable: boolean;
+  retryAfter?: number;
+}
+
+/**
+ * Platform configuration
+ */
+export interface PlatformConfig {
+  platform: Platform;
+  enabled: boolean;
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  scopes: string[];
+  apiVersion?: string;
+  baseUrl?: string;
+  webhookSecret?: string;
+  
+  // Platform-specific configuration
+  platformConfig?: Record<string, any>;
+}
+
+/**
+ * User platform preferences
+ */
+export interface UserPlatformPreferences {
+  userId: string;
+  platform: Platform;
+  autoPost: boolean;
+  defaultHashtags: string[];
+  defaultMentions: string[];
+  postingSchedule?: {
+    timezone: string;
+    preferredTimes: string[];
+    excludeDays: string[];
+  };
+  
+  // Platform-specific preferences
+  platformPreferences?: Record<string, any>;
 }

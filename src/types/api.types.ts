@@ -3,7 +3,9 @@
  * Types and interfaces for API requests and responses
  */
 
+import { Request } from 'express';
 import { ValidationError, ErrorDetails, PaginationResult } from './common.types';
+import { AuthenticatedUser } from './user.types';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -70,16 +72,9 @@ export interface ApiRequest {
   accountId?: string;
 }
 
-export interface AuthenticatedRequest extends ApiRequest {
-  user: {
-    id: string;
-    email: string;
-    role: string;
-    permissions: string[];
-  };
-}
-
-export interface PlatformRequest extends AuthenticatedRequest {
+export interface PlatformRequest extends Request {
+  user?: AuthenticatedUser;
+  validatedData?: any;
   platform: string;
   accountId: string;
 }
@@ -183,13 +178,7 @@ export interface RateLimitResponse {
   };
 }
 
-export interface BatchRequest<T> {
-  requests: T[];
-  options?: {
-    stopOnError?: boolean;
-    maxConcurrency?: number;
-  };
-}
+
 
 export interface BatchResponse<T> {
   results: Array<{

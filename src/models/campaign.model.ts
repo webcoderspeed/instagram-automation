@@ -90,6 +90,8 @@ export interface CampaignDocument extends Document {
   
   // Soft delete
   deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
   
   // Campaign specific methods
   start(): Promise<CampaignDocument>;
@@ -332,6 +334,18 @@ const campaignSchema = new Schema({
   deletedAt: {
     type: Date,
     default: null,
+    index: true
+  },
+
+
+  createdAt: {
+    type: Date,
+    default: Date.now,
+    index: true
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
     index: true
   }
 }, {

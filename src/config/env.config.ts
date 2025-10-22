@@ -13,7 +13,7 @@ dotenv.config();
 const envSchema = z.object({
   // Server Configuration
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.string().transform(Number).default('3000'),
+  PORT: z.coerce.number().default(3000),
   
   // Database Configuration
   DATABASE_URL: z.string().optional(),
@@ -40,6 +40,12 @@ const envSchema = z.object({
   // External Services
   WEBHOOK_BASE_URL: z.string().optional(),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+
+
+  // JWT Configuration
+  JWT_EXPIRATION: z.string().default('1h'),
+  JWT_REFRESH_EXPIRATION: z.string().default('7d'),
+  JWT_ALGORITHM: z.string().default('HS256'),
 });
 
 // Validate environment variables

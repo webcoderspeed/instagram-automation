@@ -205,3 +205,21 @@ export interface UpdateUserRoleRequest {
   role: UserRole;
   reason?: string;
 }
+
+/**
+ * Extended user interface for authenticated requests
+ */
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  role: string;
+  isEmailVerified: boolean;
+  lastLoginAt?: Date;
+  createdAt: Date;
+  connectedAccounts: {
+    [K in SocialPlatform]?: PlatformAccount;
+  };
+}

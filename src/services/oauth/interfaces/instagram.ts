@@ -3,11 +3,13 @@
  * Based on Instagram Business Login API
  */
 
+import { InstagramScopeValue } from '../types/scopes';
+
 export interface InstagramOAuthConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  scopes: InstagramScope[];
+  scopes: InstagramScopeValue[];
 }
 
 export interface InstagramScope {

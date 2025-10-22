@@ -42,7 +42,7 @@ const socialMediaConfig: SocialMediaConfig = {
     instagram: {
       name: 'Instagram',
       enabled: true,
-      apiVersion: 'v18.0',
+      apiVersion: 'v24.0',
       baseUrl: 'https://graph.instagram.com',
       authUrl: 'https://api.instagram.com/oauth/authorize',
       tokenUrl: 'https://api.instagram.com/oauth/access_token',
