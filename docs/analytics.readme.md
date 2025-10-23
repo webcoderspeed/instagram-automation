@@ -1,27 +1,26 @@
 # Analytics API Documentation
 
-यह documentation Instagram Automation SaaS application के सभी analytics endpoints के लिए है। ये endpoints user login statistics, device analytics, और security insights प्रदान करते हैं।
+## Overview
+The Analytics API provides comprehensive insights into user login statistics, activity patterns, device usage, security metrics, and platform performance data. This API helps track user behavior, identify potential security threats, and analyze social media engagement metrics.
 
 ## Base URL
 ```
-http://localhost:3000/api/analytics
+/api/analytics
 ```
+
+## Authentication
+All analytics endpoints require authentication and `ANALYTICS_READ` permission. Include the session cookie or authentication token in your requests.
 
 ## Table of Contents
 1. [Login Statistics](#login-statistics)
 2. [Login Activity](#login-activity)
 3. [Device Analytics](#device-analytics)
 4. [Security Insights](#security-insights)
-
----
-
-## Authentication Required
-सभी analytics endpoints के लिए authentication और proper permissions की आवश्यकता होती है। सभी requests में session cookies शामिल करें।
-
-```bash
-# सभी requests में cookies include करें
--b cookies.txt
-```
+5. [Analytics Models](#analytics-models)
+6. [Dashboard Analytics](#dashboard-analytics)
+7. [Instagram Analytics Integration](#instagram-analytics-integration)
+8. [Error Handling](#error-handling)
+9. [Best Practices](#best-practices)
 
 ---
 

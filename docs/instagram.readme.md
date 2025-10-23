@@ -1,129 +1,262 @@
 # Instagram API Documentation
 
-This documentation covers all Instagram API endpoints for the Instagram Automation SaaS application. All endpoints require authentication and Instagram connection.
+This document provides comprehensive information about the Instagram API integration endpoints and services.
 
 ## Base URL
 ```
-http://localhost:3000/api/instagram
+https://your-domain.com/api/v1/instagram
 ```
 
-## Table of Contents
-1. [Profile Management](#profile-management)
-2. [Media Management](#media-management)
-3. [Publishing](#publishing)
-4. [Analytics & Insights](#analytics--insights)
-5. [Hashtag Research](#hashtag-research)
-6. [Rate Limits](#rate-limits)
-7. [Error Responses](#error-responses)
-8. [Authentication](#authentication)
+## Authentication
+All Instagram API endpoints require authentication via JWT token in the Authorization header:
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+## Required Permissions
+Most Instagram endpoints require specific role-based permissions:
+- `INSTAGRAM_READ`: View Instagram data
+- `INSTAGRAM_WRITE`: Modify Instagram data
+- `INSTAGRAM_PUBLISH`: Publish content to Instagram
+
+## Rate Limits
+- **General**: 100 requests per minute per user
+- **Publishing**: 25 posts per day per account
+- **Insights**: 200 requests per hour per account
 
 ---
 
-## Profile Management
+## OAuth Integration
 
-### 1. Get Instagram Profile
-**Endpoint:** `GET /profile`  
-**Description:** Retrieves connected Instagram account profile information.  
-**Required Permission:** `INSTAGRAM_READ`  
-**Rate Limit:** General rate limit applies
+### Connect Instagram Account
+Initiate Instagram OAuth connection for the authenticated user.
 
-```bash
-curl -X GET http://localhost:3000/api/instagram/profile \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_jwt_token"
-```
+**Endpoint:** `GET /oauth/connect`
+
+**Required Permission:** `INSTAGRAM_WRITE`
 
 **Response:**
 ```json
 {
   "success": true,
   "data": {
+    "authUrl": "https://api.instagram.com/oauth/authorize?...",
+    "state": "oauth_state_parameter"
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -X GET "https://your-domain.com/api/v1/instagram/oauth/connect" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### OAuth Callback
+Handle Instagram OAuth callback after user authorization.
+
+**Endpoint:** `GET /oauth/callback`
+
+**Query Parameters:**
+- `code`: Authorization code from Instagram
+- `state`: OAuth state parameter
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "connected": true,
     "profile": {
       "id": "instagram_user_id",
-      "username": "your_username",
-      "name": "Your Display Name",
-      "biography": "Your bio here",
-      "website": "https://yourwebsite.com",
-      "profilePictureUrl": "https://instagram.com/profile.jpg",
-      "followersCount": 1250,
-      "followingCount": 850,
-      "mediaCount": 125,
-      "isVerified": false,
-      "isBusinessAccount": true,
-      "accountType": "BUSINESS"
+      "username": "user_handle",
+      "name": "Display Name"
     }
-  },
-  "message": "Profile retrieved successfully"
+  }
 }
+```
+
+### Disconnect Instagram Account
+Disconnect the user's Instagram account.
+
+**Endpoint:** `DELETE /oauth/disconnect`
+
+**Required Permission:** `INSTAGRAM_WRITE`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Instagram account disconnected successfully"
+}
+```
+
+### Check Connection Status
+Check if user has a connected Instagram account.
+
+**Endpoint:** `GET /oauth/status`
+
+**Required Permission:** `INSTAGRAM_READ`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "connected": true,
+    "username": "user_handle",
+    "connectedAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+---
+
+## Profile Management
+
+### Get Instagram Profile
+Retrieve the authenticated user's Instagram profile information.
+
+**Endpoint:** `GET /profile`
+
+**Required Permission:** `INSTAGRAM_READ`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "user_id": "instagram_user_id",
+    "username": "user_handle",
+    "name": "Display Name",
+    "profile_picture_url": "https://...",
+    "followers_count": 1500,
+    "follows_count": 300,
+    "media_count": 45,
+    "account_type": "BUSINESS"
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -X GET "https://your-domain.com/api/v1/instagram/profile" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ---
 
 ## Media Management
 
-### 2. Get All Media
-**Endpoint:** `GET /media`  
-**Description:** Retrieves all Instagram media posts for the connected account.  
-**Required Permission:** `INSTAGRAM_READ`  
-**Rate Limit:** General rate limit applies
+### Get User Media
+Retrieve the user's Instagram media posts.
 
-```bash
-curl -X GET http://localhost:3000/api/instagram/media \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_jwt_token"
-```
+**Endpoint:** `GET /media`
+
+**Required Permission:** `INSTAGRAM_READ`
 
 **Query Parameters:**
-- `limit` (optional) - Number of posts to return (default: 25, max: 100)
-- `after` (optional) - Pagination cursor for next page
-- `fields` (optional) - Comma-separated list of fields to include
-
-```bash
-curl -X GET "http://localhost:3000/api/instagram/media?limit=10&after=cursor_here&fields=id,caption,media_type" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_jwt_token"
-```
+- `limit` (optional): Number of media items to return (default: 25, max: 100)
+- `after` (optional): Cursor for pagination
+- `before` (optional): Cursor for pagination
 
 **Response:**
 ```json
 {
   "success": true,
   "data": {
-    "media": [
+    "data": [
       {
         "id": "media_id",
-        "mediaType": "IMAGE",
-        "mediaUrl": "https://instagram.com/image.jpg",
-        "permalink": "https://instagram.com/p/ABC123/",
-        "caption": "Your post caption here",
-        "timestamp": "2024-01-01T12:00:00Z",
-        "likesCount": 150,
-        "commentsCount": 25,
-        "thumbnailUrl": "https://instagram.com/thumb.jpg"
+        "caption": "Post caption",
+        "media_url": "https://...",
+        "media_type": "IMAGE",
+        "timestamp": "2024-01-15T10:30:00Z",
+        "permalink": "https://instagram.com/p/...",
+        "like_count": 42,
+        "view_count": 150,
+        "username": "user_handle",
+        "thumbnail_url": "https://...",
+        "shortcode": "ABC123",
+        "is_shared_to_feed": true,
+        "is_comment_enabled": true
       }
     ],
     "paging": {
       "cursors": {
-        "before": "before_cursor",
-        "after": "after_cursor"
+        "before": "cursor_string",
+        "after": "cursor_string"
       },
       "next": "next_page_url"
     }
-  },
-  "message": "Media retrieved successfully"
+  }
 }
 ```
 
-### 3. Get Media by ID
-**Endpoint:** `GET /media/:id`  
-**Description:** Retrieves specific Instagram media post by ID.  
-**Required Permission:** `INSTAGRAM_READ`  
-**Rate Limit:** General rate limit applies
-
+**Example Request:**
 ```bash
-curl -X GET http://localhost:3000/api/instagram/media/media_id_here \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_jwt_token"
+curl -X GET "https://your-domain.com/api/v1/instagram/media?limit=10" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Get Media by ID
+Retrieve specific media information by ID.
+
+**Endpoint:** `GET /media/:id`
+
+**Required Permission:** `INSTAGRAM_READ`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "media_id",
+    "caption": "Post caption",
+    "media_url": "https://...",
+    "media_type": "IMAGE",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "permalink": "https://instagram.com/p/...",
+    "like_count": 42,
+    "view_count": 150,
+    "username": "user_handle",
+    "thumbnail_url": "https://...",
+    "shortcode": "ABC123"
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -X GET "https://your-domain.com/api/v1/instagram/media/MEDIA_ID" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+## Content Publishing
+
+### Publish Post
+Publish a new post to Instagram.
+
+**Endpoint:** `POST /publish`
+
+**Required Permission:** `INSTAGRAM_PUBLISH`
+
+**Request Body:**
+```json
+{
+  "image_url": "https://example.com/image.jpg",
+  "caption": "Your post caption with #hashtags",
+  "location_id": "location_id_optional",
+  "user_tags": [
+    {
+      "username": "tagged_user",
+      "x": 0.5,
+      "y": 0.5
+    }
+  ]
+}
 ```
 
 **Response:**
@@ -131,26 +264,256 @@ curl -X GET http://localhost:3000/api/instagram/media/media_id_here \
 {
   "success": true,
   "data": {
-    "media": {
-      "id": "media_id",
-      "mediaType": "IMAGE",
-      "mediaUrl": "https://instagram.com/image.jpg",
-      "permalink": "https://instagram.com/p/ABC123/",
-      "caption": "Your post caption here",
-      "timestamp": "2024-01-01T12:00:00Z",
-      "likesCount": 150,
-      "commentsCount": 25,
-      "thumbnailUrl": "https://instagram.com/thumb.jpg",
-      "children": [],
-      "insights": {
-        "impressions": 500,
-        "reach": 450,
-        "engagement": 175
-      }
-    }
-  },
-  "message": "Media retrieved successfully"
+    "id": "published_media_id",
+    "status": "PUBLISHED"
+  }
 }
+```
+
+**Example Request:**
+```bash
+curl -X POST "https://your-domain.com/api/v1/instagram/publish" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image_url": "https://example.com/image.jpg",
+    "caption": "Check out this amazing photo! #photography"
+  }'
+```
+
+---
+
+## Insights & Analytics
+
+### Get Media Insights
+Retrieve insights for a specific media post.
+
+**Endpoint:** `GET /media/:id/insights`
+
+**Required Permission:** `INSTAGRAM_READ`
+
+**Query Parameters:**
+- `metric`: Comma-separated list of metrics (impressions, reach, engagement, saves, etc.)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "impressions": 1250,
+    "reach": 980,
+    "engagement": 85,
+    "saves": 12,
+    "shares": 8,
+    "profile_visits": 15,
+    "website_clicks": 3
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -X GET "https://your-domain.com/api/v1/instagram/media/MEDIA_ID/insights?metric=impressions,reach,engagement" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Get Account Insights
+Retrieve account-level insights and analytics.
+
+**Endpoint:** `GET /insights`
+
+**Required Permission:** `INSTAGRAM_READ`
+
+**Query Parameters:**
+- `metric`: Comma-separated list of metrics
+- `period`: Time period (day, week, days_28)
+- `since`: Start date (YYYY-MM-DD)
+- `until`: End date (YYYY-MM-DD)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "impressions": 15420,
+    "reach": 12350,
+    "profile_views": 890,
+    "website_clicks": 45,
+    "follower_count": 1520,
+    "email_contacts": 12,
+    "phone_call_clicks": 3,
+    "text_message_clicks": 8
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -X GET "https://your-domain.com/api/v1/instagram/insights?metric=impressions,reach,profile_views&period=week" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+## Hashtag Research
+
+### Get Hashtag Information
+Retrieve information about a specific hashtag.
+
+**Endpoint:** `GET /hashtag/:hashtag`
+
+**Required Permission:** `INSTAGRAM_READ`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "hashtag_id",
+    "name": "photography",
+    "media_count": 500000000,
+    "top_posts": [
+      {
+        "id": "media_id",
+        "media_url": "https://...",
+        "like_count": 1250
+      }
+    ]
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -X GET "https://your-domain.com/api/v1/instagram/hashtag/photography" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+## Rate Limiting
+
+### Check Rate Limits
+Check current API rate limit status.
+
+**Endpoint:** `GET /rate-limit`
+
+**Required Permission:** `INSTAGRAM_READ`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "limit": 200,
+    "remaining": 150,
+    "reset": "2024-01-15T11:00:00Z",
+    "percentage_used": 25
+  }
+}
+```
+
+---
+
+## Instagram Services Architecture
+
+### Core Services
+
+#### 1. InstagramIntegrationService
+Main orchestration service that coordinates all Instagram functionality:
+- OAuth flow management
+- Service composition and delegation
+- Error handling and logging
+- Token management
+
+#### 2. InstagramAuthService
+Handles OAuth authentication and token management:
+- Generate OAuth URLs with state validation
+- Exchange authorization codes for tokens
+- Refresh long-lived tokens
+- Validate and manage OAuth state
+
+#### 3. InstagramProfileService
+Manages user profile operations:
+- Fetch user profile information
+- Get profile by Instagram user ID
+- Limited profile updates (API restrictions)
+
+#### 4. InstagramMediaService
+Handles media-related operations:
+- Retrieve user's media posts
+- Get specific media by ID
+- Media pagination and filtering
+- Media metadata and insights
+
+#### 5. InstagramContentPublishingService
+Manages content creation and publishing:
+- Create media containers
+- Publish single images and videos
+- Handle carousel posts
+- Schedule content publishing
+- Manage content templates
+
+#### 6. InstagramInsightsService
+Provides analytics and insights:
+- Account-level insights
+- Media-specific insights
+- Story insights
+- Audience demographics
+- Performance metrics
+
+#### 7. InstagramMessagingService
+Handles direct messaging functionality:
+- Send text messages
+- Send media attachments
+- Typing indicators
+- Message templates
+- Quick replies
+
+### Error Handling
+
+All services implement consistent error handling:
+
+```json
+{
+  "success": false,
+  "error": "Error message",
+  "code": "ERROR_CODE",
+  "details": {
+    "field": "validation error details"
+  }
+}
+```
+
+### Common Error Codes
+- `INVALID_TOKEN`: Access token is invalid or expired
+- `INSUFFICIENT_PERMISSIONS`: Missing required Instagram permissions
+- `RATE_LIMIT_EXCEEDED`: API rate limit exceeded
+- `MEDIA_NOT_FOUND`: Requested media does not exist
+- `PUBLISHING_FAILED`: Content publishing failed
+- `OAUTH_ERROR`: OAuth flow error
+
+### Best Practices
+
+1. **Token Management**: Always handle token expiration gracefully
+2. **Rate Limiting**: Implement proper rate limiting to avoid API restrictions
+3. **Error Handling**: Always check response success status
+4. **Permissions**: Ensure users have granted necessary Instagram permissions
+5. **Media Validation**: Validate media URLs and formats before publishing
+6. **Pagination**: Use proper pagination for large data sets
+
+### Testing
+
+Use the provided test endpoints to verify your integration:
+
+```bash
+# Test connection
+curl -X GET "https://your-domain.com/api/v1/instagram/oauth/status" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Test profile access
+curl -X GET "https://your-domain.com/api/v1/instagram/profile" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ---

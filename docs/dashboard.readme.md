@@ -1,934 +1,629 @@
 # Dashboard API Documentation
 
-This documentation covers all dashboard endpoints for the Instagram Automation SaaS application. These endpoints provide dashboard analytics, overview, content calendar, and insights.
-
 ## Base URL
 ```
-http://localhost:3000/api/dashboard
+https://api.yourapp.com/api/dashboard
 ```
 
 ## Table of Contents
-1. [Dashboard Overview](#dashboard-overview)
-2. [Analytics](#analytics)
-3. [Content Calendar](#content-calendar)
-4. [Recent Activity](#recent-activity)
-5. [Insights](#insights)
-6. [Comprehensive Statistics](#comprehensive-statistics)
-7. [Error Responses](#error-responses)
-8. [Authentication](#authentication)
+- [Overview](#overview)
+- [Dashboard Endpoints](#dashboard-endpoints)
+  - [Get Dashboard Overview](#get-dashboard-overview)
+  - [Get Analytics](#get-analytics)
+  - [Get Content Calendar](#get-content-calendar)
+  - [Get Recent Activity](#get-recent-activity)
+  - [Get Insights](#get-insights)
+  - [Get Comprehensive Stats](#get-comprehensive-stats)
+  - [Get Detailed Analytics](#get-detailed-analytics)
+  - [Get Calendar Service](#get-calendar-service)
+- [Data Models](#data-models)
+- [Error Handling](#error-handling)
+- [Rate Limiting](#rate-limiting)
+- [Best Practices](#best-practices)
 
 ---
 
-## Dashboard Overview
+## Overview
 
-### 1. Get Dashboard Overview
-**Endpoint:** `GET /overview`  
-**Description:** Retrieves dashboard overview with key metrics and summary data.  
-**Required Permission:** `ANALYTICS_READ`  
-**Rate Limit:** General rate limit applies
+The Dashboard API provides comprehensive analytics, insights, and overview data for your social media automation platform. It aggregates data from posts, campaigns, automations, and platform accounts to give you a complete picture of your social media performance.
 
+### Key Features
+- Real-time dashboard overview with key metrics
+- Detailed analytics with time-based filtering
+- Content calendar for scheduling visualization
+- Recent activity tracking
+- AI-powered insights and recommendations
+- Comprehensive statistics across all platforms
+
+---
+
+## Dashboard Endpoints
+
+### Get Dashboard Overview
+Retrieve a comprehensive overview of your dashboard with key metrics and summary data.
+
+**Endpoint:** `GET /api/dashboard/overview`
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Query Parameters:**
+- `timeRange` (optional): Time period (7d, 30d, 90d, 1y) - default: 30d
+
+**Example Request:**
 ```bash
-curl -X GET http://localhost:3000/api/dashboard/overview \
-  -H "Content-Type: application/json" \
+curl -X GET "https://api.yourapp.com/api/dashboard/overview?timeRange=30d" \
   -H "Authorization: Bearer your_jwt_token"
 ```
 
-**Response:**
+**Example Response:**
 ```json
 {
   "success": true,
   "data": {
-    "summary": {
-      "totalPosts": 156,
-      "totalFollowers": 2450,
-      "totalEngagement": 12500,
-      "engagementRate": 5.1,
-      "activeAutomations": 8,
-      "scheduledPosts": 12
+    "connectedAccounts": 3,
+    "totalPosts": 156,
+    "activeAutomations": 8,
+    "totalCampaigns": 12,
+    "engagementMetrics": {
+      "totalLikes": 5420,
+      "totalComments": 890,
+      "totalShares": 234,
+      "totalViews": 45600,
+      "engagementRate": 4.8
     },
-    "recentMetrics": {
+    "recentActivity": {
       "postsThisWeek": 7,
       "followersGained": 45,
-      "likesReceived": 890,
-      "commentsReceived": 123,
-      "engagementGrowth": 12.5
+      "automationsExecuted": 24,
+      "campaignsCompleted": 2
     },
     "topPerformingPosts": [
       {
-        "id": "post_123",
-        "caption": "Amazing sunset photography tips...",
+        "_id": "64a1b2c3d4e5f6789012345",
+        "content": "Amazing sunset photography tips...",
+        "platform": "instagram",
         "likes": 245,
         "comments": 32,
-        "engagement": 277,
+        "shares": 12,
         "engagementRate": 8.2,
-        "publishedAt": "2024-01-15T10:30:00Z",
-        "mediaType": "image"
-      },
-      {
-        "id": "post_124",
-        "caption": "Behind the scenes content...",
-        "likes": 189,
-        "comments": 28,
-        "engagement": 217,
-        "engagementRate": 7.1,
-        "publishedAt": "2024-01-14T15:45:00Z",
-        "mediaType": "carousel"
+        "publishedAt": "2023-07-30T18:00:00.000Z"
       }
     ],
     "upcomingPosts": [
       {
-        "id": "scheduled_456",
-        "caption": "New product launch announcement...",
-        "scheduledFor": "2024-01-20T15:00:00Z",
-        "status": "scheduled",
-        "mediaType": "image",
-        "automationId": "auto_123"
-      },
-      {
-        "id": "scheduled_457",
-        "caption": "Weekly motivation quote...",
-        "scheduledFor": "2024-01-21T09:00:00Z",
-        "status": "scheduled",
-        "mediaType": "image",
-        "automationId": "auto_124"
+        "_id": "64a1b2c3d4e5f6789012346",
+        "content": "New product launch announcement...",
+        "platform": "instagram",
+        "scheduledAt": "2023-08-01T15:00:00.000Z",
+        "status": "scheduled"
       }
-    ],
-    "quickStats": {
-      "todaysPosts": 2,
-      "weeklyGoal": 7,
-      "weeklyProgress": 71.4,
-      "averageEngagementRate": 5.8
-    }
+    ]
   },
-  "message": "Dashboard overview retrieved successfully"
+  "meta": {
+    "timestamp": "2023-07-31T12:00:00.000Z",
+    "requestId": "req_123456789"
+  }
 }
 ```
 
----
+### Get Analytics
+Retrieve detailed analytics data with filtering and time-based analysis.
 
-## Analytics
+**Endpoint:** `GET /api/dashboard/analytics`
 
-### 2. Get Detailed Analytics
-**Endpoint:** `GET /analytics`  
-**Description:** Retrieves comprehensive analytics data including engagement, audience, and content metrics.  
-**Required Permission:** `ANALYTICS_READ`  
-**Rate Limit:** General rate limit applies
-
-```bash
-curl -X GET http://localhost:3000/api/dashboard/analytics \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_jwt_token"
+**Headers:**
+```
+Authorization: Bearer <token>
 ```
 
 **Query Parameters:**
-- `period` (optional) - Time period (7d, 30d, 90d, 1y) - default: 30d
-- `metrics` (optional) - Comma-separated list of specific metrics to include
+- `timeRange` (optional): Time period (7d, 30d, 90d, 1y) - default: 30d
+- `platform` (optional): Filter by platform (instagram, facebook, twitter, etc.)
+- `metric` (optional): Specific metric type (likes, comments, shares, views, etc.)
 
-**Response:**
+**Example Request:**
+```bash
+curl -X GET "https://api.yourapp.com/api/dashboard/analytics?timeRange=30d&platform=instagram&metric=engagement" \
+  -H "Authorization: Bearer your_jwt_token"
+```
+
+**Example Response:**
 ```json
 {
   "success": true,
   "data": {
-    "period": "30d",
-    "engagement": {
-      "totalLikes": 5420,
-      "totalComments": 890,
-      "totalShares": 234,
-      "totalSaves": 156,
-      "averageEngagementRate": 4.8,
-      "engagementTrend": "increasing",
-      "engagementGrowth": 15.2,
-      "bestPerformingPostType": "carousel",
-      "peakEngagementHours": ["18:00", "19:00", "20:00"]
-    },
-    "audience": {
-      "totalFollowers": 2450,
-      "followersGrowth": {
-        "thisWeek": 45,
-        "thisMonth": 180,
-        "percentage": 7.9,
-        "trend": "increasing"
-      },
-      "demographics": {
-        "ageGroups": {
-          "18-24": 35,
-          "25-34": 40,
-          "35-44": 20,
-          "45+": 5
-        },
-        "genderDistribution": {
-          "female": 58,
-          "male": 40,
-          "other": 2
-        },
-        "topLocations": [
-          {"country": "India", "percentage": 65, "city": "Mumbai"},
-          {"country": "USA", "percentage": 20, "city": "New York"},
-          {"country": "UK", "percentage": 10, "city": "London"},
-          {"country": "Canada", "percentage": 5, "city": "Toronto"}
-        ]
-      },
-      "activityPatterns": {
-        "mostActiveDays": ["Monday", "Wednesday", "Friday"],
-        "mostActiveHours": ["18:00", "19:00", "20:00"],
-        "timeZone": "Asia/Kolkata"
-      }
-    },
-    "content": {
-      "totalPosts": 156,
-      "postsThisMonth": 24,
-      "averagePostsPerWeek": 6,
-      "contentTypes": {
-        "image": 45,
-        "carousel": 35,
-        "video": 20
-      },
-      "topHashtags": [
-        {"tag": "#photography", "usage": 45, "avgEngagement": 5.2},
-        {"tag": "#nature", "usage": 38, "avgEngagement": 4.8},
-        {"tag": "#sunset", "usage": 32, "avgEngagement": 6.1},
-        {"tag": "#travel", "usage": 28, "avgEngagement": 5.5}
-      ],
-      "contentPerformance": {
-        "bestPerformingTime": "19:00",
-        "bestPerformingDay": "Wednesday",
-        "averageLikesPerPost": 78,
-        "averageCommentsPerPost": 12,
-        "averageReachPerPost": 1250
-      }
-    },
-    "reach": {
-      "totalReach": 45000,
-      "totalImpressions": 78000,
-      "reachGrowth": 22.5,
-      "impressionsGrowth": 18.7,
-      "averageReachPerPost": 1250,
-      "organicReach": 38000,
-      "hashtagReach": 7000
-    }
-  },
-  "message": "Analytics data retrieved successfully"
-}
-```
-
-### 3. Get Analytics by Date Range
-**Endpoint:** `GET /analytics/range`  
-**Description:** Retrieves analytics data for a specific date range.  
-**Required Permission:** `ANALYTICS_READ`  
-**Rate Limit:** General rate limit applies
-
-```bash
-curl -X GET "http://localhost:3000/api/dashboard/analytics/range?startDate=2024-01-01&endDate=2024-01-31" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_jwt_token"
-```
-
-**Query Parameters:**
-- `startDate` (required) - Start date in YYYY-MM-DD format
-- `endDate` (required) - End date in YYYY-MM-DD format
-- `granularity` (optional) - Data granularity (daily, weekly, monthly) - default: daily
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "dateRange": {
-      "startDate": "2024-01-01",
-      "endDate": "2024-01-31",
-      "granularity": "daily"
-    },
-    "timeSeries": [
+    "analytics": [
       {
-        "date": "2024-01-01",
-        "posts": 2,
-        "likes": 156,
-        "comments": 23,
-        "followers": 2405,
-        "reach": 1890,
-        "impressions": 3200
+        "date": "2023-07-01T00:00:00.000Z",
+        "value": 125,
+        "metricType": "engagement",
+        "platform": "instagram",
+        "changePercent": 5.2
       },
       {
-        "date": "2024-01-02",
-        "posts": 1,
-        "likes": 89,
-        "comments": 12,
-        "followers": 2408,
-        "reach": 1245,
-        "impressions": 2100
+        "date": "2023-07-02T00:00:00.000Z",
+        "value": 142,
+        "metricType": "engagement",
+        "platform": "instagram",
+        "changePercent": 13.6
       }
     ],
     "summary": {
-      "totalPosts": 24,
-      "totalLikes": 1890,
-      "totalComments": 234,
-      "followersGained": 45,
-      "averageEngagementRate": 4.8,
-      "bestPerformingDate": "2024-01-15"
-    }
+      "total": 4250,
+      "average": 141.7,
+      "max": 245,
+      "min": 89,
+      "growthRate": 15.3
+    },
+    "timeRange": "30d",
+    "metric": "engagement",
+    "platform": "instagram"
   },
-  "message": "Analytics range data retrieved successfully"
+  "meta": {
+    "timestamp": "2023-07-31T12:00:00.000Z",
+    "requestId": "req_123456789"
+  }
 }
 ```
 
----
+### Get Content Calendar
+Retrieve content calendar data for a specific month and year.
 
-## Content Calendar
+**Endpoint:** `GET /api/dashboard/content-calendar`
 
-### 4. Get Content Calendar
-**Endpoint:** `GET /content-calendar`  
-**Description:** Retrieves content calendar for specified month/year with scheduled and published posts.  
-**Required Permission:** `CONTENT_READ`  
-**Rate Limit:** General rate limit applies
-
-```bash
-curl -X GET "http://localhost:3000/api/dashboard/content-calendar?month=1&year=2024" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_jwt_token"
+**Headers:**
+```
+Authorization: Bearer <token>
 ```
 
 **Query Parameters:**
-- `month` (optional) - Month number (1-12, default: current month)
-- `year` (optional) - Year (default: current year)
-- `view` (optional) - Calendar view (month, week, day) - default: month
+- `month` (optional): Month (1-12) - default: current month
+- `year` (optional): Year - default: current year
+- `platform` (optional): Filter by platform
 
-**Response:**
+**Example Request:**
+```bash
+curl -X GET "https://api.yourapp.com/api/dashboard/content-calendar?month=8&year=2023&platform=instagram" \
+  -H "Authorization: Bearer your_jwt_token"
+```
+
+**Example Response:**
 ```json
 {
   "success": true,
   "data": {
     "calendar": {
-      "month": 1,
-      "year": 2024,
-      "view": "month",
-      "days": [
+      "2023-08-01": [
         {
-          "date": "2024-01-15",
-          "dayOfWeek": "Monday",
-          "posts": [
-            {
-              "id": "post_123",
-              "type": "published",
-              "mediaType": "image",
-              "caption": "Morning motivation for the week ahead...",
-              "scheduledTime": "09:00",
-              "publishedTime": "09:00",
-              "status": "published",
-              "engagement": {
-                "likes": 156,
-                "comments": 23
-              },
-              "automationId": "auto_123"
-            },
-            {
-              "id": "scheduled_456",
-              "type": "scheduled",
-              "mediaType": "carousel",
-              "caption": "Product showcase - New collection...",
-              "scheduledTime": "15:00",
-              "status": "scheduled",
-              "automationId": "auto_124"
-            }
-          ],
-          "totalPosts": 2,
-          "publishedPosts": 1,
-          "scheduledPosts": 1
+          "id": "64a1b2c3d4e5f6789012345",
+          "content": "Good morning! Hope you have a great day!",
+          "platform": "instagram",
+          "status": "published",
+          "publishedAt": "2023-08-01T09:00:00.000Z",
+          "mediaCount": 1
+        }
+      ],
+      "2023-08-02": [
+        {
+          "id": "64a1b2c3d4e5f6789012346",
+          "content": "New product announcement coming soon...",
+          "platform": "instagram",
+          "status": "scheduled",
+          "scheduledAt": "2023-08-02T15:00:00.000Z",
+          "mediaCount": 2
         },
         {
-          "date": "2024-01-16",
-          "dayOfWeek": "Tuesday",
-          "posts": [
-            {
-              "id": "scheduled_457",
-              "type": "scheduled",
-              "mediaType": "video",
-              "caption": "Behind the scenes content creation...",
-              "scheduledTime": "18:00",
-              "status": "scheduled",
-              "automationId": "auto_125"
-            }
-          ],
-          "totalPosts": 1,
-          "publishedPosts": 0,
-          "scheduledPosts": 1
+          "id": "64a1b2c3d4e5f6789012347",
+          "type": "campaign",
+          "name": "Summer Sale Campaign",
+          "status": "active",
+          "startDate": "2023-08-02T00:00:00.000Z",
+          "endDate": "2023-08-15T23:59:59.999Z"
         }
       ]
     },
-    "summary": {
-      "totalScheduled": 24,
-      "totalPublished": 18,
-      "totalDraft": 6,
-      "busyDays": ["2024-01-15", "2024-01-22", "2024-01-29"],
-      "averagePostsPerDay": 1.2,
-      "mostActiveDay": "Monday",
-      "upcomingDeadlines": [
-        {
-          "date": "2024-01-20",
-          "postsCount": 3,
-          "priority": "high"
-        }
-      ]
-    },
-    "monthlyGoals": {
-      "targetPosts": 30,
-      "currentPosts": 24,
-      "progress": 80,
-      "remainingDays": 7
-    }
+    "month": 8,
+    "year": 2023,
+    "platform": "instagram"
   },
-  "message": "Content calendar retrieved successfully"
+  "meta": {
+    "timestamp": "2023-07-31T12:00:00.000Z",
+    "requestId": "req_123456789"
+  }
 }
 ```
 
----
+### Get Recent Activity
+Retrieve recent activity feed including posts, campaigns, and automations.
 
-## Recent Activity
+**Endpoint:** `GET /api/dashboard/recent-activity`
 
-### 5. Get Recent Activity
-**Endpoint:** `GET /recent-activity`  
-**Description:** Retrieves recent activity feed including posts, automations, and engagement.  
-**Required Permission:** `USER_READ`  
-**Rate Limit:** General rate limit applies
-
-```bash
-curl -X GET http://localhost:3000/api/dashboard/recent-activity \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_jwt_token"
+**Headers:**
+```
+Authorization: Bearer <token>
 ```
 
 **Query Parameters:**
-- `limit` (optional) - Number of activities to return (default: 20, max: 100)
-- `type` (optional) - Filter by activity type (post, automation, engagement, follower)
-- `since` (optional) - ISO date string to get activities since that date
+- `limit` (optional): Number of activities to return (default: 20, max: 100)
+- `offset` (optional): Offset for pagination (default: 0)
 
-**Response:**
+**Example Request:**
+```bash
+curl -X GET "https://api.yourapp.com/api/dashboard/recent-activity?limit=10&offset=0" \
+  -H "Authorization: Bearer your_jwt_token"
+```
+
+**Example Response:**
 ```json
 {
   "success": true,
   "data": {
     "activities": [
       {
-        "id": "activity_123",
-        "type": "post_published",
-        "title": "Post Published",
-        "description": "New post published: 'Amazing sunset photography tips...'",
-        "timestamp": "2024-01-15T10:30:00Z",
+        "id": "64a1b2c3d4e5f6789012345",
+        "type": "post",
+        "action": "published",
+        "title": "New post published",
+        "description": "Amazing sunset photography tips...",
+        "platform": "instagram",
+        "timestamp": "2023-07-31T18:00:00.000Z",
         "metadata": {
-          "postId": "post_123",
-          "mediaType": "image",
-          "engagement": {
-            "likes": 45,
-            "comments": 8,
-            "shares": 2
-          },
-          "automationId": "auto_123"
-        },
-        "priority": "normal"
+          "likes": 45,
+          "comments": 8,
+          "mediaType": "image"
+        }
       },
       {
-        "id": "activity_124",
-        "type": "follower_milestone",
-        "title": "Follower Milestone",
-        "description": "Reached 2,500 followers!",
-        "timestamp": "2024-01-14T16:20:00Z",
+        "id": "64a1b2c3d4e5f6789012346",
+        "type": "automation",
+        "action": "executed",
+        "title": "Daily Post Scheduler executed",
+        "description": "Automation completed successfully",
+        "timestamp": "2023-07-31T09:00:00.000Z",
         "metadata": {
-          "milestone": 2500,
-          "previousCount": 2450,
-          "growthRate": 2.0
-        },
-        "priority": "high"
+          "executionTime": 1250,
+          "status": "success"
+        }
       },
       {
-        "id": "activity_125",
-        "type": "automation_triggered",
-        "title": "Automation Executed",
-        "description": "Auto-reply sent to 5 new comments",
-        "timestamp": "2024-01-14T14:15:00Z",
+        "id": "64a1b2c3d4e5f6789012347",
+        "type": "campaign",
+        "action": "started",
+        "title": "Summer Sale Campaign started",
+        "description": "Campaign is now active",
+        "timestamp": "2023-07-31T00:00:00.000Z",
         "metadata": {
-          "automationId": "auto_123",
-          "automationName": "Comment Auto-Reply",
-          "repliesCount": 5,
-          "triggerType": "comment_received"
-        },
-        "priority": "normal"
-      },
-      {
-        "id": "activity_126",
-        "type": "engagement_spike",
-        "title": "High Engagement",
-        "description": "Post received 200+ likes in 1 hour",
-        "timestamp": "2024-01-13T19:45:00Z",
-        "metadata": {
-          "postId": "post_122",
-          "engagementCount": 234,
-          "timeframe": "1 hour",
-          "engagementRate": 9.2
-        },
-        "priority": "high"
-      },
-      {
-        "id": "activity_127",
-        "type": "automation_paused",
-        "title": "Automation Paused",
-        "description": "Automation 'Daily Quotes' was paused due to rate limit",
-        "timestamp": "2024-01-13T12:30:00Z",
-        "metadata": {
-          "automationId": "auto_125",
-          "automationName": "Daily Quotes",
-          "reason": "rate_limit_reached",
-          "pauseDuration": "2 hours"
-        },
-        "priority": "medium"
+          "duration": "14 days",
+          "targetPosts": 20
+        }
       }
     ],
     "pagination": {
-      "page": 1,
-      "limit": 20,
+      "limit": 10,
+      "offset": 0,
       "total": 156,
-      "hasMore": true,
-      "nextCursor": "activity_127"
-    },
-    "summary": {
-      "totalActivities": 156,
-      "todaysActivities": 8,
-      "highPriorityCount": 3,
-      "lastActivityTime": "2024-01-15T10:30:00Z"
+      "hasMore": true
     }
   },
-  "message": "Recent activity retrieved successfully"
+  "meta": {
+    "timestamp": "2023-07-31T12:00:00.000Z",
+    "requestId": "req_123456789"
+  }
 }
 ```
 
----
+### Get Insights
+Retrieve AI-powered insights and recommendations based on your data.
 
-## Insights
+**Endpoint:** `GET /api/dashboard/insights`
 
-### 6. Get Insights and Recommendations
-**Endpoint:** `GET /insights`  
-**Description:** Retrieves AI-powered insights and recommendations for content strategy.  
-**Required Permission:** `ANALYTICS_READ`  
-**Rate Limit:** General rate limit applies
-
-```bash
-curl -X GET http://localhost:3000/api/dashboard/insights \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_jwt_token"
+**Headers:**
+```
+Authorization: Bearer <token>
 ```
 
 **Query Parameters:**
-- `category` (optional) - Filter by insight category (performance, growth, content, audience)
-- `priority` (optional) - Filter by priority level (high, medium, low)
+- `timeRange` (optional): Time period for analysis (7d, 30d, 90d, 1y) - default: 30d
+- `platform` (optional): Filter by platform
 
-**Response:**
+**Example Request:**
+```bash
+curl -X GET "https://api.yourapp.com/api/dashboard/insights?timeRange=30d" \
+  -H "Authorization: Bearer your_jwt_token"
+```
+
+**Example Response:**
 ```json
 {
   "success": true,
   "data": {
-    "performanceInsights": [
+    "insights": [
       {
-        "id": "insight_001",
-        "type": "best_posting_time",
-        "category": "performance",
-        "title": "Optimal Posting Time",
-        "description": "Your audience is most active between 6-8 PM IST",
-        "recommendation": "Schedule more posts during evening hours to maximize engagement",
+        "type": "performance",
+        "title": "Peak Engagement Time",
+        "description": "Your posts perform best between 6-8 PM",
+        "recommendation": "Schedule more posts during this time window",
         "impact": "high",
-        "confidence": 92,
         "data": {
-          "bestHours": ["18:00", "19:00", "20:00"],
-          "engagementIncrease": "23%",
-          "currentAverageEngagement": 4.8,
-          "projectedEngagement": 5.9
-        },
-        "actionItems": [
-          "Reschedule existing automations to peak hours",
-          "Create content specifically for evening audience",
-          "Monitor engagement during recommended times"
-        ]
+          "peakHours": ["18:00", "19:00", "20:00"],
+          "averageEngagement": 8.2,
+          "improvementPotential": "25%"
+        }
       },
       {
-        "id": "insight_002",
-        "type": "content_performance",
-        "category": "content",
+        "type": "content",
         "title": "Top Performing Content Type",
-        "description": "Carousel posts get 40% more engagement than single images",
-        "recommendation": "Increase carousel content ratio to 50% of total posts",
+        "description": "Carousel posts generate 40% more engagement",
+        "recommendation": "Create more carousel content",
         "impact": "medium",
-        "confidence": 87,
         "data": {
-          "carouselEngagement": 6.2,
-          "imageEngagement": 4.4,
-          "videoEngagement": 3.8,
-          "currentCarouselRatio": 35,
-          "recommendedRatio": 50
-        },
-        "actionItems": [
-          "Create more multi-slide content",
-          "Repurpose single images into carousels",
-          "Plan carousel-specific content themes"
-        ]
-      }
-    ],
-    "growthOpportunities": [
-      {
-        "id": "opportunity_001",
-        "type": "hashtag_optimization",
-        "category": "growth",
-        "title": "Hashtag Strategy Enhancement",
-        "description": "Using trending hashtags can increase reach by 35%",
-        "potentialImpact": "high",
-        "effort": "low",
-        "timeframe": "1-2 weeks",
-        "actionItems": [
-          "Research trending hashtags in photography niche",
-          "Use 8-12 hashtags per post (currently using 5-7)",
-          "Mix popular and niche-specific tags",
-          "Create branded hashtag for community building"
-        ],
-        "expectedResults": {
-          "reachIncrease": "35%",
-          "engagementIncrease": "20%",
-          "followerGrowth": "15%"
+          "contentTypes": {
+            "carousel": 8.5,
+            "image": 6.1,
+            "video": 7.2
+          }
         }
       },
       {
-        "id": "opportunity_002",
-        "type": "audience_expansion",
-        "category": "growth",
-        "title": "Geographic Expansion",
-        "description": "Opportunity to grow audience in US and UK markets",
-        "potentialImpact": "medium",
-        "effort": "medium",
-        "timeframe": "4-6 weeks",
-        "actionItems": [
-          "Create content relevant to US/UK time zones",
-          "Use location-specific hashtags",
-          "Engage with accounts in target regions",
-          "Consider English captions for broader appeal"
-        ],
-        "expectedResults": {
-          "internationalFollowers": "+25%",
-          "globalReach": "+40%",
-          "diversifiedAudience": "improved"
+        "type": "hashtags",
+        "title": "Hashtag Optimization",
+        "description": "Using 8-12 hashtags yields best results",
+        "recommendation": "Optimize hashtag count in your posts",
+        "impact": "medium",
+        "data": {
+          "optimalRange": "8-12",
+          "currentAverage": 6,
+          "potentialIncrease": "15%"
         }
-      }
-    ],
-    "alerts": [
-      {
-        "id": "alert_001",
-        "type": "engagement_drop",
-        "severity": "medium",
-        "title": "Engagement Rate Decline",
-        "message": "Engagement rate decreased by 15% this week compared to last week",
-        "suggestion": "Review recent content strategy and posting times",
-        "urgency": "moderate",
-        "detectedAt": "2024-01-15T08:00:00Z",
-        "data": {
-          "currentRate": 4.2,
-          "previousRate": 4.9,
-          "decline": 15,
-          "affectedPosts": 7
-        },
-        "recommendedActions": [
-          "Analyze underperforming posts",
-          "Return to previously successful content themes",
-          "Increase audience interaction through stories"
-        ]
-      },
-      {
-        "id": "alert_002",
-        "type": "automation_issue",
-        "severity": "high",
-        "title": "Automation Rate Limit",
-        "message": "3 automations paused due to Instagram rate limits",
-        "suggestion": "Reduce automation frequency or spread actions across longer time periods",
-        "urgency": "high",
-        "detectedAt": "2024-01-14T22:30:00Z",
-        "data": {
-          "pausedAutomations": 3,
-          "affectedActions": ["auto_like", "auto_comment", "auto_follow"],
-          "estimatedResumeTime": "2024-01-15T06:00:00Z"
-        },
-        "recommendedActions": [
-          "Adjust automation timing intervals",
-          "Review Instagram API usage limits",
-          "Consider premium automation features"
-        ]
       }
     ],
     "summary": {
-      "totalInsights": 8,
-      "highImpactInsights": 3,
-      "activeAlerts": 2,
-      "implementedRecommendations": 5,
-      "lastUpdated": "2024-01-15T12:00:00Z"
+      "totalInsights": 3,
+      "highImpact": 1,
+      "mediumImpact": 2,
+      "lowImpact": 0
     }
   },
-  "message": "Insights and recommendations retrieved successfully"
+  "meta": {
+    "timestamp": "2023-07-31T12:00:00.000Z",
+    "requestId": "req_123456789"
+  }
 }
 ```
 
----
+### Get Comprehensive Stats
+Retrieve comprehensive dashboard statistics using the dashboard service.
 
-## Comprehensive Statistics
+**Endpoint:** `GET /api/dashboard/stats`
 
-### 7. Get Comprehensive Statistics
-**Endpoint:** `GET /stats`  
-**Description:** Retrieves comprehensive dashboard statistics and KPIs.  
-**Required Permission:** `ANALYTICS_READ`  
-**Rate Limit:** General rate limit applies
-
-```bash
-curl -X GET http://localhost:3000/api/dashboard/stats \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_jwt_token"
+**Headers:**
+```
+Authorization: Bearer <token>
 ```
 
 **Query Parameters:**
-- `period` (optional) - Time period for statistics (7d, 30d, 90d, 1y) - default: 30d
-- `compare` (optional) - Compare with previous period (true/false) - default: false
+- `timeRange` (optional): Time period (7d, 30d, 90d, 1y) - default: 30d
 
-**Response:**
+**Example Response:**
 ```json
 {
   "success": true,
   "data": {
-    "period": "30d",
     "overview": {
       "totalPosts": 156,
       "totalFollowers": 2450,
       "totalEngagement": 12500,
-      "averageEngagementRate": 5.1,
-      "totalReach": 45000,
-      "totalImpressions": 78000,
-      "profileViews": 3200,
-      "websiteClicks": 156
+      "activeAutomations": 8,
+      "connectedAccounts": 3
     },
     "growth": {
-      "followersGrowth": {
-        "daily": 1.2,
-        "weekly": 8.5,
-        "monthly": 35.2,
-        "trend": "increasing"
-      },
-      "engagementGrowth": {
-        "daily": 2.1,
-        "weekly": 12.3,
-        "monthly": 28.7,
-        "trend": "increasing"
-      },
-      "reachGrowth": {
-        "daily": 3.5,
-        "weekly": 15.2,
-        "monthly": 42.8,
-        "trend": "increasing"
-      }
+      "followersGrowth": 15.2,
+      "engagementGrowth": 12.8,
+      "postsGrowth": 8.5
     },
-    "contentStats": {
-      "postsPerWeek": 6,
-      "averageLikesPerPost": 78,
-      "averageCommentsPerPost": 12,
-      "averageSharesPerPost": 3,
-      "averageSavesPerPost": 8,
-      "topPerformingPostType": "carousel",
-      "contentTypeDistribution": {
-        "image": 45,
-        "carousel": 35,
-        "video": 20
-      },
-      "hashtagPerformance": {
-        "averageHashtagsPerPost": 8,
-        "topPerformingHashtag": "#photography",
-        "hashtagReach": 15000
-      }
+    "performance": {
+      "averageEngagementRate": 4.8,
+      "topPerformingPlatform": "instagram",
+      "bestPostingTime": "19:00"
     },
-    "audienceInsights": {
-      "mostActiveHours": ["18:00", "19:00", "20:00"],
-      "mostActiveDays": ["Monday", "Wednesday", "Friday"],
-      "topAgeGroup": "25-34",
-      "topLocation": "Mumbai, India",
-      "genderDistribution": {
-        "female": 58,
-        "male": 40,
-        "other": 2
-      },
-      "audienceGrowthRate": 7.9,
-      "audienceRetentionRate": 92.3
-    },
-    "automationStats": {
-      "totalAutomations": 8,
-      "activeAutomations": 6,
-      "pausedAutomations": 2,
-      "automationSuccessRate": 94.5,
-      "totalAutomatedActions": 1250,
-      "automationEngagementBoost": 23.5
-    },
-    "comparison": {
-      "previousPeriod": "2023-12-01 to 2023-12-31",
-      "changes": {
-        "followers": "+15.2%",
-        "engagement": "+28.7%",
-        "reach": "+42.8%",
-        "posts": "+12.5%"
-      }
-    },
-    "goals": {
-      "monthlyFollowerTarget": 2500,
-      "currentProgress": 98.0,
-      "monthlyPostTarget": 30,
-      "postsProgress": 80.0,
-      "engagementRateTarget": 5.5,
-      "engagementProgress": 92.7
+    "predictions": {
+      "nextMonthFollowers": 2820,
+      "nextMonthEngagement": 14100,
+      "growthTrend": "positive"
     }
   },
-  "message": "Comprehensive statistics retrieved successfully"
+  "meta": {
+    "timestamp": "2023-07-31T12:00:00.000Z",
+    "requestId": "req_123456789"
+  }
+}
+```
+
+### Get Detailed Analytics
+Retrieve detailed analytics using the dashboard service with advanced filtering.
+
+**Endpoint:** `GET /api/dashboard/analytics/detailed`
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Query Parameters:**
+- `timeRange` (optional): Time period (7d, 30d, 90d, 1y) - default: 30d
+- `metrics` (optional): Comma-separated list of metrics
+- `groupBy` (optional): Group data by (day, week, month)
+- `platform` (optional): Filter by platform
+
+### Get Calendar Service
+Retrieve content calendar using the dashboard service with enhanced features.
+
+**Endpoint:** `GET /api/dashboard/calendar/service`
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Query Parameters:**
+- `month` (optional): Month (1-12) - default: current month
+- `year` (optional): Year - default: current year
+- `view` (optional): Calendar view (month, week, day) - default: month
+- `includeAnalytics` (optional): Include performance analytics (true/false) - default: false
+
+---
+
+## Data Models
+
+### Dashboard Overview Model
+```typescript
+interface DashboardOverview {
+  connectedAccounts: number;
+  totalPosts: number;
+  activeAutomations: number;
+  totalCampaigns: number;
+  engagementMetrics: {
+    totalLikes: number;
+    totalComments: number;
+    totalShares: number;
+    totalViews: number;
+    engagementRate: number;
+  };
+  recentActivity: {
+    postsThisWeek: number;
+    followersGained: number;
+    automationsExecuted: number;
+    campaignsCompleted: number;
+  };
+  topPerformingPosts: Post[];
+  upcomingPosts: ScheduledPost[];
+}
+```
+
+### Analytics Data Model
+```typescript
+interface AnalyticsData {
+  date: Date;
+  value: number;
+  metricType: string;
+  platform: string;
+  changePercent: number;
+}
+
+interface AnalyticsSummary {
+  total: number;
+  average: number;
+  max: number;
+  min: number;
+  growthRate: number;
+}
+```
+
+### Activity Model
+```typescript
+interface Activity {
+  id: string;
+  type: 'post' | 'automation' | 'campaign' | 'account';
+  action: string;
+  title: string;
+  description: string;
+  platform?: string;
+  timestamp: Date;
+  metadata: Record<string, any>;
+}
+```
+
+### Insight Model
+```typescript
+interface Insight {
+  type: 'performance' | 'content' | 'hashtags' | 'timing' | 'audience';
+  title: string;
+  description: string;
+  recommendation: string;
+  impact: 'high' | 'medium' | 'low';
+  data: Record<string, any>;
 }
 ```
 
 ---
 
-## Error Responses
-
-All endpoints may return the following error responses:
+## Error Handling
 
 ### Common Error Codes
+- `400`: Bad Request - Invalid parameters
+- `401`: Unauthorized - Invalid or missing authentication token
+- `403`: Forbidden - Insufficient permissions
+- `404`: Not Found - Resource not found
+- `422`: Unprocessable Entity - Validation errors
+- `429`: Too Many Requests - Rate limit exceeded
+- `500`: Internal Server Error - Server error
 
-**400 Bad Request**
+### Error Response Format
 ```json
 {
   "success": false,
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid request parameters",
-    "details": [
-      {
-        "field": "period",
-        "message": "Period must be one of: 7d, 30d, 90d, 1y"
-      }
-    ]
-  }
-}
-```
-
-**401 Unauthorized**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "UNAUTHORIZED",
-    "message": "Authentication required"
-  }
-}
-```
-
-**403 Forbidden**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "INSUFFICIENT_PERMISSIONS",
-    "message": "You don't have permission to access this resource",
-    "requiredPermission": "ANALYTICS_READ"
-  }
-}
-```
-
-**404 Not Found**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "RESOURCE_NOT_FOUND",
-    "message": "Requested resource not found"
-  }
-}
-```
-
-**429 Too Many Requests**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "message": "Rate limit exceeded. Please try again later.",
-    "retryAfter": 3600
-  }
-}
-```
-
-### Dashboard-Specific Error Codes
-
-**DATA_NOT_AVAILABLE**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "DATA_NOT_AVAILABLE",
-    "message": "Analytics data not available for the requested period",
+    "code": "INVALID_TIME_RANGE",
+    "message": "Invalid time range specified",
     "details": {
-      "reason": "insufficient_data",
-      "minimumPeriod": "7d"
+      "validRanges": ["7d", "30d", "90d", "1y"]
     }
-  }
-}
-```
-
-**ANALYTICS_SERVICE_ERROR**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "ANALYTICS_SERVICE_ERROR",
-    "message": "Analytics service temporarily unavailable",
-    "details": {
-      "service": "instagram_insights",
-      "retryAfter": 300
-    }
+  },
+  "meta": {
+    "timestamp": "2023-07-31T12:00:00.000Z",
+    "requestId": "req_123456789"
   }
 }
 ```
 
 ---
 
-## Authentication
+## Rate Limiting
 
-All dashboard API endpoints require:
+- **General API calls**: 1000 requests per hour per user
+- **Analytics endpoints**: 500 requests per hour per user
+- **Real-time data**: 100 requests per minute per user
 
-1. **User Authentication**: Valid JWT token in Authorization header
-2. **Permissions**: Specific permissions based on endpoint requirements
+Rate limit headers are included in all responses:
+```
+X-RateLimit-Limit: 1000
+X-RateLimit-Remaining: 999
+X-RateLimit-Reset: 1627776000
+```
 
-### Required Permissions
+---
 
-- `ANALYTICS_READ` - For accessing analytics, insights, and statistics
-- `CONTENT_READ` - For accessing content calendar and post data
-- `USER_READ` - For accessing basic dashboard overview and activity
+## Best Practices
 
-### Rate Limiting
+### 1. Efficient Data Fetching
+- Use appropriate time ranges to limit data volume
+- Filter by platform when possible to reduce response size
+- Implement client-side caching for frequently accessed data
+- Use pagination for large datasets
 
-- **General endpoints**: 1000 requests per hour per user
-- **Analytics endpoints**: 500 requests per hour per user (due to computational overhead)
+### 2. Real-time Updates
+- Implement WebSocket connections for real-time dashboard updates
+- Use polling intervals of 30 seconds or more for live data
+- Cache dashboard data and refresh periodically
+- Subscribe to relevant webhook events for instant updates
 
-Rate limits are enforced per user and reset every hour. When rate limit is exceeded, the API returns a 429 status code with retry information.
+### 3. Performance Optimization
+- Request only the metrics you need using query parameters
+- Use the summary endpoints for overview data
+- Implement progressive loading for detailed analytics
+- Consider using the detailed analytics endpoint for complex queries
 
-### Security Features
+### 4. Data Visualization
+- Use the provided time-series data for charts and graphs
+- Implement responsive design for mobile dashboard viewing
+- Show loading states while fetching analytics data
+- Provide export functionality for analytics reports
 
-- All requests must be made over HTTPS in production
-- JWT tokens expire after 24 hours
-- Dashboard data is user-specific and isolated
-- Request validation and sanitization applied to all inputs
-- Analytics data is cached for performance optimization
-- Sensitive metrics are only available to account owners
-
-### Data Freshness
-
-- **Real-time data**: Recent activity, current follower count
-- **Near real-time** (5-15 minutes): Engagement metrics, post performance
-- **Hourly updates**: Detailed analytics, audience insights
-- **Daily updates**: Growth trends, comprehensive statistics
-
-### Performance Considerations
-
-- Large date ranges may take longer to process
-- Analytics data is cached for 15 minutes to improve performance
-- Use pagination for large datasets (recent activity, content calendar)
-- Consider using specific metric filters to reduce response size
+### 5. Error Handling
+- Implement retry logic for failed requests
+- Show meaningful error messages to users
+- Gracefully handle missing or incomplete data
+- Provide fallback data when real-time updates fail

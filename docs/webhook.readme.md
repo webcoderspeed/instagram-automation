@@ -1,17 +1,37 @@
 # Webhook API Documentation
 
-यह documentation Instagram Automation SaaS application के सभी webhook endpoints के लिए है। Webhooks external platforms से real-time events receive करने के लिए उपयोग होते हैं।
-
-## Base URL
-```
-http://localhost:3000/api/webhook
-```
+**Base URL:** `https://your-domain.com/api/v1/webhook`
 
 ## Table of Contents
-1. [Instagram Webhook Verification](#instagram-webhook-verification)
-2. [Instagram Webhook Handler](#instagram-webhook-handler)
-3. [Webhook Subscription Management](#webhook-subscription-management)
-4. [Webhook Security](#webhook-security)
+1. [Overview](#overview)
+2. [Instagram Webhook Verification](#instagram-webhook-verification)
+3. [Instagram Webhook Handler](#instagram-webhook-handler)
+4. [Webhook Subscription Management](#webhook-subscription-management)
+5. [Event Processing](#event-processing)
+6. [Webhook Security](#webhook-security)
+7. [Webhook Event Types](#webhook-event-types)
+8. [Error Handling](#error-handling)
+9. [Rate Limiting](#rate-limiting)
+10. [Monitoring & Analytics](#monitoring--analytics)
+11. [Data Models](#data-models)
+12. [Best Practices](#best-practices)
+13. [Testing](#testing)
+
+---
+
+## Overview
+
+The Webhook API provides real-time event processing for Instagram and Facebook platform events. It handles webhook verification, signature validation, event routing, and automated responses to user interactions.
+
+### Key Features
+
+- **Real-time Event Processing**: Instant handling of Instagram messages, comments, and mentions
+- **Secure Verification**: SHA256 signature validation and token verification
+- **Event Routing**: Intelligent routing to specialized handlers based on event type
+- **Automatic Retries**: Built-in retry logic for failed event processing
+- **Comprehensive Logging**: Detailed logging for debugging and monitoring
+- **Rate Limiting**: Protection against abuse and excessive requests
+- **Subscription Management**: Easy webhook subscription and configuration
 
 ---
 
