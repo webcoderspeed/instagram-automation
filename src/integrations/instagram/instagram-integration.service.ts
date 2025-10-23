@@ -7,6 +7,7 @@ import envConfig from "../../config/env.config";
 import logger from "../../utils/logger";
 import { instagramTokenService } from "./instagram-token.service";
 import { PlatformAccountModel } from "../../models/platform-account.model";
+import { PlatformAccountEncryption } from "../../utils/platform-account-encryption";
 
 // Import specialized services
 import { instagramAuthService } from "./auth/auth.service";
@@ -204,11 +205,16 @@ export class InstagramIntegrationService {
             access_token: longLivedToken.access_token,
             metric: [
               'reach',
-              'impressions',
-              'follower_count'
+              'follower_count',
+              'profile_views',
+              'accounts_engaged',
+              'total_interactions',
+              'website_clicks'
             ],
             period: 'day'
           });
+
+          console.log('insightsResponse', insightsResponse);
           
           if (insightsResponse.success && insightsResponse.data) {
             accountInsights = insightsResponse.data;
@@ -468,8 +474,11 @@ export class InstagramIntegrationService {
       access_token: accessToken,
       metric: [
         'reach',
-        'impressions',
-        'follower_count'
+        'follower_count',
+        'profile_views',
+        'accounts_engaged',
+        'total_interactions',
+        'website_clicks'
       ],
       period
     });
@@ -498,6 +507,9 @@ export class InstagramIntegrationService {
         id: account.platformUserId
       });
 
+      // Decrypt tokens after retrieval
+      PlatformAccountEncryption.decryptTokensAfterRetrieve(platformAccount);
+
       if (platformAccount) {
         // Update the credentials
         platformAccount.accessToken = account.credentials.accessToken;
@@ -509,7 +521,8 @@ export class InstagramIntegrationService {
         }
         platformAccount.lastSyncAt = account.lastSyncAt || new Date();
 
-        // Save the updated account (encryption will be handled by model hooks)
+        // Encrypt tokens before saving
+        PlatformAccountEncryption.encryptTokensOnInstance(platformAccount);
         await platformAccount.save();
 
         logger.info("Platform account credentials updated successfully", {
@@ -546,6 +559,9 @@ export class InstagramIntegrationService {
         platform: 'instagram',
         isActive: true
       });
+
+      // Decrypt tokens after retrieval
+      PlatformAccountEncryption.decryptTokensAfterRetrieve(platformAccount);
 
       if (!platformAccount?.accessToken) {
         return false;
@@ -586,6 +602,9 @@ export class InstagramIntegrationService {
       return { isConnected: false };
     }
 
+    // Decrypt tokens after retrieval
+    PlatformAccountEncryption.decryptTokensAfterRetrieve(platformAccount);
+
     const tokenStatus = instagramTokenService.validateToken({
       accessToken: platformAccount.accessToken,
       refreshToken: platformAccount.refreshToken,
@@ -622,6 +641,9 @@ export class InstagramIntegrationService {
         return false;
       }
 
+      // Decrypt tokens after retrieval
+      PlatformAccountEncryption.decryptTokensAfterRetrieve(platformAccount);
+
       const tokenInfo = instagramTokenService.getTokenInfo({
         accessToken: platformAccount.accessToken,
         refreshToken: platformAccount.refreshToken,
@@ -644,7 +666,8 @@ export class InstagramIntegrationService {
           }
           platformAccount.lastSyncAt = new Date();
 
-          // Save the updated account
+          // Encrypt tokens before saving
+          PlatformAccountEncryption.encryptTokensOnInstance(platformAccount);
           await platformAccount.save();
 
           logger.info("Instagram token refreshed successfully", {

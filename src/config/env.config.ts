@@ -42,7 +42,7 @@ const envSchema = z.object({
   LINKEDIN_CLIENT_SECRET: z.string().optional(),
   
   // Security
-  ENCRYPTION_KEY: z.string().default('your-encryption-key'),
+  ENCRYPTION_KEY: z.string().default('your-encryption-key-must-be-at-least-32-characters-long-for-security'),
   SESSION_SECRET: z.string().default('your-super-secret-session-key-change-in-production'),
   
   // Email Configuration

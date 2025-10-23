@@ -8,7 +8,9 @@ import { SubscriptionDocument } from '../../models/subscription.model';
 import { AnalyticsModel, MetricType, MetricTypeType } from '../../models/analytics.model';
 import { AutomationModel } from '../../models/automation.model';
 import { PlatformAccountModel } from '../../models/platform-account.model';
+import { PostModel } from '../../models/post.model';
 import { NotificationModel } from '../../models/notification.model';
+import { PlatformAccountEncryption } from '../../utils/platform-account-encryption';
 import { roleService } from '../role.service';
 import { PERMISSIONS } from '../../constants/permissions';
 import logger from '../../utils/logger';
@@ -43,6 +45,9 @@ class DashboardStatsService {
         userId: user._id,
         isActive: true
       });
+
+      // Decrypt tokens after retrieval
+      PlatformAccountEncryption.decryptTokensForArray(platformAccounts);
 
       // Get analytics data - aggregate different metric types
       const [likesData, commentsData, sharesData, followersData] = await Promise.all([

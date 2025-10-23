@@ -6,6 +6,7 @@ import express, { Request, Response, NextFunction } from "express";
 import morgan from "morgan";
 import logger from "./utils/logger";
 import { instagramService } from "./services/instagram";
+import { instagramIntegrationService } from "./integrations";
 import {
   createWebhookController,
 } from "./services/webhook/webhook-controller";
@@ -342,11 +343,10 @@ app.get(
         });
       }
 
-      instagramService.setConfig({
-        accessToken: process.env.INSTAGRAM_ACCESS_TOKEN,
-      });
-
-      const insights = await instagramService.getAccountInsights(period);
+      const insights = await instagramIntegrationService.getAccountInsights(
+        process.env.INSTAGRAM_ACCESS_TOKEN,
+        period
+      );
 
       if (!insights) {
         return res.status(404).json({

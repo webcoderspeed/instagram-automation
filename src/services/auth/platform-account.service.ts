@@ -4,6 +4,7 @@ import { AuthenticatedUser } from '../../types/user.types';
 import { SessionUser } from '../../config/session.config';
 import { PlatformAccountModel } from '../../models/platform-account.model';
 import logger from '../../utils/logger';
+import { PlatformAccountEncryption } from '../../utils/platform-account-encryption';
 
 import { PlatformAccount } from '../../types/platform.types';
 
@@ -24,6 +25,9 @@ export class PlatformAccountService {
         logger.debug(`No ${platform} account found for user ${userId}`);
         return null;
       }
+
+      // Decrypt tokens after retrieval
+      PlatformAccountEncryption.decryptTokensAfterRetrieve(account);
 
       return {
         id: String(account._id),

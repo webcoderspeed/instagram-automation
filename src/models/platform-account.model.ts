@@ -6,7 +6,7 @@
 import { Schema, model, Types, Document } from 'mongoose';
 import { SocialPlatform } from '../types/common.types';
 import { EncryptionUtil } from '../utils/encryption';
-// Platform Account Status const object
+
 export const PlatformAccountStatus = {
   ACTIVE: 'active',
   INACTIVE: 'inactive',
@@ -246,51 +246,7 @@ const platformAccountSchema = new Schema({
   collection: 'platform_accounts'
 });
 
-// Encryption hooks
-// Encrypt tokens before saving
-platformAccountSchema.pre('save', function(next) {
-  try {
-    // Encrypt access token if it's modified and not already encrypted
-    if (this.isModified('accessToken') && this.accessToken && !EncryptionUtil.isEncrypted(this.accessToken)) {
-      this.accessToken = EncryptionUtil.encryptAccessToken(this.accessToken);
-    }
-    
-    // Encrypt refresh token if it's modified and not already encrypted
-    if (this.isModified('refreshToken') && this.refreshToken && !EncryptionUtil.isEncrypted(this.refreshToken)) {
-      this.refreshToken = EncryptionUtil.encryptRefreshToken(this.refreshToken);
-    }
-    
-    next();
-  } catch (error) {
-    next(error as Error);
-  }
-});
-
-// Decrypt tokens after finding
-platformAccountSchema.post(['find', 'findOne', 'findOneAndUpdate'], function(docs) {
-  try {
-    if (!docs) return;
-    
-    const documents = Array.isArray(docs) ? docs : [docs];
-    
-    documents.forEach((doc: any) => {
-      if (doc && typeof doc === 'object') {
-        // Decrypt access token if it exists and is encrypted
-        if (doc.accessToken && EncryptionUtil.isEncrypted(doc.accessToken)) {
-          doc.accessToken = EncryptionUtil.decryptAccessToken(doc.accessToken);
-        }
-        
-        // Decrypt refresh token if it exists and is encrypted
-        if (doc.refreshToken && EncryptionUtil.isEncrypted(doc.refreshToken)) {
-          doc.refreshToken = EncryptionUtil.decryptRefreshToken(doc.refreshToken);
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error decrypting tokens:', error);
-    // Don't throw error here to avoid breaking queries
-  }
-});
+// Note: Encryption/decryption is now handled at the service level for better control
 
 // Instance methods
 platformAccountSchema.methods.refreshAccessToken = async function(this: PlatformAccountDocument): Promise<PlatformAccountDocument> {

@@ -5,8 +5,8 @@ import { ApiError } from '../utils/api-error';
 import { AutomationModel, AutomationStatus, AutomationType, TriggerType } from '../models/automation.model';
 import { PlatformAccountModel } from '../models/platform-account.model';
 import { automationService } from '../services/automation.service';
-import logger from '../utils/logger';
 import { sendSuccess, createMeta } from '../utils/response-builder';
+import { PlatformAccountEncryption } from '../utils/platform-account-encryption';
 
 export class AutomationController {
   /**
@@ -136,6 +136,9 @@ export class AutomationController {
         userId,
         isActive: true
       });
+
+      // Decrypt tokens after retrieval
+      PlatformAccountEncryption.decryptTokensForArray(userPlatformAccounts);
 
       if (userPlatformAccounts.length !== platformAccounts.length) {
         throw new ApiError(400, 'One or more platform accounts are invalid or not accessible');

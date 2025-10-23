@@ -268,24 +268,7 @@ class InstagramService {
   /**
    * Get account insights (Business/Creator accounts only)
    */
-  async getAccountInsights(period: 'day' | 'week' | 'days_28' = 'day'): Promise<InstagramInsights | null> {
-    try {
-      logger.info(`Fetching account insights for period: ${period}`);
-      
-      // Updated metrics for v24.0 compatibility - removed deprecated profile_views and website_clicks
-      const metrics = 'views,reach,follower_count,total_interactions';
-      const data = await this.makeApiRequest('/me/insights', { 
-        metric: metrics,
-        period 
-      });
 
-      logger.info('Account insights fetched successfully');
-      return data;
-    } catch (error) {
-      logger.error(`Error fetching account insights: ${error}`);
-      return null;
-    }
-  }
 
   /**
    * Validate access token

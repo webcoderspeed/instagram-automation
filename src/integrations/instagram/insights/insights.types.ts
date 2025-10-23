@@ -19,9 +19,11 @@ export interface InsightValue {
 
 export interface AccountInsights {
   reach: number;
-  impressions: number;
   follower_count: number;
-  online_followers?: OnlineFollowers;
+  profile_views: number;
+  accounts_engaged: number;
+  total_interactions: number;
+  website_clicks: number;
 }
 
 export interface OnlineFollowers {
@@ -92,8 +94,11 @@ export interface InsightsRequest {
 export interface AccountInsightsRequest extends InsightsRequest {
   metric: [
     'reach',
-    'impressions',
-    'follower_count'
+    'follower_count',
+    'profile_views',
+    'accounts_engaged',
+    'total_interactions',
+    'website_clicks'
   ];
 }
 

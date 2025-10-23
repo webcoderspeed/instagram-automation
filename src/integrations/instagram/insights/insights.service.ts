@@ -1,5 +1,5 @@
-import axios from 'axios';
-import logger from '../../../utils/logger';
+import axios from "axios";
+import logger from "../../../utils/logger";
 import {
   InsightsRequest,
   InsightsResponse,
@@ -17,58 +17,83 @@ import {
   MediaInsights,
   StoryInsights,
   AudienceInsights,
-  InsightMetric
-} from './insights.types';
+  InsightMetric,
+} from "./insights.types";
 
 /**
  * Instagram Insights Service
  * Handles analytics, metrics, and insights data from Instagram
  */
 export class InstagramInsightsService {
-  private readonly graphUrl = 'https://graph.instagram.com/v24.0';
+  private readonly graphUrl = "https://graph.instagram.com/v24.0";
 
   /**
    * Get account insights
    */
-  async getAccountInsights(request: AccountInsightsRequest): Promise<AccountInsightsResponse> {
+  async getAccountInsights(
+    request: AccountInsightsRequest
+  ): Promise<AccountInsightsResponse> {
     try {
       const params = {
-        metric: request.metric.join(','),
+        metric: request.metric.join(","),
         period: request.period,
         access_token: request.access_token,
         ...(request.since && { since: request.since }),
-        ...(request.until && { until: request.until })
+        ...(request.until && { until: request.until }),
       };
 
-      logger.info('Fetching account insights', {
+      logger.info("Fetching account insights", {
+        url: `${this.graphUrl}/me/insights`,
+        params: {
+          ...params,
+          access_token: request.access_token ? `${request.access_token.substring(0, 10)}...` : 'missing'
+        },
         metrics: request.metric,
         period: request.period,
         since: request.since,
-        until: request.until
+        until: request.until,
       });
 
       const response = await axios.get<any>(`${this.graphUrl}/me/insights`, {
-        params
+        params,
+      });
+
+      logger.info("Raw API response", {
+        status: response.status,
+        dataKeys: Object.keys(response.data || {}),
+        hasData: !!response.data?.data,
+        dataLength: response.data?.data?.length || 0
       });
 
       const insights = this.parseAccountInsights(response.data.data);
 
-      logger.info('Account insights fetched successfully', {
-        metricsCount: response.data.data.length
+      logger.info("Account insights fetched successfully", {
+        metricsCount: response.data.data.length,
+        parsedInsights: insights
       });
 
       return {
         success: true,
-        data: insights
+        data: insights,
       };
-    } catch (error) {
-      logger.error('Failed to fetch account insights', {
-        error: error instanceof Error ? error.message : 'Unknown error'
+    } catch (error: any) {
+      logger.error("Failed to fetch account insights", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        response: error.response?.data || null,
+        status: error.response?.status || null,
+        url: `${this.graphUrl}/me/insights`,
+        requestParams: {
+          metric: request.metric.join(","),
+          period: request.period,
+          hasAccessToken: !!request.access_token
+        }
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch account insights'
+        error:
+          error.response?.data?.error?.message || 
+          (error instanceof Error ? error.message : "Failed to fetch account insights"),
       };
     }
   }
@@ -76,42 +101,50 @@ export class InstagramInsightsService {
   /**
    * Get media insights
    */
-  async getMediaInsights(request: MediaInsightsRequest): Promise<MediaInsightsResponse> {
+  async getMediaInsights(
+    request: MediaInsightsRequest
+  ): Promise<MediaInsightsResponse> {
     try {
       const params = {
-        metric: request.metric.join(','),
-        access_token: request.access_token
+        metric: request.metric.join(","),
+        access_token: request.access_token,
       };
 
-      logger.info('Fetching media insights', {
+      logger.info("Fetching media insights", {
         mediaId: request.media_id,
-        metrics: request.metric
+        metrics: request.metric,
       });
 
-      const response = await axios.get<any>(`${this.graphUrl}/${request.media_id}/insights`, {
-        params
-      });
+      const response = await axios.get<any>(
+        `${this.graphUrl}/${request.media_id}/insights`,
+        {
+          params,
+        }
+      );
 
       const insights = this.parseMediaInsights(response.data.data);
 
-      logger.info('Media insights fetched successfully', {
+      logger.info("Media insights fetched successfully", {
         mediaId: request.media_id,
-        metricsCount: response.data.data.length
+        metricsCount: response.data.data.length,
       });
 
       return {
         success: true,
-        data: insights
+        data: insights,
       };
     } catch (error) {
-      logger.error('Failed to fetch media insights', {
+      logger.error("Failed to fetch media insights", {
         mediaId: request.media_id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch media insights'
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch media insights",
       };
     }
   }
@@ -119,42 +152,50 @@ export class InstagramInsightsService {
   /**
    * Get story insights
    */
-  async getStoryInsights(request: StoryInsightsRequest): Promise<StoryInsightsResponse> {
+  async getStoryInsights(
+    request: StoryInsightsRequest
+  ): Promise<StoryInsightsResponse> {
     try {
       const params = {
-        metric: request.metric.join(','),
-        access_token: request.access_token
+        metric: request.metric.join(","),
+        access_token: request.access_token,
       };
 
-      logger.info('Fetching story insights', {
+      logger.info("Fetching story insights", {
         storyId: request.story_id,
-        metrics: request.metric
+        metrics: request.metric,
       });
 
-      const response = await axios.get<any>(`${this.graphUrl}/${request.story_id}/insights`, {
-        params
-      });
+      const response = await axios.get<any>(
+        `${this.graphUrl}/${request.story_id}/insights`,
+        {
+          params,
+        }
+      );
 
       const insights = this.parseStoryInsights(response.data.data);
 
-      logger.info('Story insights fetched successfully', {
+      logger.info("Story insights fetched successfully", {
         storyId: request.story_id,
-        metricsCount: response.data.data.length
+        metricsCount: response.data.data.length,
       });
 
       return {
         success: true,
-        data: insights
+        data: insights,
       };
     } catch (error) {
-      logger.error('Failed to fetch story insights', {
+      logger.error("Failed to fetch story insights", {
         storyId: request.story_id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch story insights'
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch story insights",
       };
     }
   }
@@ -162,45 +203,50 @@ export class InstagramInsightsService {
   /**
    * Get audience insights
    */
-  async getAudienceInsights(request: AudienceInsightsRequest): Promise<AudienceInsightsResponse> {
+  async getAudienceInsights(
+    request: AudienceInsightsRequest
+  ): Promise<AudienceInsightsResponse> {
     try {
       const params = {
-        metric: request.metric.join(','),
+        metric: request.metric.join(","),
         period: request.period,
-        breakdown: request.breakdown.join(','),
+        breakdown: request.breakdown.join(","),
         access_token: request.access_token,
         ...(request.since && { since: request.since }),
-        ...(request.until && { until: request.until })
+        ...(request.until && { until: request.until }),
       };
 
-      logger.info('Fetching audience insights', {
+      logger.info("Fetching audience insights", {
         metrics: request.metric,
         breakdown: request.breakdown,
-        period: request.period
+        period: request.period,
       });
 
       const response = await axios.get<any>(`${this.graphUrl}/me/insights`, {
-        params
+        params,
       });
 
       const insights = this.parseAudienceInsights(response.data.data);
 
-      logger.info('Audience insights fetched successfully', {
-        metricsCount: response.data.data.length
+      logger.info("Audience insights fetched successfully", {
+        metricsCount: response.data.data.length,
       });
 
       return {
         success: true,
-        data: insights
+        data: insights,
       };
     } catch (error) {
-      logger.error('Failed to fetch audience insights', {
-        error: error instanceof Error ? error.message : 'Unknown error'
+      logger.error("Failed to fetch audience insights", {
+        error: error instanceof Error ? error.message : "Unknown error",
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch audience insights'
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch audience insights",
       };
     }
   }
@@ -214,37 +260,45 @@ export class InstagramInsightsService {
     error?: string;
   }> {
     try {
-      logger.info('Generating insights summary', {
+      logger.info("Generating insights summary", {
         period: request.period,
         since: request.since,
-        until: request.until
+        until: request.until,
       });
 
       // Fetch account insights
       const accountInsights = await this.getAccountInsights({
         access_token: request.access_token,
         metric: [
-          'reach',
-          'impressions',
-          'follower_count'
+          "reach",
+          "follower_count",
+          "profile_views",
+          "accounts_engaged",
+          "total_interactions",
+          "website_clicks",
         ],
         period: request.period,
         since: request.since,
-        until: request.until
+        until: request.until,
       });
 
       // Fetch audience insights
       const audienceInsights = await this.getAudienceInsights({
         access_token: request.access_token,
-        metric: ['audience_gender_age', 'audience_country', 'audience_city', 'audience_locale'],
-        breakdown: ['age', 'gender', 'country', 'city', 'locale'],
+        metric: [
+          "audience_gender_age",
+          "audience_country",
+          "audience_city",
+          "audience_locale",
+        ],
+        breakdown: ["age", "gender", "country", "city", "locale"],
         period: request.period,
         since: request.since,
-        until: request.until
+        until: request.until,
       });
 
       if (!accountInsights.success || !audienceInsights.success) {
-        throw new Error('Failed to fetch required insights data');
+        throw new Error("Failed to fetch required insights data");
       }
 
       const summary = this.generateSummary(
@@ -253,20 +307,23 @@ export class InstagramInsightsService {
         request
       );
 
-      logger.info('Insights summary generated successfully');
+      logger.info("Insights summary generated successfully");
 
       return {
         success: true,
-        data: summary
+        data: summary,
       };
     } catch (error) {
-      logger.error('Failed to generate insights summary', {
-        error: error instanceof Error ? error.message : 'Unknown error'
+      logger.error("Failed to generate insights summary", {
+        error: error instanceof Error ? error.message : "Unknown error",
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate insights summary'
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to generate insights summary",
       };
     }
   }
@@ -275,20 +332,29 @@ export class InstagramInsightsService {
    * Parse account insights from API response
    */
   private parseAccountInsights(data: InsightMetric[]): AccountInsights {
-    const insights: Partial<AccountInsights> = {};
+    const insights: Partial<AccountInsights> = {};''
 
-    data.forEach(metric => {
-      const latestValue = metric.values[metric.values.length - 1]?.value || 0;
-      
+    data.forEach((metric) => {
+      const latestValue = metric.values[metric.values.length - 1]?.value ?? 0;
+
       switch (metric.name) {
-        case 'reach':
+        case "reach":
           insights.reach = latestValue;
           break;
-        case 'impressions':
-          insights.impressions = latestValue;
-          break;
-        case 'follower_count':
+        case "follower_count":
           insights.follower_count = latestValue;
+          break;
+        case "profile_views":
+          insights.profile_views = latestValue;
+          break;
+        case "accounts_engaged":
+          insights.accounts_engaged = latestValue;
+          break;
+        case "total_interactions":
+          insights.total_interactions = latestValue;
+          break;
+        case "website_clicks":
+          insights.website_clicks = latestValue;
           break;
       }
     });
@@ -302,38 +368,38 @@ export class InstagramInsightsService {
   private parseMediaInsights(data: InsightMetric[]): MediaInsights {
     const insights: Partial<MediaInsights> = {};
 
-    data.forEach(metric => {
+    data.forEach((metric) => {
       const latestValue = metric.values[metric.values.length - 1]?.value || 0;
-      
+
       switch (metric.name) {
-        case 'reach':
+        case "reach":
           insights.reach = latestValue;
           break;
-        case 'impressions':
+        case "impressions":
           insights.impressions = latestValue;
           break;
-        case 'likes':
+        case "likes":
           insights.likes = latestValue;
           break;
-        case 'comments':
+        case "comments":
           insights.comments = latestValue;
           break;
-        case 'shares':
+        case "shares":
           insights.shares = latestValue;
           break;
-        case 'saves':
+        case "saves":
           insights.saves = latestValue;
           break;
-        case 'video_views':
+        case "video_views":
           insights.video_views = latestValue;
           break;
-        case 'profile_visits':
+        case "profile_visits":
           insights.profile_visits = latestValue;
           break;
-        case 'website_clicks':
+        case "website_clicks":
           insights.website_clicks = latestValue;
           break;
-        case 'follows':
+        case "follows":
           insights.follows = latestValue;
           break;
       }
@@ -348,35 +414,35 @@ export class InstagramInsightsService {
   private parseStoryInsights(data: InsightMetric[]): StoryInsights {
     const insights: Partial<StoryInsights> = {};
 
-    data.forEach(metric => {
+    data.forEach((metric) => {
       const latestValue = metric.values[metric.values.length - 1]?.value || 0;
-      
+
       switch (metric.name) {
-        case 'reach':
+        case "reach":
           insights.reach = latestValue;
           break;
-        case 'impressions':
+        case "impressions":
           insights.impressions = latestValue;
           break;
-        case 'replies':
+        case "replies":
           insights.replies = latestValue;
           break;
-        case 'taps_forward':
+        case "taps_forward":
           insights.taps_forward = latestValue;
           break;
-        case 'taps_back':
+        case "taps_back":
           insights.taps_back = latestValue;
           break;
-        case 'exits':
+        case "exits":
           insights.exits = latestValue;
           break;
-        case 'profile_visits':
+        case "profile_visits":
           insights.profile_visits = latestValue;
           break;
-        case 'website_clicks':
+        case "website_clicks":
           insights.website_clicks = latestValue;
           break;
-        case 'follows':
+        case "follows":
           insights.follows = latestValue;
           break;
       }
@@ -393,10 +459,10 @@ export class InstagramInsightsService {
       age_gender: {},
       countries: {},
       cities: {},
-      locale: {}
+      locale: {},
     };
 
-    data.forEach(metric => {
+    data.forEach((metric) => {
       // This would need to be implemented based on actual API response structure
       // The Instagram API returns complex nested data for audience insights
     });
@@ -412,40 +478,43 @@ export class InstagramInsightsService {
     audienceInsights: AudienceInsights,
     request: InsightsSummaryRequest
   ): InsightsSummary {
-    const engagementRate = accountInsights.impressions > 0 
-      ? ((accountInsights.reach / accountInsights.impressions) * 100)
-      : 0;
+    const engagementRate =
+      accountInsights.reach > 0
+        ? (accountInsights.total_interactions / accountInsights.reach) * 100
+        : 0;
 
     return {
       account: {
         totalReach: accountInsights.reach,
-        totalImpressions: accountInsights.impressions,
+        totalImpressions: accountInsights.profile_views, // Using profile_views as a substitute
         followerCount: accountInsights.follower_count,
         followerGrowth: 0, // Would need historical data to calculate
-        engagementRate: Math.round(engagementRate * 100) / 100
+        engagementRate: Math.round(engagementRate * 100) / 100,
       },
       content: {
         totalPosts: 0, // Would need to fetch media count
         averageReach: 0,
         averageImpressions: 0,
         averageLikes: 0,
-        averageComments: 0
+        averageComments: 0,
       },
       audience: {
         topCountries: Object.keys(audienceInsights.countries).slice(0, 5),
         topCities: Object.keys(audienceInsights.cities).slice(0, 5),
-        primaryAgeGroup: '25-34', // Would calculate from age_gender data
+        primaryAgeGroup: "25-34", // Would calculate from age_gender data
         genderSplit: {
           male: 0,
           female: 0,
-          unknown: 0
-        }
+          unknown: 0,
+        },
       },
       period: {
-        start: request.since || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        start:
+          request.since ||
+          new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
         end: request.until || new Date().toISOString(),
-        days: 7 // Would calculate based on actual period
-      }
+        days: 7, // Would calculate based on actual period
+      },
     };
   }
 }
