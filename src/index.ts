@@ -9,10 +9,7 @@ import { instagramService } from "./services/instagram";
 import {
   createWebhookController,
 } from "./services/webhook/webhook-controller";
-import {
-  createOAuthController,
-  createOAuthConfig,
-} from "./services/oauth";
+import { InstagramController } from "./controllers/instagram.controller";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -433,13 +430,8 @@ app.get("/api/instagram/rate-limit", async (req: Request, res: Response) => {
   }
 });
 
-// OAuth Controller
-const oauthConfig = createOAuthConfig(
-  process.env.INSTAGRAM_APP_ID || "",
-  process.env.INSTAGRAM_APP_SECRET || "",
-  process.env.INSTAGRAM_REDIRECT_URI || "http://localhost:3000/auth/instagram/callback"
-);
-const oauthController = createOAuthController(oauthConfig);
+// Instagram Controller
+const instagramController = new InstagramController();
 
 // Webhook service
 const webhookController = createWebhookController(
@@ -447,17 +439,17 @@ const webhookController = createWebhookController(
   process.env.WEBHOOK_VERIFY_TOKEN || ""
 );
 
-app.get("/auth/instagram", oauthController.initiateAuth);
+app.get("/auth/instagram", instagramController.connect);
 
-app.get("/auth/instagram/callback", oauthController.handleCallback);
+app.get("/auth/instagram/callback", instagramController.callback);
 
-app.post("/auth/instagram/refresh", oauthController.refreshToken);
+// Note: Instagram tokens are automatically managed by the platform
 
-// Add user info route using OAuth controller
-app.get("/auth/instagram/user/:userId", oauthController.getUserInfo);
+// Add user profile route using Instagram controller
+app.get("/auth/instagram/user/:userId", instagramController.getProfile);
 
-// Add revoke token route using OAuth controller  
-app.post("/auth/instagram/revoke", oauthController.revokeToken);
+// Add disconnect route using Instagram controller  
+app.post("/auth/instagram/revoke", instagramController.disconnect);
 
 // Webhook endpoints
 // Webhook verification endpoint (GET) - used by Meta to verify the webhook URL

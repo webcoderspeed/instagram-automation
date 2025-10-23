@@ -4,7 +4,6 @@
  */
 
 import { Router } from 'express';
-import { AuthController } from '../controllers/auth.controller';
 import { signupController } from '../auth/signup/signup.controller';
 import { loginController } from '../auth/login/login.controller';
 import { passwordResetController } from '../auth/password-reset/password-reset.controller';
@@ -14,7 +13,6 @@ import { validate } from '../validators/common.validator';
 import { registerSchema, loginSchema } from '../validators/auth.validator';
 
 const router = Router();
-const authController = new AuthController();
 
 // User Authentication routes
 // Signup routes
@@ -41,12 +39,5 @@ router.post('/verify-reset-token', rateLimitMiddleware.passwordReset, passwordRe
 
 // Change password (protected)
 router.post('/change-password', authMiddleware.authenticate, passwordResetController.changePassword);
-
-// Instagram OAuth routes
-router.get('/instagram', authController.initiateAuth);
-router.get('/instagram/callback', authController.handleCallback);
-router.post('/instagram/refresh', authController.refreshToken);
-router.get('/instagram/user/:userId', authController.getUserInfo);
-router.post('/instagram/revoke', authController.revokeToken);
 
 export default router;
