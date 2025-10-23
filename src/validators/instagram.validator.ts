@@ -263,6 +263,102 @@ export const searchUsersSchema = z.object({
   ).optional(),
 });
 
+// Messaging API Schemas
+
+// Send text message schema
+export const sendMessageSchema = z.object({
+  body: z.object({
+    recipientId: z.string().min(1, "Recipient ID is required"),
+    message: z.string().min(1, "Message is required").max(1000, "Message cannot exceed 1000 characters"),
+    messageType: z.enum(['text']).default('text'),
+  }),
+});
+
+// Send image message schema
+export const sendImageMessageSchema = z.object({
+  body: z.object({
+    recipientId: z.string().min(1, "Recipient ID is required"),
+    imageUrl: z.string().url("Invalid image URL"),
+    caption: z.string().max(500, "Caption cannot exceed 500 characters").optional(),
+  }),
+});
+
+// Send video message schema
+export const sendVideoMessageSchema = z.object({
+  body: z.object({
+    recipientId: z.string().min(1, "Recipient ID is required"),
+    videoUrl: z.string().url("Invalid video URL"),
+    caption: z.string().max(500, "Caption cannot exceed 500 characters").optional(),
+  }),
+});
+
+// Get messages schema
+export const getMessagesSchema = z.object({
+  query: z.object({
+    conversationId: z.string().optional(),
+    limit: z.string().optional().transform(val => val ? parseInt(val) : 20).pipe(z.number().int().min(1).max(100)),
+    before: z.string().optional(), // cursor for pagination
+    after: z.string().optional(), // cursor for pagination
+  }),
+});
+
+// Send typing indicator schema
+export const sendTypingIndicatorSchema = z.object({
+  body: z.object({
+    recipientId: z.string().min(1, "Recipient ID is required"),
+    action: z.enum(['typing_on', 'typing_off']).default('typing_on'),
+  }),
+});
+
+// Mark message as seen schema
+export const markMessageSeenSchema = z.object({
+  body: z.object({
+    messageId: z.string().min(1, "Message ID is required"),
+  }),
+});
+
+// Send quick reply message schema
+export const sendQuickReplyMessageSchema = z.object({
+  body: z.object({
+    recipientId: z.string().min(1, "Recipient ID is required"),
+    message: z.string().min(1, "Message is required").max(1000, "Message cannot exceed 1000 characters"),
+    quickReplies: z.array(
+      z.object({
+        title: z.string().min(1, "Quick reply title is required").max(20, "Title cannot exceed 20 characters"),
+        payload: z.string().min(1, "Payload is required").max(1000, "Payload cannot exceed 1000 characters"),
+        imageUrl: z.string().url("Invalid image URL").optional(),
+      })
+    ).min(1, "At least one quick reply is required").max(13, "Maximum 13 quick replies allowed"),
+  }),
+});
+
+// Send button template schema
+export const sendButtonTemplateSchema = z.object({
+  body: z.object({
+    recipientId: z.string().min(1, "Recipient ID is required"),
+    text: z.string().min(1, "Template text is required").max(640, "Text cannot exceed 640 characters"),
+    buttons: z.array(
+      z.object({
+        type: z.enum(['web_url', 'postback', 'phone_number']),
+        title: z.string().min(1, "Button title is required").max(20, "Title cannot exceed 20 characters"),
+        url: z.string().url("Invalid URL").optional(),
+        payload: z.string().max(1000, "Payload cannot exceed 1000 characters").optional(),
+        phoneNumber: z.string().regex(/^\+[1-9]\d{1,14}$/, "Invalid phone number format").optional(),
+      })
+    ).min(1, "At least one button is required").max(3, "Maximum 3 buttons allowed")
+    .refine((buttons) => {
+      return buttons.every(button => {
+        if (button.type === 'web_url') return button.url;
+        if (button.type === 'postback') return button.payload;
+        if (button.type === 'phone_number') return button.phoneNumber;
+        return false;
+      });
+    }, {
+      message: "Each button must have the required field for its type",
+    }),
+  }),
+});
+
 // Export types
 // OAuth types
 export type InstagramConnectInput = z.infer<typeof instagramConnectSchema>;
@@ -286,3 +382,13 @@ export type FollowUserInput = z.infer<typeof followUserSchema>;
 export type SendDirectMessageInput = z.infer<typeof sendDirectMessageSchema>;
 export type GetUserInfoInput = z.infer<typeof getUserInfoSchema>;
 export type SearchUsersInput = z.infer<typeof searchUsersSchema>;
+
+// Messaging types
+export type SendMessageInput = z.infer<typeof sendMessageSchema>;
+export type SendImageMessageInput = z.infer<typeof sendImageMessageSchema>;
+export type SendVideoMessageInput = z.infer<typeof sendVideoMessageSchema>;
+export type GetMessagesInput = z.infer<typeof getMessagesSchema>;
+export type SendTypingIndicatorInput = z.infer<typeof sendTypingIndicatorSchema>;
+export type MarkMessageSeenInput = z.infer<typeof markMessageSeenSchema>;
+export type SendQuickReplyMessageInput = z.infer<typeof sendQuickReplyMessageSchema>;
+export type SendButtonTemplateInput = z.infer<typeof sendButtonTemplateSchema>;

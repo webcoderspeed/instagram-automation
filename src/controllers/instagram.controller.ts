@@ -699,6 +699,589 @@ export class InstagramController {
   );
 
   /**
+   * Send a text message to a user
+   */
+  sendMessage = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      if (!req.session.user) {
+        sendError(
+          res,
+          "Authentication required",
+          401,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+        return;
+      }
+
+      try {
+        const { recipientId, text } = req.body;
+        const userId = req.session.user.id;
+
+        if (!recipientId || !text) {
+          sendError(
+            res,
+            "Recipient ID and text are required",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const accessToken = await this.getAccessTokenForUser(userId);
+        if (!accessToken) {
+          sendError(
+            res,
+            "Instagram account not connected",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const result = await instagramIntegrationService.messaging.sendTextMessage(
+          recipientId,
+          text,
+          accessToken
+        );
+
+        if (!result.success) {
+          sendError(
+            res,
+            result.error || "Failed to send message",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        sendSuccess(
+          res,
+          result.data,
+          200,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      } catch (error) {
+        logger.error("Error sending message:", error);
+        sendError(
+          res,
+          "Failed to send message",
+          500,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      }
+    }
+  );
+
+  /**
+   * Send an image message to a user
+   */
+  sendImageMessage = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      if (!req.session.user) {
+        sendError(
+          res,
+          "Authentication required",
+          401,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+        return;
+      }
+
+      try {
+        const { recipientId, imageUrl } = req.body;
+        const userId = req.session.user.id;
+
+        if (!recipientId || !imageUrl) {
+          sendError(
+            res,
+            "Recipient ID and image URL are required",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const accessToken = await this.getAccessTokenForUser(userId);
+        if (!accessToken) {
+          sendError(
+            res,
+            "Instagram account not connected",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const result = await instagramIntegrationService.messaging.sendImageMessage(
+          recipientId,
+          imageUrl,
+          accessToken
+        );
+
+        if (!result.success) {
+          sendError(
+            res,
+            result.error || "Failed to send image message",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        sendSuccess(
+          res,
+          result.data,
+          200,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      } catch (error) {
+        logger.error("Error sending image message:", error);
+        sendError(
+          res,
+          "Failed to send image message",
+          500,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      }
+    }
+  );
+
+  /**
+   * Send a video message to a user
+   */
+  sendVideoMessage = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      if (!req.session.user) {
+        sendError(
+          res,
+          "Authentication required",
+          401,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+        return;
+      }
+
+      try {
+        const { recipientId, videoUrl } = req.body;
+        const userId = req.session.user.id;
+
+        if (!recipientId || !videoUrl) {
+          sendError(
+            res,
+            "Recipient ID and video URL are required",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const accessToken = await this.getAccessTokenForUser(userId);
+        if (!accessToken) {
+          sendError(
+            res,
+            "Instagram account not connected",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const result = await instagramIntegrationService.messaging.sendVideoMessage(
+          recipientId,
+          videoUrl,
+          accessToken
+        );
+
+        if (!result.success) {
+          sendError(
+            res,
+            result.error || "Failed to send video message",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        sendSuccess(
+          res,
+          result.data,
+          200,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      } catch (error) {
+        logger.error("Error sending video message:", error);
+        sendError(
+          res,
+          "Failed to send video message",
+          500,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      }
+    }
+  );
+
+  /**
+   * Get messages/conversations
+   */
+  getMessages = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      if (!req.session.user) {
+        sendError(
+          res,
+          "Authentication required",
+          401,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+        return;
+      }
+
+      try {
+        const userId = req.session.user.id;
+        const { limit, after, before } = req.query;
+
+        const accessToken = await this.getAccessTokenForUser(userId);
+        if (!accessToken) {
+          sendError(
+            res,
+            "Instagram account not connected",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const result = await instagramIntegrationService.messaging.getMessages({
+          access_token: accessToken,
+          limit: limit ? parseInt(limit as string) : undefined,
+          after: after as string,
+          before: before as string
+        });
+
+        if (!result.success) {
+          sendError(
+            res,
+            result.error || "Failed to get messages",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        sendSuccess(
+          res,
+          result.data,
+          200,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      } catch (error) {
+        logger.error("Error getting messages:", error);
+        sendError(
+          res,
+          "Failed to get messages",
+          500,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      }
+    }
+  );
+
+  /**
+   * Send typing indicator
+   */
+  sendTypingIndicator = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      if (!req.session.user) {
+        sendError(
+          res,
+          "Authentication required",
+          401,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+        return;
+      }
+
+      try {
+        const { recipientId } = req.body;
+        const userId = req.session.user.id;
+
+        if (!recipientId) {
+          sendError(
+            res,
+            "Recipient ID is required",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const accessToken = await this.getAccessTokenForUser(userId);
+        if (!accessToken) {
+          sendError(
+            res,
+            "Instagram account not connected",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const result = await instagramIntegrationService.messaging.sendTypingIndicator(
+          recipientId,
+          accessToken
+        );
+
+        if (!result.success) {
+          sendError(
+            res,
+            result.error || "Failed to send typing indicator",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        sendSuccess(
+          res,
+          result.data,
+          200,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      } catch (error) {
+        logger.error("Error sending typing indicator:", error);
+        sendError(
+          res,
+          "Failed to send typing indicator",
+          500,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      }
+    }
+  );
+
+  /**
+   * Mark message as seen
+   */
+  markMessageSeen = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      if (!req.session.user) {
+        sendError(
+          res,
+          "Authentication required",
+          401,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+        return;
+      }
+
+      try {
+        const { recipientId } = req.body;
+        const userId = req.session.user.id;
+
+        if (!recipientId) {
+          sendError(
+            res,
+            "Recipient ID is required",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const accessToken = await this.getAccessTokenForUser(userId);
+        if (!accessToken) {
+          sendError(
+            res,
+            "Instagram account not connected",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const result = await instagramIntegrationService.messaging.markMessageSeen(
+          recipientId,
+          accessToken
+        );
+
+        if (!result.success) {
+          sendError(
+            res,
+            result.error || "Failed to mark message as seen",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        sendSuccess(
+          res,
+          result.data,
+          200,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      } catch (error) {
+        logger.error("Error marking message as seen:", error);
+        sendError(
+          res,
+          "Failed to mark message as seen",
+          500,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      }
+    }
+  );
+
+  /**
+   * Send quick reply message
+   */
+  sendQuickReplyMessage = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      if (!req.session.user) {
+        sendError(
+          res,
+          "Authentication required",
+          401,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+        return;
+      }
+
+      try {
+        const { recipientId, text, quickReplies } = req.body;
+        const userId = req.session.user.id;
+
+        if (!recipientId || !text || !quickReplies) {
+          sendError(
+            res,
+            "Recipient ID, text, and quick replies are required",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const accessToken = await this.getAccessTokenForUser(userId);
+        if (!accessToken) {
+          sendError(
+            res,
+            "Instagram account not connected",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const result = await instagramIntegrationService.messaging.sendQuickReplyMessage(
+          recipientId,
+          text,
+          quickReplies,
+          accessToken
+        );
+
+        if (!result.success) {
+          sendError(
+            res,
+            result.error || "Failed to send quick reply message",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        sendSuccess(
+          res,
+          result.data,
+          200,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      } catch (error) {
+        logger.error("Error sending quick reply message:", error);
+        sendError(
+          res,
+          "Failed to send quick reply message",
+          500,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      }
+    }
+  );
+
+  /**
+   * Send button template message
+   */
+  sendButtonTemplate = asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      if (!req.session.user) {
+        sendError(
+          res,
+          "Authentication required",
+          401,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+        return;
+      }
+
+      try {
+        const { recipientId, text, buttons } = req.body;
+        const userId = req.session.user.id;
+
+        if (!recipientId || !text || !buttons) {
+          sendError(
+            res,
+            "Recipient ID, text, and buttons are required",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const accessToken = await this.getAccessTokenForUser(userId);
+        if (!accessToken) {
+          sendError(
+            res,
+            "Instagram account not connected",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        const result = await instagramIntegrationService.messaging.sendButtonTemplate(
+          recipientId,
+          text,
+          buttons,
+          accessToken
+        );
+
+        if (!result.success) {
+          sendError(
+            res,
+            result.error || "Failed to send button template",
+            400,
+            createMeta({ requestId: req.headers["x-request-id"] as string })
+          );
+          return;
+        }
+
+        sendSuccess(
+          res,
+          result.data,
+          200,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      } catch (error) {
+        logger.error("Error sending button template:", error);
+        sendError(
+          res,
+          "Failed to send button template",
+          500,
+          createMeta({ requestId: req.headers["x-request-id"] as string })
+        );
+      }
+    }
+  );
+
+  /**
    * Helper method to get access token for user from platform account
    */
   private async getAccessTokenForUser(userId: string): Promise<string | null> {

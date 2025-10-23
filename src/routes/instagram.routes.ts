@@ -2,7 +2,18 @@ import { Router } from 'express';
 import { InstagramController } from '../controllers/instagram.controller';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { PERMISSIONS } from '../constants/permissions';
-import { validate } from '../validators/common.validator';
+import { instagramGuard } from '../middleware/guards/platform-auth.guard';
+import { validateBody, validateQuery } from '../middleware/validation.middleware';
+import {
+  sendMessageSchema,
+  sendImageMessageSchema,
+  sendVideoMessageSchema,
+  getMessagesSchema,
+  sendTypingIndicatorSchema,
+  markMessageSeenSchema,
+  sendQuickReplyMessageSchema,
+  sendButtonTemplateSchema,
+} from '../validators/instagram.validator';
 import { publishPostSchema } from '../validators/instagram.validator';
 
 const router = Router();
@@ -48,7 +59,7 @@ router.get('/media/:id',
 
 router.post('/publish', 
   roleMiddleware.requirePermission(PERMISSIONS.POST_PUBLISH),
-  validate(publishPostSchema),
+  validateBody(publishPostSchema),
   instagramController.publishPost
 );
 
@@ -70,6 +81,55 @@ router.get('/hashtag/:hashtag',
 router.get('/rate-limit', 
   roleMiddleware.requirePermission(PERMISSIONS.POST_READ),
   instagramController.getRateLimit
+);
+
+// Messaging routes
+router.post('/message/send', 
+  roleMiddleware.requirePermission(PERMISSIONS.MESSAGE_SEND),
+  validateBody(sendMessageSchema),
+  instagramController.sendMessage
+);
+
+router.post('/message/image', 
+  roleMiddleware.requirePermission(PERMISSIONS.MESSAGE_SEND),
+  validateBody(sendImageMessageSchema),
+  instagramController.sendImageMessage
+);
+
+router.post('/message/video', 
+  roleMiddleware.requirePermission(PERMISSIONS.MESSAGE_SEND),
+  validateBody(sendVideoMessageSchema),
+  instagramController.sendVideoMessage
+);
+
+router.get('/messages', 
+  roleMiddleware.requirePermission(PERMISSIONS.MESSAGE_READ),
+  validateQuery(getMessagesSchema),
+  instagramController.getMessages
+);
+
+router.post('/message/typing', 
+  roleMiddleware.requirePermission(PERMISSIONS.MESSAGE_SEND),
+  validateBody(sendTypingIndicatorSchema),
+  instagramController.sendTypingIndicator
+);
+
+router.post('/message/seen', 
+  roleMiddleware.requirePermission(PERMISSIONS.MESSAGE_SEND),
+  validateBody(markMessageSeenSchema),
+  instagramController.markMessageSeen
+);
+
+router.post('/message/quick-reply', 
+  roleMiddleware.requirePermission(PERMISSIONS.MESSAGE_SEND),
+  validateBody(sendQuickReplyMessageSchema),
+  instagramController.sendQuickReplyMessage
+);
+
+router.post('/message/button-template', 
+  roleMiddleware.requirePermission(PERMISSIONS.MESSAGE_TEMPLATE),
+  validateBody(sendButtonTemplateSchema),
+  instagramController.sendButtonTemplate
 );
 
 export default router;
