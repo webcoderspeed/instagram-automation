@@ -4,20 +4,17 @@
  */
 
 import { Router } from 'express';
-import { UserController } from '../controllers/user.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { createProtectedRoute } from '../middleware/role.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { validate } from '../validators/common.validator';
-import { upgradeRoleSchema, updateProfileSchema } from '../validators/user.validator';
 import { generalRateLimit } from '../middleware/rate-limit.middleware';
+import { UserController } from '../controllers/user.controller';
+import { updateProfileSchema, upgradeRoleSchema } from '../validators/user.validator';
 import { PERMISSIONS } from '../constants/permissions';
 
 const router = Router();
 const userController = new UserController();
 
-// Apply authentication to all user routes
-router.use(authMiddleware.authenticate);
+// Note: Authentication and email verification are now handled by requirePermission middleware
 
 /**
  * @route   GET /api/users/profile
@@ -26,7 +23,6 @@ router.use(authMiddleware.authenticate);
  */
 router.get(
   '/profile',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
   userController.getProfile
 );
@@ -38,7 +34,6 @@ router.get(
  */
 router.put(
   '/profile',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
   validate(updateProfileSchema),
   userController.getProfile // Note: This should be updateProfile method when implemented
@@ -51,7 +46,6 @@ router.put(
  */
 router.get(
   '/roles',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
   userController.getAvailableRoles
 );
@@ -63,7 +57,6 @@ router.get(
  */
 router.put(
   '/role/upgrade',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_ROLE_CHANGE),
   generalRateLimit.middleware(), // Add rate limiting to prevent abuse
   validate(upgradeRoleSchema),
@@ -80,7 +73,6 @@ router.put(
  */
 // router.get(
 //   '/list',
-//   createProtectedRoute('VERIFIED_USER'),
 //   roleMiddleware.requirePermission(PERMISSIONS.USER_LIST),
 //   userController.getAllUsers
 // );
@@ -92,7 +84,6 @@ router.put(
  */
 // router.post(
 //   '/invite',
-//   createProtectedRoute('VERIFIED_USER'),
 //   roleMiddleware.requirePermission(PERMISSIONS.USER_INVITE),
 //   generalRateLimit.middleware(),
 //   userController.inviteUser
@@ -105,7 +96,6 @@ router.put(
  */
 // router.delete(
 //   '/:userId',
-//   createProtectedRoute('VERIFIED_USER'),
 //   roleMiddleware.requirePermission(PERMISSIONS.USER_DELETE),
 //   generalRateLimit.middleware(),
 //   userController.deleteUser
@@ -118,7 +108,6 @@ router.put(
  */
 // router.put(
 //   '/:userId/role',
-//   createProtectedRoute('VERIFIED_USER'),
 //   roleMiddleware.requirePermission(PERMISSIONS.USER_ROLE_CHANGE),
 //   generalRateLimit.middleware(),
 //   userController.changeUserRole

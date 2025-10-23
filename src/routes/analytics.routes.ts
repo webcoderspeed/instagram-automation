@@ -6,7 +6,6 @@
 import { Router } from 'express';
 import { analyticsController } from '../controllers/analytics.controller';
 import { generalRateLimit } from '../middleware/rate-limit.middleware';
-import { createProtectedRoute } from '../middleware/role.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { PERMISSIONS } from '../constants/permissions';
 
@@ -15,6 +14,8 @@ const router = Router();
 // Apply rate limiting to analytics routes
 router.use(generalRateLimit.middleware());
 
+// Note: Authentication and email verification are now handled by requirePermission middleware
+
 /**
  * @route   GET /api/analytics/login-stats
  * @desc    Get user login statistics
@@ -22,7 +23,6 @@ router.use(generalRateLimit.middleware());
  * @query   days - Number of days to analyze (default: 30)
  */
 router.get('/login-stats', 
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.ANALYTICS_READ),
   analyticsController.getUserLoginStats
 );
@@ -35,7 +35,6 @@ router.get('/login-stats',
  * @query   endDate - End date (ISO string)
  */
 router.get('/login-activity', 
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.ANALYTICS_READ),
   analyticsController.getLoginActivity
 );
@@ -47,7 +46,6 @@ router.get('/login-activity',
  * @query   days - Number of days to analyze (default: 30)
  */
 router.get('/device-analytics', 
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.ANALYTICS_READ),
   analyticsController.getDeviceAnalytics
 );
@@ -59,7 +57,6 @@ router.get('/device-analytics',
  * @query   days - Number of days to analyze (default: 30)
  */
 router.get('/security-insights', 
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.ANALYTICS_READ),
   analyticsController.getSecurityInsights
 );

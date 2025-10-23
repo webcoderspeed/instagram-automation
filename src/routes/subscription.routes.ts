@@ -5,8 +5,6 @@
 
 import { Router } from 'express';
 import { SubscriptionController } from '../controllers/subscription.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { createProtectedRoute } from '../middleware/role.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { PERMISSIONS } from '../constants/permissions';
 import { validate } from '../validators/common.validator';
@@ -21,17 +19,15 @@ import {
 const router = Router();
 const subscriptionController = new SubscriptionController();
 
-// Apply authentication to all routes
-router.use(authMiddleware.authenticate);
+// Note: Authentication and email verification are now handled by requirePermission middleware
 
 /**
  * @route   GET /api/subscriptions/current
  * @desc    Get current subscription details
- * @access  Private (Verified User)
+ * @access  Private (SUBSCRIPTION_READ permission required)
  */
 router.get(
   '/current',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_READ),
   subscriptionController.getCurrentSubscription
 );
@@ -39,11 +35,10 @@ router.get(
 /**
  * @route   GET /api/subscriptions/plans
  * @desc    Get available subscription plans
- * @access  Private (Verified User)
+ * @access  Private (SUBSCRIPTION_READ permission required)
  */
 router.get(
   '/plans',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_READ),
   subscriptionController.getPlans
 );
@@ -51,11 +46,10 @@ router.get(
 /**
  * @route   POST /api/subscriptions/checkout
  * @desc    Create checkout session for subscription
- * @access  Private (Verified User)
+ * @access  Private (SUBSCRIPTION_UPDATE permission required)
  */
 router.post(
   '/checkout',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(createCheckoutSessionSchema),
   subscriptionController.createCheckoutSession
@@ -64,11 +58,10 @@ router.post(
 /**
  * @route   POST /api/subscriptions/activate
  * @desc    Activate subscription after successful payment
- * @access  Private (Verified User)
+ * @access  Private (SUBSCRIPTION_UPDATE permission required)
  */
 router.post(
   '/activate',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(activateSubscriptionSchema),
   subscriptionController.activateSubscription
@@ -77,11 +70,10 @@ router.post(
 /**
  * @route   POST /api/subscriptions/cancel
  * @desc    Cancel subscription
- * @access  Private (Verified User)
+ * @access  Private (SUBSCRIPTION_UPDATE permission required)
  */
 router.post(
   '/cancel',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(cancelSubscriptionSchema),
   subscriptionController.cancelSubscription
@@ -90,11 +82,10 @@ router.post(
 /**
  * @route   POST /api/subscriptions/reactivate
  * @desc    Reactivate canceled subscription
- * @access  Private (Verified User)
+ * @access  Private (SUBSCRIPTION_UPDATE permission required)
  */
 router.post(
   '/reactivate',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(reactivateSubscriptionSchema),
   subscriptionController.reactivateSubscription
@@ -103,11 +94,10 @@ router.post(
 /**
  * @route   PUT /api/subscriptions/payment-method
  * @desc    Update payment method
- * @access  Private (Verified User)
+ * @access  Private (SUBSCRIPTION_UPDATE permission required)
  */
 router.put(
   '/payment-method',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(updatePaymentMethodSchema),
   subscriptionController.updatePaymentMethod
@@ -116,11 +106,10 @@ router.put(
 /**
  * @route   GET /api/subscriptions/billing-history
  * @desc    Get billing history
- * @access  Private (Verified User)
+ * @access  Private (SUBSCRIPTION_READ permission required)
  */
 router.get(
   '/billing-history',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_READ),
   subscriptionController.getBillingHistory
 );
@@ -128,11 +117,10 @@ router.get(
 /**
  * @route   GET /api/subscriptions/usage
  * @desc    Get usage statistics
- * @access  Private (Verified User)
+ * @access  Private (SUBSCRIPTION_READ permission required)
  */
 router.get(
   '/usage',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_READ),
   subscriptionController.getUsageStats
 );

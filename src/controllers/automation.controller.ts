@@ -38,7 +38,6 @@ export class AutomationController {
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
-    // Build query
     const query: any = {
       userId,
       deletedAt: null

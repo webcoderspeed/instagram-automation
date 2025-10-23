@@ -1,6 +1,6 @@
 # Instagram API Documentation
 
-यह documentation Instagram Automation SaaS application के सभी Instagram API endpoints के लिए है। सभी endpoints authentication और Instagram connection की आवश्यकता होती है।
+This documentation covers all Instagram API endpoints for the Instagram Automation SaaS application. All endpoints require authentication and Instagram connection.
 
 ## Base URL
 ```
@@ -14,6 +14,8 @@ http://localhost:3000/api/instagram
 4. [Analytics & Insights](#analytics--insights)
 5. [Hashtag Research](#hashtag-research)
 6. [Rate Limits](#rate-limits)
+7. [Error Responses](#error-responses)
+8. [Authentication](#authentication)
 
 ---
 
@@ -21,13 +23,14 @@ http://localhost:3000/api/instagram
 
 ### 1. Get Instagram Profile
 **Endpoint:** `GET /profile`  
-**Description:** Connected Instagram account की profile information return करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Retrieves connected Instagram account profile information.  
+**Required Permission:** `INSTAGRAM_READ`  
+**Rate Limit:** General rate limit applies
 
 ```bash
 curl -X GET http://localhost:3000/api/instagram/profile \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Response:**
@@ -49,7 +52,8 @@ curl -X GET http://localhost:3000/api/instagram/profile \
       "isBusinessAccount": true,
       "accountType": "BUSINESS"
     }
-  }
+  },
+  "message": "Profile retrieved successfully"
 }
 ```
 
@@ -57,25 +61,27 @@ curl -X GET http://localhost:3000/api/instagram/profile \
 
 ## Media Management
 
-### 2. Get User Media
+### 2. Get All Media
 **Endpoint:** `GET /media`  
-**Description:** User के Instagram media posts की list return करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Retrieves all Instagram media posts for the connected account.  
+**Required Permission:** `INSTAGRAM_READ`  
+**Rate Limit:** General rate limit applies
 
 ```bash
 curl -X GET http://localhost:3000/api/instagram/media \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Query Parameters:**
-- `limit` - Number of posts to return (default: 25, max: 100)
-- `after` - Pagination cursor for next page
+- `limit` (optional) - Number of posts to return (default: 25, max: 100)
+- `after` (optional) - Pagination cursor for next page
+- `fields` (optional) - Comma-separated list of fields to include
 
 ```bash
-curl -X GET "http://localhost:3000/api/instagram/media?limit=10&after=cursor_here" \
+curl -X GET "http://localhost:3000/api/instagram/media?limit=10&after=cursor_here&fields=id,caption,media_type" \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Response:**
@@ -103,19 +109,21 @@ curl -X GET "http://localhost:3000/api/instagram/media?limit=10&after=cursor_her
       },
       "next": "next_page_url"
     }
-  }
+  },
+  "message": "Media retrieved successfully"
 }
 ```
 
 ### 3. Get Media by ID
-**Endpoint:** `GET /media/:mediaId`  
-**Description:** Specific media post की detailed information return करता है।  
-**Required Role:** `VERIFIED_USER`
+**Endpoint:** `GET /media/:id`  
+**Description:** Retrieves specific Instagram media post by ID.  
+**Required Permission:** `INSTAGRAM_READ`  
+**Rate Limit:** General rate limit applies
 
 ```bash
 curl -X GET http://localhost:3000/api/instagram/media/media_id_here \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Response:**
@@ -132,14 +140,16 @@ curl -X GET http://localhost:3000/api/instagram/media/media_id_here \
       "timestamp": "2024-01-01T12:00:00Z",
       "likesCount": 150,
       "commentsCount": 25,
-      "sharesCount": 10,
-      "savesCount": 30,
-      "reachCount": 500,
-      "impressionsCount": 750,
-      "hashtags": ["#photography", "#nature"],
-      "mentions": ["@username1", "@username2"]
+      "thumbnailUrl": "https://instagram.com/thumb.jpg",
+      "children": [],
+      "insights": {
+        "impressions": 500,
+        "reach": 450,
+        "engagement": 175
+      }
     }
-  }
+  },
+  "message": "Media retrieved successfully"
 }
 ```
 
@@ -149,53 +159,32 @@ curl -X GET http://localhost:3000/api/instagram/media/media_id_here \
 
 ### 4. Publish Post
 **Endpoint:** `POST /publish`  
-**Description:** Instagram पर नया post publish करता है।  
-**Required Role:** `CONTENT_CREATOR`
+**Description:** Publishes a new post to Instagram.  
+**Required Permission:** `INSTAGRAM_PUBLISH`  
+**Rate Limit:** Strict rate limit applies
+
+**Request Body:**
+```json
+{
+  "mediaType": "IMAGE",
+  "mediaUrl": "https://example.com/image.jpg",
+  "caption": "Your post caption with #hashtags",
+  "location": {
+    "id": "location_id",
+    "name": "Location Name"
+  },
+  "scheduledTime": "2024-01-01T12:00:00Z"
+}
+```
 
 ```bash
-# Image Post
 curl -X POST http://localhost:3000/api/instagram/publish \
   -H "Content-Type: application/json" \
-  -b cookies.txt \
+  -H "Authorization: Bearer your_jwt_token" \
   -d '{
     "mediaType": "IMAGE",
-    "imageUrl": "https://example.com/image.jpg",
-    "caption": "Amazing sunset! #photography #nature #sunset",
-    "location": {
-      "name": "Mumbai, India",
-      "latitude": 19.0760,
-      "longitude": 72.8777
-    }
-  }'
-
-# Video Post
-curl -X POST http://localhost:3000/api/instagram/publish \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{
-    "mediaType": "VIDEO",
-    "videoUrl": "https://example.com/video.mp4",
-    "thumbnailUrl": "https://example.com/thumb.jpg",
-    "caption": "Check out this amazing video! #video #content"
-  }'
-
-# Carousel Post
-curl -X POST http://localhost:3000/api/instagram/publish \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{
-    "mediaType": "CAROUSEL_ALBUM",
-    "children": [
-      {
-        "mediaType": "IMAGE",
-        "imageUrl": "https://example.com/image1.jpg"
-      },
-      {
-        "mediaType": "IMAGE", 
-        "imageUrl": "https://example.com/image2.jpg"
-      }
-    ],
-    "caption": "Swipe to see more! #carousel #photos"
+    "mediaUrl": "https://example.com/image.jpg",
+    "caption": "Your post caption with #hashtags"
   }'
 ```
 
@@ -203,15 +192,16 @@ curl -X POST http://localhost:3000/api/instagram/publish \
 ```json
 {
   "success": true,
-  "message": "Post published successfully",
   "data": {
-    "media": {
-      "id": "new_media_id",
-      "permalink": "https://instagram.com/p/NEW123/",
-      "mediaType": "IMAGE",
-      "publishedAt": "2024-01-01T15:00:00Z"
+    "post": {
+      "id": "creation_id",
+      "status": "PUBLISHED",
+      "mediaId": "published_media_id",
+      "permalink": "https://instagram.com/p/ABC123/",
+      "publishedAt": "2024-01-01T12:00:00Z"
     }
-  }
+  },
+  "message": "Post published successfully"
 }
 ```
 
@@ -220,77 +210,69 @@ curl -X POST http://localhost:3000/api/instagram/publish \
 ## Analytics & Insights
 
 ### 5. Get Media Insights
-**Endpoint:** `GET /media/:mediaId/insights`  
-**Description:** Specific media post के insights return करता है।  
-**Required Role:** `ANALYTICS_ACCESS`
+**Endpoint:** `GET /insights/media`  
+**Description:** Retrieves insights and analytics for Instagram media.  
+**Required Permission:** `INSTAGRAM_INSIGHTS`  
+**Rate Limit:** General rate limit applies
 
 ```bash
-curl -X GET http://localhost:3000/api/instagram/media/media_id_here/insights \
+curl -X GET http://localhost:3000/api/instagram/insights/media \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
+
+**Query Parameters:**
+- `mediaId` (optional) - Specific media ID to get insights for
+- `since` (optional) - Start date for insights (YYYY-MM-DD)
+- `until` (optional) - End date for insights (YYYY-MM-DD)
+- `period` (optional) - Time period (day, week, days_28)
 
 **Response:**
 ```json
 {
   "success": true,
   "data": {
-    "insights": {
-      "mediaId": "media_id",
-      "reach": 1250,
-      "impressions": 1800,
-      "likes": 150,
-      "comments": 25,
-      "shares": 10,
-      "saves": 30,
-      "profileViews": 45,
-      "websiteClicks": 5,
-      "engagement": {
-        "rate": 12.5,
-        "total": 220
-      },
-      "demographics": {
-        "ageGroups": {
-          "18-24": 25,
-          "25-34": 45,
-          "35-44": 20,
-          "45-54": 10
-        },
-        "gender": {
-          "male": 60,
-          "female": 40
-        },
-        "topCities": [
-          {"name": "Mumbai", "percentage": 30},
-          {"name": "Delhi", "percentage": 25}
-        ]
+    "insights": [
+      {
+        "mediaId": "media_id",
+        "impressions": 1500,
+        "reach": 1200,
+        "engagement": 180,
+        "likes": 150,
+        "comments": 25,
+        "shares": 5,
+        "saves": 30,
+        "profileViews": 45,
+        "websiteClicks": 10
       }
+    ],
+    "summary": {
+      "totalImpressions": 1500,
+      "totalReach": 1200,
+      "totalEngagement": 180,
+      "engagementRate": 12.0
     }
-  }
+  },
+  "message": "Media insights retrieved successfully"
 }
 ```
 
 ### 6. Get Account Insights
-**Endpoint:** `GET /insights`  
-**Description:** Instagram account के overall insights return करता है।  
-**Required Role:** `ANALYTICS_ACCESS`
+**Endpoint:** `GET /insights/account`  
+**Description:** Retrieves account-level insights and analytics.  
+**Required Permission:** `INSTAGRAM_INSIGHTS`  
+**Rate Limit:** General rate limit applies
 
 ```bash
-curl -X GET http://localhost:3000/api/instagram/insights \
+curl -X GET http://localhost:3000/api/instagram/insights/account \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Query Parameters:**
-- `period` - Time period (day, week, days_28) - Default: week
-- `since` - Start date (YYYY-MM-DD)
-- `until` - End date (YYYY-MM-DD)
-
-```bash
-curl -X GET "http://localhost:3000/api/instagram/insights?period=days_28&since=2024-01-01&until=2024-01-28" \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-```
+- `since` (optional) - Start date for insights (YYYY-MM-DD)
+- `until` (optional) - End date for insights (YYYY-MM-DD)
+- `period` (optional) - Time period (day, week, days_28)
 
 **Response:**
 ```json
@@ -298,41 +280,40 @@ curl -X GET "http://localhost:3000/api/instagram/insights?period=days_28&since=2
   "success": true,
   "data": {
     "insights": {
-      "period": "days_28",
-      "dateRange": {
-        "since": "2024-01-01",
-        "until": "2024-01-28"
-      },
-      "metrics": {
-        "reach": 15000,
-        "impressions": 25000,
-        "profileViews": 1200,
-        "websiteClicks": 150,
-        "emailContacts": 25,
-        "phoneCallClicks": 10,
-        "textMessageClicks": 5,
-        "getDirectionsClicks": 30
-      },
-      "followerMetrics": {
-        "followersCount": 1250,
-        "followersGained": 85,
-        "followersLost": 15,
-        "netFollowersGained": 70
-      },
-      "contentMetrics": {
-        "postsPublished": 12,
-        "storiesPublished": 25,
-        "averageEngagementRate": 8.5
-      },
-      "topPosts": [
+      "impressions": 15000,
+      "reach": 12000,
+      "profileViews": 450,
+      "websiteClicks": 120,
+      "emailContacts": 25,
+      "phoneCallClicks": 10,
+      "textMessageClicks": 5,
+      "getDirectionsClicks": 15,
+      "followerCount": 1250,
+      "followingCount": 850
+    },
+    "demographics": {
+      "ageGender": [
         {
-          "mediaId": "media_id_1",
-          "reach": 2500,
-          "engagement": 320
+          "ageRange": "25-34",
+          "gender": "F",
+          "percentage": 35.5
+        }
+      ],
+      "cities": [
+        {
+          "city": "New York",
+          "percentage": 25.0
+        }
+      ],
+      "countries": [
+        {
+          "country": "US",
+          "percentage": 60.0
         }
       ]
     }
-  }
+  },
+  "message": "Account insights retrieved successfully"
 }
 ```
 
@@ -342,13 +323,14 @@ curl -X GET "http://localhost:3000/api/instagram/insights?period=days_28&since=2
 
 ### 7. Get Hashtag Information
 **Endpoint:** `GET /hashtags/:hashtag`  
-**Description:** Specific hashtag की information और metrics return करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Retrieves information about a specific hashtag.  
+**Required Permission:** `INSTAGRAM_READ`  
+**Rate Limit:** General rate limit applies
 
 ```bash
-curl -X GET http://localhost:3000/api/instagram/hashtags/photography \
+curl -X GET http://localhost:3000/api/instagram/hashtags/socialmedia \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Response:**
@@ -357,27 +339,31 @@ curl -X GET http://localhost:3000/api/instagram/hashtags/photography \
   "success": true,
   "data": {
     "hashtag": {
-      "name": "photography",
       "id": "hashtag_id",
-      "mediaCount": 500000000,
-      "topMedia": [
+      "name": "socialmedia",
+      "mediaCount": 1500000,
+      "topPosts": [
         {
           "id": "media_id",
           "mediaUrl": "https://instagram.com/image.jpg",
           "permalink": "https://instagram.com/p/ABC123/",
-          "likesCount": 1500,
-          "commentsCount": 200
+          "caption": "Post caption",
+          "likesCount": 500,
+          "commentsCount": 50
         }
       ],
-      "recentMedia": [
+      "recentPosts": [
         {
-          "id": "media_id_2",
-          "mediaUrl": "https://instagram.com/image2.jpg",
-          "timestamp": "2024-01-01T14:00:00Z"
+          "id": "media_id",
+          "mediaUrl": "https://instagram.com/image.jpg",
+          "permalink": "https://instagram.com/p/DEF456/",
+          "caption": "Recent post caption",
+          "timestamp": "2024-01-01T12:00:00Z"
         }
       ]
     }
-  }
+  },
+  "message": "Hashtag information retrieved successfully"
 }
 ```
 
@@ -385,15 +371,16 @@ curl -X GET http://localhost:3000/api/instagram/hashtags/photography \
 
 ## Rate Limits
 
-### 8. Get Rate Limit Status
+### 8. Check Rate Limits
 **Endpoint:** `GET /rate-limits`  
-**Description:** Current Instagram API rate limits की status return करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Retrieves current rate limit status for Instagram API.  
+**Required Permission:** `INSTAGRAM_READ`  
+**Rate Limit:** General rate limit applies
 
 ```bash
 curl -X GET http://localhost:3000/api/instagram/rate-limits \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Response:**
@@ -402,26 +389,164 @@ curl -X GET http://localhost:3000/api/instagram/rate-limits \
   "success": true,
   "data": {
     "rateLimits": {
-      "basicDisplay": {
+      "callsUsed": 150,
+      "callsRemaining": 850,
+      "totalCalls": 1000,
+      "resetTime": "2024-01-01T13:00:00Z",
+      "percentageUsed": 15.0
+    },
+    "endpoints": {
+      "media": {
+        "used": 50,
         "limit": 200,
-        "remaining": 150,
-        "resetTime": "2024-01-01T16:00:00Z"
-      },
-      "contentPublishing": {
-        "limit": 25,
-        "remaining": 20,
-        "resetTime": "2024-01-01T16:00:00Z"
+        "resetTime": "2024-01-01T13:00:00Z"
       },
       "insights": {
-        "limit": 200,
-        "remaining": 180,
-        "resetTime": "2024-01-01T16:00:00Z"
-      },
-      "messaging": {
+        "used": 25,
         "limit": 100,
-        "remaining": 95,
-        "resetTime": "2024-01-01T16:00:00Z"
+        "resetTime": "2024-01-01T13:00:00Z"
+      },
+      "publishing": {
+        "used": 5,
+        "limit": 25,
+        "resetTime": "2024-01-01T13:00:00Z"
       }
+    }
+  },
+  "message": "Rate limits retrieved successfully"
+}
+```
+
+---
+
+## Error Responses
+
+All endpoints may return the following error responses:
+
+### Common Error Codes
+
+**400 Bad Request**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid request parameters",
+    "details": [
+      {
+        "field": "mediaType",
+        "message": "Media type is required"
+      }
+    ]
+  }
+}
+```
+
+**401 Unauthorized**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required"
+  }
+}
+```
+
+**403 Forbidden**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INSUFFICIENT_PERMISSIONS",
+    "message": "You don't have permission to access this resource",
+    "requiredPermission": "INSTAGRAM_READ"
+  }
+}
+```
+
+**404 Not Found**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RESOURCE_NOT_FOUND",
+    "message": "Media not found"
+  }
+}
+```
+
+**429 Too Many Requests**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Rate limit exceeded. Please try again later.",
+    "retryAfter": 3600
+  }
+}
+```
+
+**500 Internal Server Error**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INTERNAL_SERVER_ERROR",
+    "message": "An unexpected error occurred"
+  }
+}
+```
+
+### Instagram-Specific Error Codes
+
+**INSTAGRAM_NOT_CONNECTED**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INSTAGRAM_NOT_CONNECTED",
+    "message": "Instagram account not connected. Please connect your Instagram account first."
+  }
+}
+```
+
+**INSTAGRAM_TOKEN_EXPIRED**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INSTAGRAM_TOKEN_EXPIRED",
+    "message": "Instagram access token has expired. Please reconnect your account."
+  }
+}
+```
+
+**INSTAGRAM_API_ERROR**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INSTAGRAM_API_ERROR",
+    "message": "Instagram API returned an error",
+    "details": {
+      "instagramError": "Invalid media URL",
+      "instagramCode": 100
+    }
+  }
+}
+```
+
+**MEDIA_UPLOAD_FAILED**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "MEDIA_UPLOAD_FAILED",
+    "message": "Failed to upload media to Instagram",
+    "details": {
+      "reason": "Unsupported media format"
     }
   }
 }
@@ -429,129 +554,32 @@ curl -X GET http://localhost:3000/api/instagram/rate-limits \
 
 ---
 
-## Important Notes
+## Authentication
 
-### Authentication Requirements
-- सभी endpoints authenticated user की आवश्यकता होती है
-- Instagram account connected होना चाहिए
-- Valid Instagram access token required
-- Different endpoints के लिए different roles required हैं
+All Instagram API endpoints require:
 
-### Instagram API Limitations
-- **Publishing**: 25 posts per day limit
-- **Insights**: Business/Creator accounts only
-- **Media**: Maximum 100 items per request
-- **Rate Limits**: Varies by endpoint type
+1. **User Authentication**: Valid JWT token in Authorization header
+2. **Instagram Connection**: User must have connected Instagram account
+3. **Permissions**: Specific permissions based on endpoint requirements
 
-### Media Types Supported
-- `IMAGE` - Single image posts
-- `VIDEO` - Video posts (up to 60 seconds)
-- `CAROUSEL_ALBUM` - Multiple images/videos
-- `REELS` - Instagram Reels (coming soon)
+### Required Permissions
 
-### Content Guidelines
-- Images: JPG, PNG formats
-- Videos: MP4 format, max 100MB
-- Captions: Max 2,200 characters
-- Hashtags: Max 30 per post
+- `INSTAGRAM_READ` - For reading profile, media, and insights
+- `INSTAGRAM_PUBLISH` - For publishing posts
+- `INSTAGRAM_INSIGHTS` - For accessing analytics and insights
 
-### Error Responses
-```json
-{
-  "success": false,
-  "message": "Error message here",
-  "error": {
-    "code": "INSTAGRAM_API_ERROR",
-    "type": "OAuthException",
-    "details": "Instagram API error details",
-    "fbtrace_id": "trace_id_here"
-  }
-}
-```
+### Rate Limiting
 
-### Common HTTP Status Codes
-- `200` - Success
-- `201` - Created
-- `400` - Bad Request
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Not Found
-- `429` - Rate Limit Exceeded
-- `500` - Internal Server Error
+- **General endpoints**: 1000 requests per hour per user
+- **Publishing endpoints**: 25 requests per hour per user
+- **Insights endpoints**: 200 requests per hour per user
 
----
+Rate limits are enforced per user and reset every hour. When rate limit is exceeded, the API returns a 429 status code with retry information.
 
-## Testing Workflow
+### Security Features
 
-### Complete Instagram API Flow Test:
-```bash
-# 1. Login first (required for all Instagram endpoints)
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -c cookies.txt \
-  -d '{"email":"user@example.com","password":"password"}'
-
-# 2. Get Instagram profile
-curl -X GET http://localhost:3000/api/instagram/profile \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 3. Get user media
-curl -X GET http://localhost:3000/api/instagram/media \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 4. Get specific media details
-curl -X GET http://localhost:3000/api/instagram/media/MEDIA_ID \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 5. Publish new post
-curl -X POST http://localhost:3000/api/instagram/publish \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"mediaType":"IMAGE","imageUrl":"https://example.com/image.jpg","caption":"Test post #test"}'
-
-# 6. Get media insights
-curl -X GET http://localhost:3000/api/instagram/media/MEDIA_ID/insights \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 7. Get account insights
-curl -X GET http://localhost:3000/api/instagram/insights \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 8. Research hashtags
-curl -X GET http://localhost:3000/api/instagram/hashtags/photography \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 9. Check rate limits
-curl -X GET http://localhost:3000/api/instagram/rate-limits \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-```
-
-### Publishing Different Media Types:
-```bash
-# Image Post
-curl -X POST http://localhost:3000/api/instagram/publish \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"mediaType":"IMAGE","imageUrl":"https://example.com/image.jpg","caption":"Beautiful sunset! #photography"}'
-
-# Video Post  
-curl -X POST http://localhost:3000/api/instagram/publish \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"mediaType":"VIDEO","videoUrl":"https://example.com/video.mp4","caption":"Amazing video! #video"}'
-
-# Carousel Post
-curl -X POST http://localhost:3000/api/instagram/publish \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"mediaType":"CAROUSEL_ALBUM","children":[{"mediaType":"IMAGE","imageUrl":"https://example.com/img1.jpg"},{"mediaType":"IMAGE","imageUrl":"https://example.com/img2.jpg"}],"caption":"Swipe for more! #carousel"}'
-```
-
-यह documentation आपको सभी Instagram API endpoints को test करने में मदद करेगी।
+- All requests must be made over HTTPS in production
+- JWT tokens expire after 24 hours
+- Instagram tokens are automatically refreshed when possible
+- All sensitive data is encrypted in transit and at rest
+- Request validation and sanitization applied to all inputs

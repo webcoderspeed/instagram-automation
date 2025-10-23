@@ -1,6 +1,6 @@
 # Subscription API Documentation
 
-यह documentation Instagram Automation SaaS application के सभी subscription और billing endpoints के लिए है। सभी endpoints authentication की आवश्यकता होती है।
+This documentation covers all subscription and billing endpoints for the Instagram Automation SaaS application. All endpoints require authentication.
 
 ## Base URL
 ```
@@ -12,6 +12,9 @@ http://localhost:3000/api/subscriptions
 2. [Plans & Pricing](#plans--pricing)
 3. [Checkout & Payment](#checkout--payment)
 4. [Billing & Usage](#billing--usage)
+5. [Payment Methods](#payment-methods)
+6. [Error Responses](#error-responses)
+7. [Authentication](#authentication)
 
 ---
 
@@ -19,13 +22,14 @@ http://localhost:3000/api/subscriptions
 
 ### 1. Get Current Subscription
 **Endpoint:** `GET /current`  
-**Description:** User के current subscription की details return करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Retrieves current subscription details for the authenticated user.  
+**Required Permission:** `SUBSCRIPTION_READ`  
+**Rate Limit:** General rate limit applies
 
 ```bash
 curl -X GET http://localhost:3000/api/subscriptions/current \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Response:**
@@ -44,7 +48,7 @@ curl -X GET http://localhost:3000/api/subscriptions/current \
       "trialEnd": null,
       "pricing": {
         "amount": 2999,
-        "currency": "INR",
+        "currency": "USD",
         "interval": "month",
         "intervalCount": 1
       },
@@ -61,19 +65,29 @@ curl -X GET http://localhost:3000/api/subscriptions/current \
         "postsLimit": 1000
       }
     }
-  }
+  },
+  "message": "Subscription retrieved successfully"
 }
 ```
 
 ### 2. Activate Subscription
 **Endpoint:** `POST /activate`  
-**Description:** Payment के बाद subscription को activate करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Activates a subscription after successful payment.  
+**Required Permission:** `SUBSCRIPTION_UPDATE`  
+**Rate Limit:** General rate limit applies
+
+**Request Body:**
+```json
+{
+  "sessionId": "cs_test_1234567890",
+  "planId": "plan_premium"
+}
+```
 
 ```bash
 curl -X POST http://localhost:3000/api/subscriptions/activate \
   -H "Content-Type: application/json" \
-  -b cookies.txt \
+  -H "Authorization: Bearer your_jwt_token" \
   -d '{
     "sessionId": "cs_test_1234567890",
     "planId": "plan_premium"
@@ -84,31 +98,41 @@ curl -X POST http://localhost:3000/api/subscriptions/activate \
 ```json
 {
   "success": true,
-  "message": "Subscription activated successfully",
   "data": {
     "subscription": {
       "id": "sub_1234567890",
       "status": "active",
       "planId": "plan_premium",
-      "activatedAt": "2024-01-01T12:00:00Z"
+      "activatedAt": "2024-01-01T12:00:00Z",
+      "currentPeriodStart": "2024-01-01T12:00:00Z",
+      "currentPeriodEnd": "2024-02-01T12:00:00Z"
     }
-  }
+  },
+  "message": "Subscription activated successfully"
 }
 ```
 
 ### 3. Cancel Subscription
 **Endpoint:** `POST /cancel`  
-**Description:** Current subscription को cancel करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Cancels the current subscription (will remain active until period end).  
+**Required Permission:** `SUBSCRIPTION_UPDATE`  
+**Rate Limit:** General rate limit applies
+
+**Request Body:**
+```json
+{
+  "reason": "no_longer_needed",
+  "feedback": "Optional cancellation feedback"
+}
+```
 
 ```bash
 curl -X POST http://localhost:3000/api/subscriptions/cancel \
   -H "Content-Type: application/json" \
-  -b cookies.txt \
+  -H "Authorization: Bearer your_jwt_token" \
   -d '{
     "reason": "no_longer_needed",
-    "feedback": "Found a better alternative",
-    "cancelAtPeriodEnd": true
+    "feedback": "Found a better alternative"
   }'
 ```
 
@@ -116,46 +140,44 @@ curl -X POST http://localhost:3000/api/subscriptions/cancel \
 ```json
 {
   "success": true,
-  "message": "Subscription cancelled successfully",
   "data": {
     "subscription": {
       "id": "sub_1234567890",
       "status": "active",
       "cancelAtPeriodEnd": true,
-      "cancelledAt": "2024-01-01T15:00:00Z",
+      "canceledAt": "2024-01-15T12:00:00Z",
       "currentPeriodEnd": "2024-02-01T00:00:00Z"
     }
-  }
+  },
+  "message": "Subscription canceled successfully. Access will continue until the end of the current billing period."
 }
 ```
 
 ### 4. Reactivate Subscription
 **Endpoint:** `POST /reactivate`  
-**Description:** Cancelled subscription को reactivate करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Reactivates a canceled subscription before the period ends.  
+**Required Permission:** `SUBSCRIPTION_UPDATE`  
+**Rate Limit:** General rate limit applies
 
 ```bash
 curl -X POST http://localhost:3000/api/subscriptions/reactivate \
   -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{
-    "planId": "plan_premium"
-  }'
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "Subscription reactivated successfully",
   "data": {
     "subscription": {
       "id": "sub_1234567890",
       "status": "active",
       "cancelAtPeriodEnd": false,
-      "reactivatedAt": "2024-01-01T16:00:00Z"
+      "reactivatedAt": "2024-01-20T12:00:00Z"
     }
-  }
+  },
+  "message": "Subscription reactivated successfully"
 }
 ```
 
@@ -165,13 +187,14 @@ curl -X POST http://localhost:3000/api/subscriptions/reactivate \
 
 ### 5. Get Available Plans
 **Endpoint:** `GET /plans`  
-**Description:** Available subscription plans की list return करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Retrieves all available subscription plans and their pricing.  
+**Required Permission:** `SUBSCRIPTION_READ`  
+**Rate Limit:** General rate limit applies
 
 ```bash
 curl -X GET http://localhost:3000/api/subscriptions/plans \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Response:**
@@ -181,101 +204,76 @@ curl -X GET http://localhost:3000/api/subscriptions/plans \
   "data": {
     "plans": [
       {
-        "id": "plan_basic",
-        "name": "Basic Plan",
-        "description": "Perfect for getting started with Instagram automation",
-        "pricing": {
-          "monthly": {
-            "amount": 999,
-            "currency": "INR",
-            "priceId": "price_basic_monthly"
-          },
-          "yearly": {
-            "amount": 9999,
-            "currency": "INR",
-            "priceId": "price_basic_yearly",
-            "discount": 17
-          }
+        "id": "plan_free",
+        "name": "Free Plan",
+        "description": "Perfect for getting started",
+        "price": {
+          "amount": 0,
+          "currency": "USD",
+          "interval": "month"
         },
         "features": [
           "5 automations",
-          "100 posts per month",
           "Basic analytics",
-          "Email support"
+          "Email support",
+          "50 posts per month"
         ],
         "limits": {
           "automations": 5,
-          "postsPerMonth": 100,
-          "analyticsRetention": 30
+          "posts": 50,
+          "analytics": "basic"
         },
         "popular": false
       },
       {
         "id": "plan_premium",
         "name": "Premium Plan",
-        "description": "Advanced features for serious content creators",
-        "pricing": {
-          "monthly": {
-            "amount": 2999,
-            "currency": "INR",
-            "priceId": "price_premium_monthly"
-          },
-          "yearly": {
-            "amount": 29999,
-            "currency": "INR",
-            "priceId": "price_premium_yearly",
-            "discount": 17
-          }
+        "description": "For growing businesses",
+        "price": {
+          "amount": 2999,
+          "currency": "USD",
+          "interval": "month"
         },
         "features": [
           "Unlimited automations",
-          "1000 posts per month",
           "Advanced analytics",
           "Priority support",
-          "Custom scheduling",
-          "Team collaboration"
+          "1000 posts per month",
+          "Custom scheduling"
         ],
         "limits": {
           "automations": -1,
-          "postsPerMonth": 1000,
-          "analyticsRetention": 90
+          "posts": 1000,
+          "analytics": "advanced"
         },
         "popular": true
       },
       {
         "id": "plan_enterprise",
         "name": "Enterprise Plan",
-        "description": "Complete solution for agencies and large teams",
-        "pricing": {
-          "monthly": {
-            "amount": 9999,
-            "currency": "INR",
-            "priceId": "price_enterprise_monthly"
-          },
-          "yearly": {
-            "amount": 99999,
-            "currency": "INR",
-            "priceId": "price_enterprise_yearly",
-            "discount": 17
-          }
+        "description": "For large organizations",
+        "price": {
+          "amount": 9999,
+          "currency": "USD",
+          "interval": "month"
         },
         "features": [
           "Unlimited everything",
-          "White-label solution",
-          "API access",
-          "Dedicated support",
           "Custom integrations",
-          "Advanced reporting"
+          "Dedicated support",
+          "White-label options",
+          "API access"
         ],
         "limits": {
           "automations": -1,
-          "postsPerMonth": -1,
-          "analyticsRetention": 365
+          "posts": -1,
+          "analytics": "enterprise"
         },
         "popular": false
       }
     ]
-  }
+  },
+  "message": "Plans retrieved successfully"
 }
 ```
 
@@ -285,19 +283,27 @@ curl -X GET http://localhost:3000/api/subscriptions/plans \
 
 ### 6. Create Checkout Session
 **Endpoint:** `POST /checkout`  
-**Description:** Subscription purchase के लिए checkout session create करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Creates a Stripe checkout session for subscription payment.  
+**Required Permission:** `SUBSCRIPTION_UPDATE`  
+**Rate Limit:** General rate limit applies
+
+**Request Body:**
+```json
+{
+  "planId": "plan_premium",
+  "successUrl": "https://yourapp.com/success",
+  "cancelUrl": "https://yourapp.com/cancel"
+}
+```
 
 ```bash
 curl -X POST http://localhost:3000/api/subscriptions/checkout \
   -H "Content-Type: application/json" \
-  -b cookies.txt \
+  -H "Authorization: Bearer your_jwt_token" \
   -d '{
-    "priceId": "price_premium_monthly",
     "planId": "plan_premium",
     "successUrl": "https://yourapp.com/success",
-    "cancelUrl": "https://yourapp.com/cancel",
-    "couponCode": "SAVE20"
+    "cancelUrl": "https://yourapp.com/cancel"
   }'
 ```
 
@@ -306,31 +312,37 @@ curl -X POST http://localhost:3000/api/subscriptions/checkout \
 {
   "success": true,
   "data": {
-    "checkoutSession": {
-      "id": "cs_test_1234567890",
+    "checkout": {
+      "sessionId": "cs_test_1234567890",
       "url": "https://checkout.stripe.com/pay/cs_test_1234567890",
       "expiresAt": "2024-01-01T13:00:00Z"
-    },
-    "planDetails": {
-      "id": "plan_premium",
-      "name": "Premium Plan",
-      "amount": 2999,
-      "currency": "INR",
-      "interval": "month"
     }
-  }
+  },
+  "message": "Checkout session created successfully"
 }
 ```
 
+---
+
+## Payment Methods
+
 ### 7. Update Payment Method
 **Endpoint:** `PUT /payment-method`  
-**Description:** Subscription के payment method को update करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Updates the default payment method for the subscription.  
+**Required Permission:** `SUBSCRIPTION_UPDATE`  
+**Rate Limit:** General rate limit applies
+
+**Request Body:**
+```json
+{
+  "paymentMethodId": "pm_1234567890"
+}
+```
 
 ```bash
 curl -X PUT http://localhost:3000/api/subscriptions/payment-method \
   -H "Content-Type: application/json" \
-  -b cookies.txt \
+  -H "Authorization: Bearer your_jwt_token" \
   -d '{
     "paymentMethodId": "pm_1234567890"
   }'
@@ -340,7 +352,6 @@ curl -X PUT http://localhost:3000/api/subscriptions/payment-method \
 ```json
 {
   "success": true,
-  "message": "Payment method updated successfully",
   "data": {
     "paymentMethod": {
       "id": "pm_1234567890",
@@ -350,9 +361,11 @@ curl -X PUT http://localhost:3000/api/subscriptions/payment-method \
         "last4": "4242",
         "expMonth": 12,
         "expYear": 2025
-      }
+      },
+      "isDefault": true
     }
-  }
+  },
+  "message": "Payment method updated successfully"
 }
 ```
 
@@ -362,24 +375,19 @@ curl -X PUT http://localhost:3000/api/subscriptions/payment-method \
 
 ### 8. Get Billing History
 **Endpoint:** `GET /billing-history`  
-**Description:** User की billing history return करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Retrieves billing history and invoices for the user.  
+**Required Permission:** `SUBSCRIPTION_READ`  
+**Rate Limit:** General rate limit applies
 
 ```bash
 curl -X GET http://localhost:3000/api/subscriptions/billing-history \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
 
 **Query Parameters:**
-- `limit` - Number of records to return (default: 10, max: 100)
-- `startingAfter` - Pagination cursor for next page
-
-```bash
-curl -X GET "http://localhost:3000/api/subscriptions/billing-history?limit=20&startingAfter=inv_1234567890" \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-```
+- `limit` (optional) - Number of records to return (default: 10, max: 100)
+- `startingAfter` (optional) - Pagination cursor for next page
 
 **Response:**
 ```json
@@ -388,48 +396,52 @@ curl -X GET "http://localhost:3000/api/subscriptions/billing-history?limit=20&st
   "data": {
     "billingHistory": [
       {
-        "id": "inv_1234567890",
-        "number": "INV-2024-001",
-        "status": "paid",
+        "id": "in_1234567890",
         "amount": 2999,
-        "currency": "INR",
-        "description": "Premium Plan - Monthly",
-        "periodStart": "2024-01-01T00:00:00Z",
-        "periodEnd": "2024-02-01T00:00:00Z",
-        "paidAt": "2024-01-01T12:00:00Z",
-        "dueDate": "2024-01-01T00:00:00Z",
-        "invoiceUrl": "https://invoice.stripe.com/i/inv_1234567890",
-        "downloadUrl": "https://invoice.stripe.com/i/inv_1234567890/pdf"
+        "currency": "USD",
+        "status": "paid",
+        "date": "2024-01-01T12:00:00Z",
+        "description": "Premium Plan - January 2024",
+        "invoiceUrl": "https://invoice.stripe.com/i/acct_123/test_456",
+        "paymentMethod": {
+          "type": "card",
+          "last4": "4242"
+        }
       },
       {
-        "id": "inv_0987654321",
-        "number": "INV-2023-012",
-        "status": "paid",
+        "id": "in_0987654321",
         "amount": 2999,
-        "currency": "INR",
-        "description": "Premium Plan - Monthly",
-        "periodStart": "2023-12-01T00:00:00Z",
-        "periodEnd": "2024-01-01T00:00:00Z",
-        "paidAt": "2023-12-01T12:00:00Z",
-        "dueDate": "2023-12-01T00:00:00Z"
+        "currency": "USD",
+        "status": "paid",
+        "date": "2023-12-01T12:00:00Z",
+        "description": "Premium Plan - December 2023",
+        "invoiceUrl": "https://invoice.stripe.com/i/acct_123/test_789",
+        "paymentMethod": {
+          "type": "card",
+          "last4": "4242"
+        }
       }
     ],
-    "hasMore": true,
-    "totalCount": 12
-  }
+    "hasMore": false
+  },
+  "message": "Billing history retrieved successfully"
 }
 ```
 
 ### 9. Get Usage Statistics
 **Endpoint:** `GET /usage`  
-**Description:** Current billing period के usage statistics return करता है।  
-**Required Role:** `VERIFIED_USER`
+**Description:** Retrieves current usage statistics for the subscription.  
+**Required Permission:** `SUBSCRIPTION_READ`  
+**Rate Limit:** General rate limit applies
 
 ```bash
 curl -X GET http://localhost:3000/api/subscriptions/usage \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer your_jwt_token"
 ```
+
+**Query Parameters:**
+- `period` (optional) - Time period (current, last_month, last_3_months)
 
 **Response:**
 ```json
@@ -437,44 +449,173 @@ curl -X GET http://localhost:3000/api/subscriptions/usage \
   "success": true,
   "data": {
     "usage": {
-      "billingPeriod": {
-        "start": "2024-01-01T00:00:00Z",
-        "end": "2024-02-01T00:00:00Z",
-        "daysRemaining": 15
-      },
+      "period": "current",
+      "periodStart": "2024-01-01T00:00:00Z",
+      "periodEnd": "2024-02-01T00:00:00Z",
       "automations": {
         "used": 15,
         "limit": -1,
         "percentage": 0
       },
-      "postsPublished": {
+      "posts": {
         "used": 120,
         "limit": 1000,
-        "percentage": 12
+        "percentage": 12.0
       },
       "apiCalls": {
         "used": 5000,
         "limit": 50000,
-        "percentage": 10
+        "percentage": 10.0
       },
       "storage": {
-        "used": 250,
-        "limit": 5000,
-        "unit": "MB",
-        "percentage": 5
-      },
-      "features": {
-        "advancedAnalytics": true,
-        "prioritySupport": true,
-        "customScheduling": true,
-        "teamCollaboration": true
-      },
-      "overageCharges": {
-        "posts": 0,
-        "apiCalls": 0,
-        "storage": 0,
-        "total": 0
+        "used": 2048,
+        "limit": 10240,
+        "percentage": 20.0,
+        "unit": "MB"
       }
+    },
+    "trends": {
+      "automationsGrowth": 25.0,
+      "postsGrowth": 15.5,
+      "apiCallsGrowth": -5.2
+    }
+  },
+  "message": "Usage statistics retrieved successfully"
+}
+```
+
+---
+
+## Error Responses
+
+All endpoints may return the following error responses:
+
+### Common Error Codes
+
+**400 Bad Request**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid request parameters",
+    "details": [
+      {
+        "field": "planId",
+        "message": "Plan ID is required"
+      }
+    ]
+  }
+}
+```
+
+**401 Unauthorized**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required"
+  }
+}
+```
+
+**403 Forbidden**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INSUFFICIENT_PERMISSIONS",
+    "message": "You don't have permission to access this resource",
+    "requiredPermission": "SUBSCRIPTION_READ"
+  }
+}
+```
+
+**404 Not Found**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "SUBSCRIPTION_NOT_FOUND",
+    "message": "Subscription not found"
+  }
+}
+```
+
+**429 Too Many Requests**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Rate limit exceeded. Please try again later.",
+    "retryAfter": 3600
+  }
+}
+```
+
+### Subscription-Specific Error Codes
+
+**SUBSCRIPTION_ALREADY_ACTIVE**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "SUBSCRIPTION_ALREADY_ACTIVE",
+    "message": "User already has an active subscription"
+  }
+}
+```
+
+**SUBSCRIPTION_CANNOT_CANCEL**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "SUBSCRIPTION_CANNOT_CANCEL",
+    "message": "Subscription cannot be canceled at this time"
+  }
+}
+```
+
+**PAYMENT_FAILED**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "PAYMENT_FAILED",
+    "message": "Payment processing failed",
+    "details": {
+      "stripeError": "Your card was declined",
+      "declineCode": "generic_decline"
+    }
+  }
+}
+```
+
+**PLAN_NOT_FOUND**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "PLAN_NOT_FOUND",
+    "message": "Subscription plan not found"
+  }
+}
+```
+
+**USAGE_LIMIT_EXCEEDED**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "USAGE_LIMIT_EXCEEDED",
+    "message": "Usage limit exceeded for current plan",
+    "details": {
+      "resource": "posts",
+      "used": 1000,
+      "limit": 1000
     }
   }
 }
@@ -482,130 +623,40 @@ curl -X GET http://localhost:3000/api/subscriptions/usage \
 
 ---
 
-## Important Notes
+## Authentication
 
-### Authentication Requirements
-- सभी endpoints authenticated user की आवश्यकता होती है
-- `VERIFIED_USER` role minimum requirement है
-- Session cookies का उपयोग करें (`-b cookies.txt`)
+All subscription API endpoints require:
 
-### Payment Processing
-- Stripe payment gateway का उपयोग
-- Secure checkout sessions
-- Automatic invoice generation
-- Multiple payment methods supported
+1. **User Authentication**: Valid JWT token in Authorization header
+2. **Permissions**: Specific permissions based on endpoint requirements
 
-### Subscription Status
-- `active` - Active subscription
-- `trialing` - In trial period
-- `past_due` - Payment failed
-- `canceled` - Cancelled subscription
-- `unpaid` - Payment pending
+### Required Permissions
 
-### Plan Features
-- **Basic Plan**: 5 automations, 100 posts/month
-- **Premium Plan**: Unlimited automations, 1000 posts/month
-- **Enterprise Plan**: Unlimited everything + white-label
+- `SUBSCRIPTION_READ` - For reading subscription details, plans, billing history, and usage
+- `SUBSCRIPTION_UPDATE` - For creating, activating, canceling, and updating subscriptions
 
-### Billing Cycles
-- Monthly billing on the same date
-- Yearly billing with 17% discount
-- Prorated charges for plan changes
-- Grace period for failed payments
+### Rate Limiting
 
-### Error Responses
-```json
-{
-  "success": false,
-  "message": "Error message here",
-  "error": {
-    "code": "SUBSCRIPTION_ERROR",
-    "type": "payment_failed",
-    "details": "Payment method declined"
-  }
-}
-```
+- **General endpoints**: 1000 requests per hour per user
+- **Checkout endpoints**: 100 requests per hour per user
 
-### Common HTTP Status Codes
-- `200` - Success
-- `201` - Created
-- `400` - Bad Request
-- `401` - Unauthorized
-- `402` - Payment Required
-- `403` - Forbidden
-- `404` - Not Found
-- `429` - Too Many Requests
-- `500` - Internal Server Error
+Rate limits are enforced per user and reset every hour. When rate limit is exceeded, the API returns a 429 status code with retry information.
 
----
+### Security Features
 
-## Testing Workflow
+- All requests must be made over HTTPS in production
+- JWT tokens expire after 24 hours
+- Payment processing handled securely through Stripe
+- All sensitive payment data is handled by Stripe (PCI compliant)
+- Subscription data is encrypted in transit and at rest
+- Request validation and sanitization applied to all inputs
 
-### Complete Subscription Flow Test:
-```bash
-# 1. Login first (required for all subscription endpoints)
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -c cookies.txt \
-  -d '{"email":"user@example.com","password":"password"}'
+### Webhook Integration
 
-# 2. Get available plans
-curl -X GET http://localhost:3000/api/subscriptions/plans \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
+The subscription system integrates with Stripe webhooks to handle:
+- Payment success/failure notifications
+- Subscription status changes
+- Invoice payment updates
+- Payment method updates
 
-# 3. Get current subscription (if any)
-curl -X GET http://localhost:3000/api/subscriptions/current \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 4. Create checkout session
-curl -X POST http://localhost:3000/api/subscriptions/checkout \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"priceId":"price_premium_monthly","planId":"plan_premium","successUrl":"https://app.com/success","cancelUrl":"https://app.com/cancel"}'
-
-# 5. Activate subscription (after payment)
-curl -X POST http://localhost:3000/api/subscriptions/activate \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"sessionId":"cs_test_1234567890","planId":"plan_premium"}'
-
-# 6. Get usage statistics
-curl -X GET http://localhost:3000/api/subscriptions/usage \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 7. Get billing history
-curl -X GET http://localhost:3000/api/subscriptions/billing-history \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 8. Update payment method
-curl -X PUT http://localhost:3000/api/subscriptions/payment-method \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"paymentMethodId":"pm_1234567890"}'
-
-# 9. Cancel subscription
-curl -X POST http://localhost:3000/api/subscriptions/cancel \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"reason":"no_longer_needed","cancelAtPeriodEnd":true}'
-
-# 10. Reactivate subscription
-curl -X POST http://localhost:3000/api/subscriptions/reactivate \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"planId":"plan_premium"}'
-```
-
-### Plan Comparison Test:
-```bash
-# Get all plans and compare features
-curl -X GET http://localhost:3000/api/subscriptions/plans \
-  -H "Content-Type: application/json" \
-  -b cookies.txt | jq '.data.plans[] | {name: .name, price: .pricing.monthly.amount, features: .features}'
-```
-
-यह documentation आपको सभी subscription और billing endpoints को test करने में मदद करेगी।
+These webhooks ensure real-time synchronization between Stripe and the application database.

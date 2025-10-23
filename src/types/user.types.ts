@@ -211,6 +211,7 @@ export interface UpdateUserRoleRequest {
  */
 export interface AuthenticatedUser {
   id: string;
+  _id: string; // MongoDB ObjectId as string
   email: string;
   username: string;
   firstName?: string;
@@ -222,5 +223,9 @@ export interface AuthenticatedUser {
   createdAt: Date;
   connectedAccounts: {
     [K in SocialPlatform]?: PlatformAccount;
+  };
+  subscription?: {
+    tier: string;
+    limits: any;
   };
 }

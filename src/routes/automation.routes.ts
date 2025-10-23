@@ -5,8 +5,6 @@
 
 import { Router } from 'express';
 import { AutomationController } from '../controllers/automation.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { createProtectedRoute } from '../middleware/role.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { validate } from '../validators/common.validator';
 import { createAutomationSchema, updateAutomationSchema } from '../validators/automation.validator';
@@ -15,8 +13,7 @@ import { PERMISSIONS } from '../constants/permissions';
 const router = Router();
 const automationController = new AutomationController();
 
-// Apply authentication to all automation routes
-router.use(authMiddleware.authenticate);
+// Note: Authentication and email verification are now handled by requirePermission middleware
 
 /**
  * @route GET /api/automations
@@ -24,7 +21,6 @@ router.use(authMiddleware.authenticate);
  * @access Private (AUTOMATION_LIST permission required)
  */
 router.get('/',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_LIST),
   automationController.getAutomations
 );
@@ -35,7 +31,6 @@ router.get('/',
  * @access Private (AUTOMATION_READ permission required)
  */
 router.get('/templates',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_READ),
   automationController.getAutomationTemplates
 );
@@ -46,7 +41,6 @@ router.get('/templates',
  * @access Private (AUTOMATION_READ permission required)
  */
 router.get('/:id',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_READ),
   automationController.getAutomation
 );
@@ -57,7 +51,6 @@ router.get('/:id',
  * @access Private (AUTOMATION_CREATE permission required)
  */
 router.post('/',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_CREATE),
   validate(createAutomationSchema),
   automationController.createAutomation
@@ -69,7 +62,6 @@ router.post('/',
  * @access Private (AUTOMATION_UPDATE permission required)
  */
 router.put('/:id',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_UPDATE),
   validate(updateAutomationSchema),
   automationController.updateAutomation
@@ -81,7 +73,6 @@ router.put('/:id',
  * @access Private (AUTOMATION_DELETE permission required)
  */
 router.delete('/:id',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_DELETE),
   automationController.deleteAutomation
 );
@@ -92,20 +83,8 @@ router.delete('/:id',
  * @access Private (AUTOMATION_EXECUTE permission required)
  */
 router.post('/:id/start',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_EXECUTE),
   automationController.startAutomation
-);
-
-/**
- * @route POST /api/automations/:id/pause
- * @desc Pause automation
- * @access Private (AUTOMATION_EXECUTE permission required)
- */
-router.post('/:id/pause',
-  createProtectedRoute('VERIFIED_USER'),
-  roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_EXECUTE),
-  automationController.pauseAutomation
 );
 
 /**
@@ -114,9 +93,18 @@ router.post('/:id/pause',
  * @access Private (AUTOMATION_EXECUTE permission required)
  */
 router.post('/:id/stop',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_EXECUTE),
   automationController.stopAutomation
+);
+
+/**
+ * @route POST /api/automations/:id/pause
+ * @desc Pause automation
+ * @access Private (AUTOMATION_EXECUTE permission required)
+ */
+router.post('/:id/pause',
+  roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_EXECUTE),
+  automationController.pauseAutomation
 );
 
 /**
@@ -125,7 +113,6 @@ router.post('/:id/stop',
  * @access Private (AUTOMATION_EXECUTE permission required)
  */
 router.post('/:id/execute',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_EXECUTE),
   automationController.executeAutomation
 );
@@ -136,7 +123,6 @@ router.post('/:id/execute',
  * @access Private (ANALYTICS_READ permission required)
  */
 router.get('/:id/analytics',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.ANALYTICS_READ),
   automationController.getAutomationAnalytics
 );
@@ -147,7 +133,6 @@ router.get('/:id/analytics',
  * @access Private (ANALYTICS_READ permission required)
  */
 router.get('/stats/overview',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.ANALYTICS_READ),
   automationController.getAutomationStats
 );

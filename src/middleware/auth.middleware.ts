@@ -61,6 +61,7 @@ class AuthMiddleware {
       // Attach user to request
       req.user = {
         id: String(user._id),
+        _id: String(user._id),
         email: user.email,
         username: user.username,
         firstName: user.firstName,
@@ -158,6 +159,7 @@ class AuthMiddleware {
         // Attach user to request
         req.user = {
           id: String(user._id),
+          _id: String(user._id),
           email: user.email,
           username: user.username,
           firstName: user.firstName,
@@ -189,9 +191,9 @@ class AuthMiddleware {
   /**
    * Get current user from session
    */
-  getCurrentUser(req: Request): any {
-    if (this.isAuthenticated(req)) {
-      return req.session.user;
+  getCurrentUser(req: Request): AuthenticatedUser | null {
+    if (this.isAuthenticated(req) && req.session.user) {
+      return req.session.user as AuthenticatedUser;
     }
     return null;
   }

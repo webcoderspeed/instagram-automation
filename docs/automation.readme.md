@@ -1,6 +1,6 @@
 # Automation API Documentation
 
-यह documentation Instagram Automation SaaS application के सभी automation endpoints के लिए है। सभी endpoints authentication की आवश्यकता होती है।
+यह documentation Instagram Automation SaaS application के सभी automation endpoints के लिए है। सभी endpoints authentication और role-based permissions की आवश्यकता होती है।
 
 ## Base URL
 ```
@@ -19,11 +19,19 @@ http://localhost:3000/api/automation
 
 ### 1. Get All Automations
 **Endpoint:** `GET /`  
-**Description:** User के सभी automations की list return करता है।  
-**Required Role:** `AUTOMATION_MANAGER`
+**Description:** User के सभी automations की paginated list return करता है with filtering options।  
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_LIST`
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10)
+- `status` (optional): Filter by status (active, paused, stopped)
+- `type` (optional): Filter by automation type
+- `search` (optional): Search by name or description
 
 ```bash
-curl -X GET http://localhost:3000/api/automation \
+curl -X GET "http://localhost:3000/api/automation?page=1&limit=10&status=active" \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -37,27 +45,51 @@ curl -X GET http://localhost:3000/api/automation \
       {
         "id": "automation_id",
         "name": "Auto Like Posts",
+        "description": "Automatically likes posts with specific hashtags",
         "type": "like_posts",
         "status": "active",
-        "createdAt": "2024-01-01T10:00:00Z",
-        "lastRun": "2024-01-01T11:00:00Z",
+        "platformAccountId": "platform_account_id",
         "settings": {
           "targetHashtags": ["#photography", "#nature"],
-          "likesPerHour": 30
-        }
+          "likesPerHour": 30,
+          "maxLikesPerDay": 500
+        },
+        "schedule": {
+          "enabled": true,
+          "startTime": "09:00",
+          "endTime": "18:00",
+          "timezone": "Asia/Kolkata",
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        "createdAt": "2024-01-01T10:00:00Z",
+        "updatedAt": "2024-01-01T11:00:00Z",
+        "lastRun": "2024-01-01T11:00:00Z",
+        "nextRun": "2024-01-01T12:00:00Z"
       }
     ],
-    "total": 5,
-    "active": 3,
-    "paused": 2
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "totalPages": 3,
+      "hasNext": true,
+      "hasPrev": false
+    },
+    "stats": {
+      "total": 25,
+      "active": 15,
+      "paused": 8,
+      "stopped": 2
+    }
   }
 }
 ```
 
 ### 2. Get Automation by ID
 **Endpoint:** `GET /:id`  
-**Description:** Specific automation की details return करता है।  
-**Required Role:** `AUTOMATION_MANAGER`
+**Description:** Specific automation की detailed information return करता है।  
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_READ`
 
 ```bash
 curl -X GET http://localhost:3000/api/automation/automation_id_here \
@@ -76,19 +108,30 @@ curl -X GET http://localhost:3000/api/automation/automation_id_here \
       "description": "Automatically likes posts with specific hashtags",
       "type": "like_posts",
       "status": "active",
+      "platformAccountId": "platform_account_id",
       "settings": {
         "targetHashtags": ["#photography", "#nature"],
         "likesPerHour": 30,
-        "maxLikesPerDay": 500
+        "maxLikesPerDay": 500,
+        "targetAccounts": ["@photographer1", "@naturelover"],
+        "avoidRecentlyLiked": true,
+        "minFollowers": 100,
+        "maxFollowers": 10000
       },
       "schedule": {
         "enabled": true,
         "startTime": "09:00",
         "endTime": "18:00",
-        "timezone": "Asia/Kolkata"
+        "timezone": "Asia/Kolkata",
+        "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
       },
       "createdAt": "2024-01-01T10:00:00Z",
-      "updatedAt": "2024-01-01T11:00:00Z"
+      "updatedAt": "2024-01-01T11:00:00Z",
+      "lastRun": "2024-01-01T11:00:00Z",
+      "nextRun": "2024-01-01T12:00:00Z",
+      "runCount": 150,
+      "successCount": 145,
+      "errorCount": 5
     }
   }
 }
@@ -97,7 +140,9 @@ curl -X GET http://localhost:3000/api/automation/automation_id_here \
 ### 3. Create New Automation
 **Endpoint:** `POST /`  
 **Description:** नया automation create करता है।  
-**Required Role:** `CREATE_AUTOMATION`
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_CREATE`  
+**Validation:** createAutomationSchema applied
 
 ```bash
 curl -X POST http://localhost:3000/api/automation \
@@ -105,18 +150,22 @@ curl -X POST http://localhost:3000/api/automation \
   -b cookies.txt \
   -d '{
     "name": "Auto Follow Users",
-    "description": "Automatically follows users based on hashtags",
+    "description": "Automatically follow users based on hashtags",
     "type": "follow_users",
+    "platformAccountId": "platform_account_id",
     "settings": {
-      "targetHashtags": ["#fitness", "#health"],
+      "targetHashtags": ["#photography", "#travel"],
       "followsPerHour": 20,
-      "maxFollowsPerDay": 200
+      "maxFollowsPerDay": 200,
+      "minFollowers": 50,
+      "maxFollowers": 5000
     },
     "schedule": {
       "enabled": true,
       "startTime": "10:00",
       "endTime": "17:00",
-      "timezone": "Asia/Kolkata"
+      "timezone": "Asia/Kolkata",
+      "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
     }
   }'
 ```
@@ -130,9 +179,26 @@ curl -X POST http://localhost:3000/api/automation \
     "automation": {
       "id": "new_automation_id",
       "name": "Auto Follow Users",
+      "description": "Automatically follow users based on hashtags",
       "type": "follow_users",
-      "status": "inactive",
-      "createdAt": "2024-01-01T12:00:00Z"
+      "status": "paused",
+      "platformAccountId": "platform_account_id",
+      "settings": {
+        "targetHashtags": ["#photography", "#travel"],
+        "followsPerHour": 20,
+        "maxFollowsPerDay": 200,
+        "minFollowers": 50,
+        "maxFollowers": 5000
+      },
+      "schedule": {
+        "enabled": true,
+        "startTime": "10:00",
+        "endTime": "17:00",
+        "timezone": "Asia/Kolkata",
+        "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+      },
+      "createdAt": "2024-01-01T12:00:00Z",
+      "updatedAt": "2024-01-01T12:00:00Z"
     }
   }
 }
@@ -141,18 +207,25 @@ curl -X POST http://localhost:3000/api/automation \
 ### 4. Update Automation
 **Endpoint:** `PUT /:id`  
 **Description:** Existing automation को update करता है।  
-**Required Role:** `AUTOMATION_MANAGER`
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_UPDATE`  
+**Validation:** updateAutomationSchema applied
 
 ```bash
 curl -X PUT http://localhost:3000/api/automation/automation_id_here \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
-    "name": "Updated Auto Follow",
+    "name": "Updated Auto Like Posts",
     "settings": {
-      "targetHashtags": ["#fitness", "#health", "#wellness"],
-      "followsPerHour": 25,
-      "maxFollowsPerDay": 250
+      "targetHashtags": ["#photography", "#nature", "#landscape"],
+      "likesPerHour": 25,
+      "maxLikesPerDay": 400
+    },
+    "schedule": {
+      "enabled": true,
+      "startTime": "08:00",
+      "endTime": "20:00"
     }
   }'
 ```
@@ -165,7 +238,22 @@ curl -X PUT http://localhost:3000/api/automation/automation_id_here \
   "data": {
     "automation": {
       "id": "automation_id",
-      "name": "Updated Auto Follow",
+      "name": "Updated Auto Like Posts",
+      "description": "Automatically likes posts with specific hashtags",
+      "type": "like_posts",
+      "status": "active",
+      "settings": {
+        "targetHashtags": ["#photography", "#nature", "#landscape"],
+        "likesPerHour": 25,
+        "maxLikesPerDay": 400
+      },
+      "schedule": {
+        "enabled": true,
+        "startTime": "08:00",
+        "endTime": "20:00",
+        "timezone": "Asia/Kolkata",
+        "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+      },
       "updatedAt": "2024-01-01T13:00:00Z"
     }
   }
@@ -174,8 +262,9 @@ curl -X PUT http://localhost:3000/api/automation/automation_id_here \
 
 ### 5. Delete Automation
 **Endpoint:** `DELETE /:id`  
-**Description:** Automation को delete करता है।  
-**Required Role:** `AUTOMATION_MANAGER`
+**Description:** Automation को permanently delete करता है।  
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_DELETE`
 
 ```bash
 curl -X DELETE http://localhost:3000/api/automation/automation_id_here \
@@ -195,10 +284,11 @@ curl -X DELETE http://localhost:3000/api/automation/automation_id_here \
 
 ## Automation Templates
 
-### 6. Get Automation Templates
+### 6. Get All Templates
 **Endpoint:** `GET /templates`  
 **Description:** Available automation templates की list return करता है।  
-**Required Role:** `VERIFIED_USER`
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_LIST`
 
 ```bash
 curl -X GET http://localhost:3000/api/automation/templates \
@@ -215,25 +305,30 @@ curl -X GET http://localhost:3000/api/automation/templates \
       {
         "id": "template_1",
         "name": "Hashtag Engagement",
-        "description": "Automatically engage with posts using specific hashtags",
-        "type": "hashtag_engagement",
-        "category": "engagement",
+        "description": "Automatically like and comment on posts with specific hashtags",
+        "type": "engagement",
+        "category": "growth",
         "defaultSettings": {
+          "targetHashtags": [],
           "likesPerHour": 30,
-          "commentsPerHour": 5,
-          "followsPerHour": 10
-        }
+          "commentsPerHour": 10,
+          "maxActionsPerDay": 500
+        },
+        "features": ["auto_like", "auto_comment", "hashtag_targeting"],
+        "popularity": 95
       },
       {
         "id": "template_2",
-        "name": "Story Viewer",
-        "description": "Automatically view stories from followed accounts",
-        "type": "story_viewer",
+        "name": "Follow Back Automation",
+        "description": "Automatically follow back users who follow you",
+        "type": "follow_back",
         "category": "engagement",
         "defaultSettings": {
-          "storiesPerHour": 50,
-          "viewDuration": 3
-        }
+          "followBackDelay": 300,
+          "maxFollowsPerDay": 100
+        },
+        "features": ["auto_follow_back", "delay_control"],
+        "popularity": 87
       }
     ]
   }
@@ -246,8 +341,9 @@ curl -X GET http://localhost:3000/api/automation/templates \
 
 ### 7. Start Automation
 **Endpoint:** `POST /:id/start`  
-**Description:** Automation को start करता है।  
-**Required Role:** `AUTOMATION_MANAGER`
+**Description:** Paused या stopped automation को start करता है।  
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_START`
 
 ```bash
 curl -X POST http://localhost:3000/api/automation/automation_id_here/start \
@@ -264,42 +360,18 @@ curl -X POST http://localhost:3000/api/automation/automation_id_here/start \
     "automation": {
       "id": "automation_id",
       "status": "active",
-      "startedAt": "2024-01-01T14:00:00Z"
+      "startedAt": "2024-01-01T14:00:00Z",
+      "nextRun": "2024-01-01T14:30:00Z"
     }
   }
 }
 ```
 
-### 8. Pause Automation
-**Endpoint:** `POST /:id/pause`  
-**Description:** Running automation को pause करता है।  
-**Required Role:** `AUTOMATION_MANAGER`
-
-```bash
-curl -X POST http://localhost:3000/api/automation/automation_id_here/pause \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Automation paused successfully",
-  "data": {
-    "automation": {
-      "id": "automation_id",
-      "status": "paused",
-      "pausedAt": "2024-01-01T15:00:00Z"
-    }
-  }
-}
-```
-
-### 9. Stop Automation
+### 8. Stop Automation
 **Endpoint:** `POST /:id/stop`  
-**Description:** Automation को completely stop करता है।  
-**Required Role:** `AUTOMATION_MANAGER`
+**Description:** Running automation को stop करता है।  
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_STOP`
 
 ```bash
 curl -X POST http://localhost:3000/api/automation/automation_id_here/stop \
@@ -316,16 +388,44 @@ curl -X POST http://localhost:3000/api/automation/automation_id_here/stop \
     "automation": {
       "id": "automation_id",
       "status": "stopped",
-      "stoppedAt": "2024-01-01T16:00:00Z"
+      "stoppedAt": "2024-01-01T14:30:00Z"
     }
   }
 }
 ```
 
-### 10. Execute Automation (Manual)
+### 9. Pause Automation
+**Endpoint:** `POST /:id/pause`  
+**Description:** Running automation को temporarily pause करता है।  
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_PAUSE`
+
+```bash
+curl -X POST http://localhost:3000/api/automation/automation_id_here/pause \
+  -H "Content-Type: application/json" \
+  -b cookies.txt
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Automation paused successfully",
+  "data": {
+    "automation": {
+      "id": "automation_id",
+      "status": "paused",
+      "pausedAt": "2024-01-01T14:45:00Z"
+    }
+  }
+}
+```
+
+### 10. Execute Automation Manually
 **Endpoint:** `POST /:id/execute`  
-**Description:** Automation को manually execute करता है।  
-**Required Role:** `AUTOMATION_MANAGER`
+**Description:** Automation को manually execute करता है (schedule के बिना)।  
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_EXECUTE`
 
 ```bash
 curl -X POST http://localhost:3000/api/automation/automation_id_here/execute \
@@ -343,11 +443,10 @@ curl -X POST http://localhost:3000/api/automation/automation_id_here/execute \
       "id": "execution_id",
       "automationId": "automation_id",
       "status": "completed",
-      "executedAt": "2024-01-01T17:00:00Z",
-      "results": {
-        "actionsPerformed": 25,
-        "successRate": 96
-      }
+      "startedAt": "2024-01-01T15:00:00Z",
+      "completedAt": "2024-01-01T15:05:00Z",
+      "actionsPerformed": 25,
+      "errors": 0
     }
   }
 }
@@ -359,21 +458,16 @@ curl -X POST http://localhost:3000/api/automation/automation_id_here/execute \
 
 ### 11. Get Automation Analytics
 **Endpoint:** `GET /:id/analytics`  
-**Description:** Specific automation के analytics return करता है।  
-**Required Role:** `ANALYTICS_ACCESS`
-
-```bash
-curl -X GET http://localhost:3000/api/automation/automation_id_here/analytics \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-```
+**Description:** Specific automation के performance analytics return करता है।  
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_ANALYTICS`
 
 **Query Parameters:**
-- `period` - Time period (7d, 30d, 90d) - Default: 7d
-- `timezone` - Timezone for data - Default: UTC
+- `period` (optional): Time period (7d, 30d, 90d, 1y) - default: 30d
+- `metrics` (optional): Specific metrics to include
 
 ```bash
-curl -X GET "http://localhost:3000/api/automation/automation_id_here/analytics?period=30d&timezone=Asia/Kolkata" \
+curl -X GET "http://localhost:3000/api/automation/automation_id_here/analytics?period=30d" \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -386,38 +480,47 @@ curl -X GET "http://localhost:3000/api/automation/automation_id_here/analytics?p
     "analytics": {
       "automationId": "automation_id",
       "period": "30d",
-      "totalExecutions": 150,
-      "successfulExecutions": 144,
-      "failedExecutions": 6,
-      "successRate": 96,
-      "totalActions": 3600,
-      "averageActionsPerExecution": 24,
-      "performance": {
-        "likes": 2400,
-        "follows": 800,
-        "comments": 400,
-        "unfollows": 200
+      "summary": {
+        "totalRuns": 150,
+        "successfulRuns": 145,
+        "failedRuns": 5,
+        "totalActions": 4500,
+        "successRate": 96.67,
+        "averageActionsPerRun": 30
       },
       "dailyStats": [
         {
           "date": "2024-01-01",
-          "executions": 5,
-          "actions": 120,
+          "runs": 5,
+          "actions": 150,
+          "errors": 0,
           "successRate": 100
         }
-      ]
+      ],
+      "actionBreakdown": {
+        "likes": 3000,
+        "comments": 800,
+        "follows": 500,
+        "unfollows": 200
+      },
+      "performance": {
+        "averageRunDuration": 300,
+        "peakHours": ["10:00", "14:00", "18:00"],
+        "bestPerformingDays": ["monday", "wednesday", "friday"]
+      }
     }
   }
 }
 ```
 
-### 12. Get Automation Stats Overview
-**Endpoint:** `GET /stats/overview`  
-**Description:** सभी automations का overview stats return करता है।  
-**Required Role:** `ANALYTICS_ACCESS`
+### 12. Get Automation Statistics Overview
+**Endpoint:** `GET /stats`  
+**Description:** User के सभी automations का overall statistics overview return करता है।  
+**Authentication:** Required (authMiddleware.authenticate)  
+**Permission:** `AUTOMATION_ANALYTICS`
 
 ```bash
-curl -X GET http://localhost:3000/api/automation/stats/overview \
+curl -X GET http://localhost:3000/api/automation/stats \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -428,26 +531,33 @@ curl -X GET http://localhost:3000/api/automation/stats/overview \
   "success": true,
   "data": {
     "overview": {
-      "totalAutomations": 8,
-      "activeAutomations": 5,
-      "pausedAutomations": 2,
-      "stoppedAutomations": 1,
-      "totalExecutionsToday": 45,
-      "totalActionsToday": 1080,
+      "totalAutomations": 25,
+      "activeAutomations": 15,
+      "pausedAutomations": 8,
+      "stoppedAutomations": 2,
+      "totalActionsToday": 1250,
+      "totalActionsThisMonth": 45000
+    },
+    "performance": {
       "averageSuccessRate": 94.5,
-      "topPerformingAutomation": {
+      "totalSuccessfulActions": 42750,
+      "totalFailedActions": 2250,
+      "mostActiveAutomation": {
         "id": "automation_id",
         "name": "Auto Like Posts",
-        "successRate": 98.2
-      },
-      "recentActivity": [
-        {
-          "automationId": "automation_id",
-          "automationName": "Auto Follow Users",
-          "action": "started",
-          "timestamp": "2024-01-01T18:00:00Z"
-        }
-      ]
+        "actionsToday": 150
+      }
+    },
+    "trends": {
+      "actionsGrowth": 12.5,
+      "successRateChange": 2.1,
+      "newAutomationsThisMonth": 3
+    },
+    "typeBreakdown": {
+      "like_posts": 10,
+      "follow_users": 8,
+      "comment_posts": 4,
+      "unfollow_users": 3
     }
   }
 }
@@ -455,35 +565,10 @@ curl -X GET http://localhost:3000/api/automation/stats/overview \
 
 ---
 
-## Important Notes
+## Error Responses
 
-### Authentication Requirements
-- सभी endpoints authenticated user की आवश्यकता होती है
-- Different endpoints के लिए different roles required हैं
-- Session cookies का उपयोग करें (`-b cookies.txt`)
+सभी endpoints निम्नलिखित error format का उपयोग करते हैं:
 
-### Rate Limiting
-- Automation Creation: 10 requests per hour
-- Automation Control: 60 requests per hour
-- Analytics: 100 requests per hour
-
-### Automation Types
-Available automation types:
-- `like_posts` - Auto like posts with hashtags
-- `follow_users` - Auto follow users
-- `unfollow_users` - Auto unfollow users
-- `comment_posts` - Auto comment on posts
-- `story_viewer` - Auto view stories
-- `hashtag_engagement` - Complete hashtag engagement
-
-### Automation Status
-- `inactive` - Created but not started
-- `active` - Currently running
-- `paused` - Temporarily stopped
-- `stopped` - Completely stopped
-- `error` - Error occurred
-
-### Error Responses
 ```json
 {
   "success": false,
@@ -495,63 +580,94 @@ Available automation types:
 }
 ```
 
-### Common HTTP Status Codes
-- `200` - Success
-- `201` - Created
-- `400` - Bad Request
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Not Found
-- `429` - Too Many Requests
+### Common Error Codes:
+- `400` - Bad Request (Invalid input data)
+- `401` - Unauthorized (Authentication required)
+- `403` - Forbidden (Insufficient permissions)
+- `404` - Not Found (Automation not found)
+- `409` - Conflict (Automation already running/stopped)
+- `429` - Too Many Requests (Rate limit exceeded)
 - `500` - Internal Server Error
+
+### Automation-Specific Errors:
+- `AUTOMATION_NOT_FOUND` - Automation doesn't exist
+- `AUTOMATION_ALREADY_RUNNING` - Cannot start already running automation
+- `AUTOMATION_NOT_RUNNING` - Cannot stop/pause non-running automation
+- `PLATFORM_ACCOUNT_REQUIRED` - Valid Instagram account connection required
+- `INVALID_AUTOMATION_TYPE` - Unsupported automation type
+- `SCHEDULE_CONFLICT` - Automation schedule conflicts with existing automation
 
 ---
 
-## Testing Workflow
+## Automation Types
 
-### Complete Automation Flow Test:
-```bash
-# 1. Login first (required for all automation endpoints)
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -c cookies.txt \
-  -d '{"email":"user@example.com","password":"password"}'
+### Available Automation Types:
 
-# 2. Get automation templates
-curl -X GET http://localhost:3000/api/automation/templates \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
+1. **like_posts** - Automatically like posts based on hashtags/accounts
+2. **follow_users** - Automatically follow users based on criteria
+3. **unfollow_users** - Automatically unfollow users based on criteria
+4. **comment_posts** - Automatically comment on posts with predefined messages
+5. **story_view** - Automatically view stories from target accounts
+6. **dm_users** - Send direct messages to users (premium feature)
 
-# 3. Create new automation
-curl -X POST http://localhost:3000/api/automation \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"name":"Test Automation","type":"like_posts","settings":{"targetHashtags":["#test"],"likesPerHour":10}}'
+### Settings Schema by Type:
 
-# 4. Get all automations
-curl -X GET http://localhost:3000/api/automation \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 5. Start automation
-curl -X POST http://localhost:3000/api/automation/AUTOMATION_ID/start \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 6. Get automation analytics
-curl -X GET http://localhost:3000/api/automation/AUTOMATION_ID/analytics \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 7. Pause automation
-curl -X POST http://localhost:3000/api/automation/AUTOMATION_ID/pause \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 8. Get stats overview
-curl -X GET http://localhost:3000/api/automation/stats/overview \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
+#### Like Posts (`like_posts`):
+```json
+{
+  "targetHashtags": ["#hashtag1", "#hashtag2"],
+  "targetAccounts": ["@account1", "@account2"],
+  "likesPerHour": 30,
+  "maxLikesPerDay": 500,
+  "minFollowers": 100,
+  "maxFollowers": 10000,
+  "avoidRecentlyLiked": true
+}
 ```
 
-यह documentation आपको सभी automation endpoints को test करने में मदद करेगी।
+#### Follow Users (`follow_users`):
+```json
+{
+  "targetHashtags": ["#hashtag1", "#hashtag2"],
+  "followsPerHour": 20,
+  "maxFollowsPerDay": 200,
+  "minFollowers": 50,
+  "maxFollowers": 5000,
+  "followBackOnly": false
+}
+```
+
+#### Comment Posts (`comment_posts`):
+```json
+{
+  "targetHashtags": ["#hashtag1", "#hashtag2"],
+  "comments": ["Nice post!", "Great content!", "Amazing!"],
+  "commentsPerHour": 10,
+  "maxCommentsPerDay": 100,
+  "randomizeComments": true
+}
+```
+
+---
+
+## Rate Limiting
+
+निम्नलिखित endpoints पर rate limiting लागू है:
+
+- **Create Automation:** 10 requests per hour
+- **Execute Automation:** 5 requests per minute per automation
+- **Analytics:** 100 requests per hour
+- **General:** Standard rate limiting on all endpoints
+
+Rate limit exceed होने पर `429` status code के साथ error response मिलता है।
+
+---
+
+## Security Features
+
+1. **Role-based Access Control:** Different permissions for different operations
+2. **Platform Account Validation:** Ensures valid Instagram connection
+3. **Rate Limiting:** Prevents abuse and API overuse
+4. **Audit Logging:** All automation actions are logged
+5. **Safe Defaults:** Conservative default settings to prevent account issues
+6. **Compliance Monitoring:** Ensures Instagram API compliance

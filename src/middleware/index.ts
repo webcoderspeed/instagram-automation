@@ -24,3 +24,12 @@ export {
 
 // Authentication guards
 export * from './guards';
+
+// Subscription middleware
+export {
+  requirePlan,
+  requireFeature,
+  checkUsageLimit,
+  requireActiveSubscription,
+  createSubscriptionProtectedRoute
+} from './subscription.middleware';

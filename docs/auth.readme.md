@@ -1,6 +1,6 @@
 # Authentication API Documentation
 
-यह documentation Instagram Automation SaaS application के सभी authentication endpoints के लिए है। सभी endpoints session-based authentication का उपयोग करते हैं।
+यह documentation Instagram Automation SaaS application के सभी authentication endpoints के लिए है। सभी endpoints session-based authentication और role-based permissions का उपयोग करते हैं।
 
 ## Base URL
 ```
@@ -22,7 +22,9 @@ http://localhost:3000/api/auth
 
 ### 1. User Signup
 **Endpoint:** `POST /signup`  
-**Description:** नया user account बनाता है और verification email भेजता है।
+**Description:** नया user account बनाता है और verification email भेजता है।  
+**Rate Limit:** Signup rate limiting applied  
+**Validation:** registerSchema validation applied
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/signup \
@@ -51,7 +53,8 @@ curl -X POST http://localhost:3000/api/auth/signup \
 
 ### 2. Verify Email
 **Endpoint:** `POST /verify-email` या `GET /verify-email`  
-**Description:** Email verification token को verify करता है।
+**Description:** Email verification token को verify करता है।  
+**Rate Limit:** Email verification rate limiting applied
 
 ```bash
 # POST method
@@ -78,7 +81,8 @@ curl -X GET "http://localhost:3000/api/auth/verify-email?token=verification_toke
 
 ### 3. Resend Verification Email
 **Endpoint:** `POST /resend-verification`  
-**Description:** Verification email को दोबारा भेजता है।
+**Description:** Verification email को दोबारा भेजता है।  
+**Rate Limit:** Email verification rate limiting applied
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/resend-verification \
@@ -88,13 +92,23 @@ curl -X POST http://localhost:3000/api/auth/resend-verification \
   }'
 ```
 
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Verification email sent successfully"
+}
+```
+
 ---
 
 ## User Login
 
 ### 4. User Login
 **Endpoint:** `POST /login`  
-**Description:** User को login करता है और session create करता है।
+**Description:** User को login करता है और session create करता है।  
+**Rate Limit:** Login rate limiting applied  
+**Validation:** loginSchema validation applied
 
 ```bash
 # Regular login
@@ -128,7 +142,9 @@ curl -X POST http://localhost:3000/api/auth/login \
       "email": "user@example.com",
       "username": "myusername",
       "firstName": "John",
-      "lastName": "Doe"
+      "lastName": "Doe",
+      "role": "user",
+      "emailVerified": true
     },
     "session": {
       "id": "session_id",
@@ -140,7 +156,8 @@ curl -X POST http://localhost:3000/api/auth/login \
 
 ### 5. User Logout
 **Endpoint:** `POST /logout`  
-**Description:** Current session को terminate करता है।
+**Description:** Current session को terminate करता है।  
+**Authentication:** Required (authMiddleware.authenticate)
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/logout \
@@ -162,7 +179,8 @@ curl -X POST http://localhost:3000/api/auth/logout \
 
 ### 6. Check Session Status
 **Endpoint:** `GET /session`  
-**Description:** Current session की status check करता है।
+**Description:** Current session की status check करता है।  
+**Authentication:** Not required (public endpoint)
 
 ```bash
 curl -X GET http://localhost:3000/api/auth/session \
@@ -185,7 +203,8 @@ curl -X GET http://localhost:3000/api/auth/session \
 
 ### 7. Refresh Session
 **Endpoint:** `POST /session/refresh`  
-**Description:** Current session को refresh करता है (expiry time extend करता है)।
+**Description:** Current session को refresh करता है (expiry time extend करता है)।  
+**Authentication:** Required (authMiddleware.authenticate)
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/session/refresh \
@@ -200,7 +219,7 @@ curl -X POST http://localhost:3000/api/auth/session/refresh \
   "message": "Session refreshed successfully",
   "data": {
     "sessionId": "session_id",
-    "expiresAt": "2024-01-01T13:00:00Z"
+    "expiresAt": "2024-01-01T12:00:00Z"
   }
 }
 ```
@@ -211,10 +230,12 @@ curl -X POST http://localhost:3000/api/auth/session/refresh \
 
 ### 8. Get User Profile
 **Endpoint:** `GET /profile`  
-**Description:** Logged-in user की profile information return करता है।
+**Description:** Current authenticated user की profile information return करता है।  
+**Authentication:** Required (authMiddleware.authenticate)
 
 ```bash
 curl -X GET http://localhost:3000/api/auth/profile \
+  -H "Content-Type: application/json" \
   -b cookies.txt
 ```
 
@@ -229,9 +250,10 @@ curl -X GET http://localhost:3000/api/auth/profile \
       "username": "myusername",
       "firstName": "John",
       "lastName": "Doe",
+      "role": "user",
       "emailVerified": true,
-      "createdAt": "2024-01-01T10:00:00Z",
-      "updatedAt": "2024-01-01T11:00:00Z"
+      "createdAt": "2024-01-01T00:00:00Z",
+      "lastLoginAt": "2024-01-01T12:00:00Z"
     }
   }
 }
@@ -243,7 +265,8 @@ curl -X GET http://localhost:3000/api/auth/profile \
 
 ### 9. Forgot Password
 **Endpoint:** `POST /forgot-password`  
-**Description:** Password reset email भेजता है।
+**Description:** Password reset email भेजता है।  
+**Rate Limit:** Password reset rate limiting applied
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/forgot-password \
@@ -261,32 +284,10 @@ curl -X POST http://localhost:3000/api/auth/forgot-password \
 }
 ```
 
-### 10. Verify Reset Token
-**Endpoint:** `POST /verify-reset-token`  
-**Description:** Password reset token को verify करता है।
-
-```bash
-curl -X POST http://localhost:3000/api/auth/verify-reset-token \
-  -H "Content-Type: application/json" \
-  -d '{
-    "token": "reset_token_here"
-  }'
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Reset token is valid",
-  "data": {
-    "valid": true
-  }
-}
-```
-
-### 11. Reset Password
+### 10. Reset Password
 **Endpoint:** `POST /reset-password`  
-**Description:** Reset token के साथ नया password set करता है।
+**Description:** Password reset token के साथ नया password set करता है।  
+**Rate Limit:** Password reset rate limiting applied
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/reset-password \
@@ -305,9 +306,35 @@ curl -X POST http://localhost:3000/api/auth/reset-password \
 }
 ```
 
-### 12. Change Password (Authenticated)
+### 11. Verify Reset Token
+**Endpoint:** `POST /verify-reset-token`  
+**Description:** Password reset token की validity check करता है।  
+**Rate Limit:** Password reset rate limiting applied
+
+```bash
+curl -X POST http://localhost:3000/api/auth/verify-reset-token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "reset_token_here"
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Token is valid",
+  "data": {
+    "valid": true,
+    "expiresAt": "2024-01-01T12:00:00Z"
+  }
+}
+```
+
+### 12. Change Password
 **Endpoint:** `POST /change-password`  
-**Description:** Logged-in user अपना password change कर सकता है।
+**Description:** Authenticated user का password change करता है।  
+**Authentication:** Required (authMiddleware.authenticate)
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/change-password \
@@ -333,22 +360,36 @@ curl -X POST http://localhost:3000/api/auth/change-password \
 
 ### 13. Initiate Instagram OAuth
 **Endpoint:** `GET /instagram`  
-**Description:** Instagram OAuth flow शुरू करता है।
+**Description:** Instagram OAuth flow को initiate करता है।
 
 ```bash
-curl -X GET http://localhost:3000/api/auth/instagram \
-  -b cookies.txt
+curl -X GET http://localhost:3000/api/auth/instagram
 ```
 
-**Response:** Redirect to Instagram OAuth URL
+**Response:** Redirects to Instagram OAuth URL
 
-### 14. Instagram OAuth Callback
+### 14. Handle Instagram OAuth Callback
 **Endpoint:** `GET /instagram/callback`  
-**Description:** Instagram OAuth callback handle करता है।
+**Description:** Instagram OAuth callback को handle करता है।
 
 ```bash
-curl -X GET "http://localhost:3000/api/auth/instagram/callback?code=oauth_code_here&state=state_here" \
-  -b cookies.txt
+curl -X GET "http://localhost:3000/api/auth/instagram/callback?code=auth_code_here"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Instagram account connected successfully",
+  "data": {
+    "platformAccount": {
+      "id": "platform_account_id",
+      "platform": "instagram",
+      "platformUserId": "instagram_user_id",
+      "platformUsername": "instagram_username"
+    }
+  }
+}
 ```
 
 ### 15. Refresh Instagram Token
@@ -358,19 +399,43 @@ curl -X GET "http://localhost:3000/api/auth/instagram/callback?code=oauth_code_h
 ```bash
 curl -X POST http://localhost:3000/api/auth/instagram/refresh \
   -H "Content-Type: application/json" \
-  -b cookies.txt \
   -d '{
-    "refreshToken": "instagram_refresh_token"
+    "platformAccountId": "platform_account_id"
   }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Token refreshed successfully",
+  "data": {
+    "expiresAt": "2024-01-01T12:00:00Z"
+  }
+}
 ```
 
 ### 16. Get Instagram User Info
 **Endpoint:** `GET /instagram/user/:userId`  
-**Description:** Specific user की Instagram information return करता है।
+**Description:** Instagram user की information retrieve करता है।
 
 ```bash
-curl -X GET http://localhost:3000/api/auth/instagram/user/user_id_here \
-  -b cookies.txt
+curl -X GET http://localhost:3000/api/auth/instagram/user/instagram_user_id
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "instagram_user_id",
+      "username": "instagram_username",
+      "account_type": "BUSINESS",
+      "media_count": 150
+    }
+  }
+}
 ```
 
 ### 17. Revoke Instagram Token
@@ -380,29 +445,25 @@ curl -X GET http://localhost:3000/api/auth/instagram/user/user_id_here \
 ```bash
 curl -X POST http://localhost:3000/api/auth/instagram/revoke \
   -H "Content-Type: application/json" \
-  -b cookies.txt \
   -d '{
-    "accessToken": "instagram_access_token"
+    "platformAccountId": "platform_account_id"
   }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Token revoked successfully"
+}
 ```
 
 ---
 
-## Important Notes
+## Error Responses
 
-### Session-Based Authentication
-- सभी authenticated endpoints session cookies का उपयोग करते हैं
-- `-c cookies.txt` flag से cookies save करें
-- `-b cookies.txt` flag से saved cookies use करें
+सभी endpoints निम्नलिखित error format का उपयोग करते हैं:
 
-### Rate Limiting
-- Signup: 5 requests per 15 minutes
-- Login: 10 requests per 15 minutes  
-- Email Verification: 3 requests per 15 minutes
-- Password Reset: 3 requests per 15 minutes
-
-### Error Responses
-सभी endpoints में error के case में यह format होता है:
 ```json
 {
   "success": false,
@@ -414,53 +475,35 @@ curl -X POST http://localhost:3000/api/auth/instagram/revoke \
 }
 ```
 
-### Common HTTP Status Codes
-- `200` - Success
-- `201` - Created
-- `400` - Bad Request
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Not Found
-- `429` - Too Many Requests
+### Common Error Codes:
+- `400` - Bad Request (Invalid input data)
+- `401` - Unauthorized (Authentication required)
+- `403` - Forbidden (Insufficient permissions)
+- `404` - Not Found (Resource not found)
+- `429` - Too Many Requests (Rate limit exceeded)
 - `500` - Internal Server Error
 
 ---
 
-## Testing Workflow
+## Rate Limiting
 
-### Complete Authentication Flow Test:
-```bash
-# 1. Register new user
-curl -X POST http://localhost:3000/api/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"Test123!","username":"testuser","firstName":"Test","lastName":"User"}'
+निम्नलिखित endpoints पर rate limiting लागू है:
 
-# 2. Verify email (use token from email)
-curl -X POST http://localhost:3000/api/auth/verify-email \
-  -H "Content-Type: application/json" \
-  -d '{"token":"verification_token_from_email"}'
+- **Signup:** Limited requests per IP
+- **Login:** Limited login attempts per IP
+- **Email Verification:** Limited verification attempts
+- **Password Reset:** Limited reset requests per email
+- **General:** General rate limiting on all auth endpoints
 
-# 3. Login
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -c cookies.txt \
-  -d '{"email":"test@example.com","password":"Test123!"}'
+Rate limit exceed होने पर `429` status code के साथ error response मिलता है।
 
-# 4. Check session
-curl -X GET http://localhost:3000/api/auth/session -b cookies.txt
+---
 
-# 5. Get profile
-curl -X GET http://localhost:3000/api/auth/profile -b cookies.txt
+## Security Features
 
-# 6. Refresh session
-curl -X POST http://localhost:3000/api/auth/session/refresh \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-
-# 7. Logout
-curl -X POST http://localhost:3000/api/auth/logout \
-  -H "Content-Type: application/json" \
-  -b cookies.txt
-```
-
-यह documentation आपको सभी authentication endpoints को test करने में मदद करेगी।
+1. **Session-based Authentication:** Secure HTTP-only cookies
+2. **Rate Limiting:** Brute force protection
+3. **Email Verification:** Account verification required
+4. **Password Security:** Strong password requirements
+5. **OAuth Integration:** Secure Instagram API integration
+6. **CSRF Protection:** Cross-site request forgery protection

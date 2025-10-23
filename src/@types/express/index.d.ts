@@ -1,14 +1,12 @@
 import { AuthenticatedUser } from "../../types/user.types";
+import { SubscriptionDocument } from "../../models/subscription.model";
 
 declare global {
   namespace Express {
     interface Request {
       user?: AuthenticatedUser;
-      validatedData?: any;
-      subscription?: {
-        tier: string;
-        limits: any;
-      };
+      validatedData?: Record<string, unknown>;
+      subscription?: SubscriptionDocument;
     }
   }
 }

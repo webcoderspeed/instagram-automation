@@ -129,22 +129,20 @@ export const anyPlatformGuard = (platforms: SocialPlatform[]) => {
       return;
     }
 
-    let hasValidPlatform = false;
+    const validationResults = await Promise.all(
+      platforms.map(async (platform) => {
+        const credentials = platformAccountService.getPlatformCredentials(req.user!, platform);
+        
+        if (!credentials) {
+          return false;
+        }
 
-    for (const platform of platforms) {
-      const credentials = platformAccountService.getPlatformCredentials(req.user, platform);
-      
-      if (!credentials) {
-        continue;
-      }
-
-      const validation = await tokenValidatorService.validatePlatformToken(platform, credentials);
-      
-      if (validation.isValid) {
-        hasValidPlatform = true;
-        break;
-      }
-    }
+        const validation = await tokenValidatorService.validatePlatformToken(platform, credentials);
+        return validation.isValid;
+      })
+    );
+    
+    const hasValidPlatform = validationResults.some(isValid => isValid);
 
     if (!hasValidPlatform) {
       res.status(403).json({

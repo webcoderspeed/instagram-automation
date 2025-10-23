@@ -15,17 +15,34 @@ export type PermissionType = typeof PERMISSIONS[keyof typeof PERMISSIONS];
 
 class RoleMiddleware {
   /**
-   * Check if user has required permission
+   * Check if user has required permission (includes authentication and email verification)
    */
   requirePermission(permission: PermissionType) {
-    return (req: Request, res: Response, next: NextFunction): void => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
       try {
+        // First ensure user is authenticated
         if (!req.user) {
-          throw ApiError.unauthorized('User not authenticated');
+          // Try to authenticate first
+          await new Promise<void>((resolve, reject) => {
+            authMiddleware.authenticate(req, res, (err?: unknown) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
         }
 
-        const userPermissions = req.user.permissions || [];
+        // Ensure email is verified
+        if (!req.user?.isEmailVerified) {
+          await new Promise<void>((resolve, reject) => {
+            authMiddleware.requireEmailVerified(req, res, (err?: unknown) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
+        }
 
+        // Check permission
+        const userPermissions = req.user?.permissions || [];
         if (!userPermissions.includes(permission)) {
           throw ApiError.forbidden(`Permission required: ${permission}`);
         }
@@ -91,94 +108,5 @@ class RoleMiddleware {
     };
   }
 }
-
-/**
- * Simple route protection levels
- */
-export const ProtectionLevels = {
-  PUBLIC: 'PUBLIC',
-  AUTHENTICATED: 'AUTHENTICATED', 
-  VERIFIED_USER: 'VERIFIED_USER',
-  ADMIN_ONLY: 'ADMIN_ONLY',
-  ANALYTICS_ACCESS: 'ANALYTICS_ACCESS',
-  CONTENT_MANAGER: 'CONTENT_MANAGER',
-  INTEGRATION_MANAGER: 'INTEGRATION_MANAGER',
-  CONNECT_ACCOUNT: 'CONNECT_ACCOUNT'
-} as const;
-
-export type ProtectionLevel = typeof ProtectionLevels[keyof typeof ProtectionLevels];
-
-/**
- * Create protected route middleware
- */
-export const createProtectedRoute = (level: ProtectionLevel) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      // Public routes - no protection needed
-      if (level === ProtectionLevels.PUBLIC) {
-        return next();
-      }
-
-      // All other levels require authentication
-      await new Promise<void>((resolve, reject) => {
-        authMiddleware.authenticate(req, res, (err?: any) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-
-      // Verified user level requires email verification
-      if (level === ProtectionLevels.VERIFIED_USER || 
-          level === ProtectionLevels.ADMIN_ONLY ||
-          level === ProtectionLevels.ANALYTICS_ACCESS ||
-          level === ProtectionLevels.CONTENT_MANAGER ||
-          level === ProtectionLevels.INTEGRATION_MANAGER ||
-          level === ProtectionLevels.CONNECT_ACCOUNT) {
-        await new Promise<void>((resolve, reject) => {
-          authMiddleware.requireEmailVerified(req, res, (err?: any) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
-      }
-
-      // Admin only level requires admin role
-      if (level === ProtectionLevels.ADMIN_ONLY) {
-        if (!req.user || req.user.role !== 'ADMIN') {
-          throw ApiError.forbidden('Admin access required');
-        }
-      }
-
-      // Role-based access for specific features
-      if (level === ProtectionLevels.ANALYTICS_ACCESS) {
-        if (!req.user?.permissions?.includes(PERMISSIONS.ANALYTICS_READ)) {
-          throw ApiError.forbidden('Analytics access required');
-        }
-      }
-
-      if (level === ProtectionLevels.CONTENT_MANAGER) {
-        if (!req.user?.permissions?.includes(PERMISSIONS.POST_CREATE)) {
-          throw ApiError.forbidden('Content management access required');
-        }
-      }
-
-      if (level === ProtectionLevels.INTEGRATION_MANAGER) {
-        if (!req.user?.permissions?.includes(PERMISSIONS.WEBHOOK_UPDATE)) {
-          throw ApiError.forbidden('Integration management access required');
-        }
-      }
-
-      if (level === ProtectionLevels.CONNECT_ACCOUNT) {
-        if (!req.user?.permissions?.includes(PERMISSIONS.USER_UPDATE)) {
-          throw ApiError.forbidden('Account connection access required');
-        }
-      }
-
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
-};
 
 export const roleMiddleware = new RoleMiddleware();

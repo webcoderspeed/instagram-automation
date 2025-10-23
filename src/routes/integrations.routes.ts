@@ -1,117 +1,120 @@
 /**
  * Integrations Routes
- * API routes for platform connections and integrations
+ * Routes for platform connections and integrations
  */
 
 import { Router } from 'express';
 import { IntegrationsController } from '../controllers/integrations.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { createProtectedRoute } from '../middleware/role.middleware';
+import { roleMiddleware } from '../middleware/role.middleware';
+import { generalRateLimit } from '../middleware/rate-limit.middleware';
+import { PERMISSIONS } from '../constants/permissions';
 import { validate } from '../validators/common.validator';
 import { 
-  connectPlatformSchema, 
-  refreshTokensSchema, 
-  testConnectionSchema, 
-  disconnectPlatformSchema 
+  connectPlatformSchema,
+  disconnectPlatformSchema,
+  refreshTokensSchema,
+  testConnectionSchema 
 } from '../validators/integrations.validator';
 
 const router = Router();
 const integrationsController = new IntegrationsController();
 
-// Apply authentication to all integration routes
-router.use(authMiddleware.authenticate);
+// Apply rate limiting to all routes
+router.use(generalRateLimit.middleware());
+
+// Note: Authentication and email verification are now handled by requirePermission middleware
 
 /**
- * @route GET /api/integrations/platforms
- * @desc Get available platforms and connection status
- * @access Private
+ * @route   GET /api/integrations/platforms
+ * @desc    Get available platforms
+ * @access  Private (ACCOUNT_READ permission required)
  */
-router.get('/platforms',
-  createProtectedRoute('VERIFIED_USER'),
+router.get('/platforms', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_READ),
   integrationsController.getAvailablePlatforms
 );
 
 /**
- * @route GET /api/integrations/connected
- * @desc Get all connected platforms for user
- * @access Private
+ * @route   GET /api/integrations/connected
+ * @desc    Get all connected platforms for the user
+ * @access  Private (ACCOUNT_LIST permission required)
  */
-router.get('/connected',
-  createProtectedRoute('INTEGRATION_MANAGER'),
+router.get('/connected', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_LIST),
   integrationsController.getConnectedPlatforms
 );
 
 /**
- * @route GET /api/integrations/:id
- * @desc Get platform connection by ID
- * @access Private
+ * @route   GET /api/integrations/:id
+ * @desc    Get specific platform connection details
+ * @access  Private (ACCOUNT_READ permission required)
  */
-router.get('/:id',
-  createProtectedRoute('INTEGRATION_MANAGER'),
+router.get('/:id', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_READ),
   integrationsController.getPlatformConnection
 );
 
 /**
- * @route POST /api/integrations/:platform/connect
- * @desc Initiate OAuth connection for platform
- * @access Private
+ * @route   POST /api/integrations/connect
+ * @desc    Initiate platform connection (OAuth flow)
+ * @access  Private (ACCOUNT_CONNECT permission required)
  */
-router.post('/:platform/connect',
-  createProtectedRoute('CONNECT_ACCOUNT'),
+router.post('/connect', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_CONNECT),
   validate(connectPlatformSchema),
   integrationsController.initiateConnection
 );
 
 /**
- * @route GET /api/integrations/:platform/callback
- * @desc Handle OAuth callback and complete connection
- * @access Private
+ * @route   GET /api/integrations/callback
+ * @desc    Handle OAuth callback
+ * @access  Private (ACCOUNT_CONNECT permission required)
  */
-router.get('/:platform/callback',
-  createProtectedRoute('VERIFIED_USER'),
+router.get('/callback', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_CONNECT),
   integrationsController.handleCallback
 );
 
 /**
- * @route DELETE /api/integrations/:id/disconnect
- * @desc Disconnect platform account
- * @access Private
+ * @route   DELETE /api/integrations/:id/disconnect
+ * @desc    Disconnect a platform
+ * @access  Private (ACCOUNT_DISCONNECT permission required)
  */
-router.delete('/:id/disconnect',
-  createProtectedRoute('INTEGRATION_MANAGER'),
+router.delete('/:id/disconnect', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_DISCONNECT),
   validate(disconnectPlatformSchema),
   integrationsController.disconnectPlatform
 );
 
 /**
- * @route POST /api/integrations/:id/refresh
- * @desc Refresh platform tokens
- * @access Private
+ * @route   POST /api/integrations/:id/refresh
+ * @desc    Refresh platform tokens
+ * @access  Private (ACCOUNT_REFRESH_TOKEN permission required)
  */
-router.post('/:id/refresh',
-  createProtectedRoute('INTEGRATION_MANAGER'),
+router.post('/:id/refresh', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_REFRESH_TOKEN),
   validate(refreshTokensSchema),
   integrationsController.refreshTokens
 );
 
 /**
- * @route POST /api/integrations/:id/test
- * @desc Test platform connection
- * @access Private
+ * @route   POST /api/integrations/:id/test
+ * @desc    Test platform connection
+ * @access  Private (ACCOUNT_READ permission required)
  */
-router.post('/:id/test',
-  createProtectedRoute('INTEGRATION_MANAGER'),
+router.post('/:id/test', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_READ),
   validate(testConnectionSchema),
   integrationsController.testConnection
 );
 
 /**
- * @route GET /api/integrations/:id/insights
- * @desc Get platform analytics/insights
- * @access Private
+ * @route   GET /api/integrations/:id/insights
+ * @desc    Get platform insights and analytics
+ * @access  Private (ANALYTICS_READ permission required)
  */
-router.get('/:id/insights',
-  createProtectedRoute('ANALYTICS_ACCESS'),
+router.get('/:id/insights', 
+  roleMiddleware.requirePermission(PERMISSIONS.ANALYTICS_READ),
   integrationsController.getPlatformInsights
 );
 

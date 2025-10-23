@@ -5,8 +5,6 @@
 
 import { Router } from 'express';
 import { settingsController } from '../controllers/settings.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { createProtectedRoute } from '../middleware/role.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { PERMISSIONS } from '../constants/permissions';
 import { validate } from '../validators/common.validator';
@@ -23,8 +21,7 @@ import {
 
 const router = Router();
 
-// Apply authentication to all routes
-router.use(authMiddleware.authenticate);
+// Note: Authentication and email verification are now handled by requirePermission middleware
 
 /**
  * @route   GET /api/settings
@@ -33,7 +30,6 @@ router.use(authMiddleware.authenticate);
  */
 router.get(
   '/',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
   settingsController.getSettings
 );
@@ -45,7 +41,6 @@ router.get(
  */
 router.put(
   '/',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
   validate(updateSettingsSchema),
   settingsController.updateSettings
@@ -58,7 +53,6 @@ router.put(
  */
 router.get(
   '/export',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
   settingsController.exportSettings
 );
@@ -70,7 +64,6 @@ router.get(
  */
 router.post(
   '/reset',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
   validate(resetSettingsSchema),
   settingsController.resetSettings
@@ -84,7 +77,6 @@ router.post(
  */
 router.get(
   '/profile',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
   settingsController.getProfileSettings
 );
@@ -96,7 +88,6 @@ router.get(
  */
 router.put(
   '/profile',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
   validate(updateProfileSettingsSchema),
   settingsController.updateProfileSettings
@@ -105,24 +96,22 @@ router.put(
 // Notification Settings Routes
 /**
  * @route   GET /api/settings/notifications
- * @desc    Get notification settings
+ * @desc    Get user notification settings
  * @access  Private (USER_READ permission required)
  */
 router.get(
   '/notifications',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
   settingsController.getNotificationSettings
 );
 
 /**
  * @route   PUT /api/settings/notifications
- * @desc    Update notification settings
+ * @desc    Update user notification settings
  * @access  Private (USER_UPDATE permission required)
  */
 router.put(
   '/notifications',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
   validate(updateNotificationSettingsSchema),
   settingsController.updateNotificationSettings
@@ -131,24 +120,22 @@ router.put(
 // Privacy Settings Routes
 /**
  * @route   GET /api/settings/privacy
- * @desc    Get privacy settings
+ * @desc    Get user privacy settings
  * @access  Private (USER_READ permission required)
  */
 router.get(
   '/privacy',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
   settingsController.getPrivacySettings
 );
 
 /**
  * @route   PUT /api/settings/privacy
- * @desc    Update privacy settings
+ * @desc    Update user privacy settings
  * @access  Private (USER_UPDATE permission required)
  */
 router.put(
   '/privacy',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
   validate(updatePrivacySettingsSchema),
   settingsController.updatePrivacySettings
@@ -157,24 +144,22 @@ router.put(
 // Automation Settings Routes
 /**
  * @route   GET /api/settings/automation
- * @desc    Get automation settings
+ * @desc    Get user automation settings
  * @access  Private (AUTOMATION_READ permission required)
  */
 router.get(
   '/automation',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_READ),
   settingsController.getAutomationSettings
 );
 
 /**
  * @route   PUT /api/settings/automation
- * @desc    Update automation settings
+ * @desc    Update user automation settings
  * @access  Private (AUTOMATION_UPDATE permission required)
  */
 router.put(
   '/automation',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.AUTOMATION_UPDATE),
   validate(updateAutomationSettingsSchema),
   settingsController.updateAutomationSettings
@@ -183,24 +168,22 @@ router.put(
 // Billing Settings Routes
 /**
  * @route   GET /api/settings/billing
- * @desc    Get billing settings
+ * @desc    Get user billing settings
  * @access  Private (SUBSCRIPTION_READ permission required)
  */
 router.get(
   '/billing',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_READ),
   settingsController.getBillingSettings
 );
 
 /**
  * @route   PUT /api/settings/billing
- * @desc    Update billing settings
+ * @desc    Update user billing settings
  * @access  Private (SUBSCRIPTION_UPDATE permission required)
  */
 router.put(
   '/billing',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(updateBillingSettingsSchema),
   settingsController.updateBillingSettings
@@ -209,24 +192,22 @@ router.put(
 // Security Settings Routes
 /**
  * @route   GET /api/settings/security
- * @desc    Get security settings
+ * @desc    Get user security settings
  * @access  Private (USER_READ permission required)
  */
 router.get(
   '/security',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
   settingsController.getSecuritySettings
 );
 
 /**
  * @route   PUT /api/settings/security
- * @desc    Update security settings
+ * @desc    Update user security settings
  * @access  Private (USER_UPDATE permission required)
  */
 router.put(
   '/security',
-  createProtectedRoute('VERIFIED_USER'),
   roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
   validate(updateSecuritySettingsSchema),
   settingsController.updateSecuritySettings

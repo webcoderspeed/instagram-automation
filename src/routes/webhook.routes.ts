@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { WebhookController } from '../controllers/webhook.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { createProtectedRoute } from '../middleware/role.middleware';
+import { roleMiddleware } from '../middleware/role.middleware';
 import { validate } from '../validators/common.validator';
+import { PERMISSIONS } from '../constants/permissions';
 import { 
   verifyWebhookSchema, 
   instagramWebhookSchema, 
@@ -11,6 +11,8 @@ import {
 
 const router = Router();
 const webhookController = new WebhookController();
+
+// Note: Authentication and email verification are now handled by requirePermission middleware
 
 // Webhook routes (verification doesn't need auth)
 router.get('/instagram', 
@@ -24,17 +26,15 @@ router.post('/instagram',
   webhookController.handleWebhook
 );
 
-// Protected routes require authentication
+// Protected routes require authentication and permissions
 router.post('/subscribe', 
-  authMiddleware.authenticate,
-  createProtectedRoute('INTEGRATION_MANAGER'),
+  roleMiddleware.requirePermission(PERMISSIONS.WEBHOOK_CREATE),
   validate(subscribeWebhookSchema),
   webhookController.subscribeWebhook
 );
 
 router.get('/subscriptions', 
-  authMiddleware.authenticate,
-  createProtectedRoute('INTEGRATION_MANAGER'),
+  roleMiddleware.requirePermission(PERMISSIONS.WEBHOOK_LIST),
   webhookController.getSubscriptions
 );
 
