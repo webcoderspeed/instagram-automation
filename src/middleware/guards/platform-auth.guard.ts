@@ -10,8 +10,8 @@ import logger from '../../utils/logger';
  */
 export const platformTokenGuard = (platform: SocialPlatform) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    if (!req.user) {
-      res.status(401).json({
+    if (!req.session?.user) {
+      res.status(401).json({  
         success: false,
         error: {
           message: 'Authentication required'
@@ -20,7 +20,7 @@ export const platformTokenGuard = (platform: SocialPlatform) => {
       return;
     }
 
-    const credentials = platformAccountService.getPlatformCredentials(req.user, platform);
+    const credentials = await platformAccountService.getPlatformCredentialsFromDB(req.session.user.id, platform);
     
     if (!credentials) {
       res.status(403).json({
@@ -36,7 +36,7 @@ export const platformTokenGuard = (platform: SocialPlatform) => {
     
     if (!validation.isValid) {
       logger.warn(`Invalid ${platform} token`, { 
-        userId: req.user.id, 
+        userId: req.session.user.id, 
         error: validation.error 
       });
       
@@ -60,7 +60,7 @@ export const platformTokenGuard = (platform: SocialPlatform) => {
  */
 export const multiplePlatformGuard = (platforms: SocialPlatform[]) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    if (!req.user) {
+    if (!req.session?.user) {
       res.status(401).json({
         success: false,
         error: {
@@ -74,7 +74,7 @@ export const multiplePlatformGuard = (platforms: SocialPlatform[]) => {
     const invalidPlatforms: SocialPlatform[] = [];
 
     for (const platform of platforms) {
-      const credentials = platformAccountService.getPlatformCredentials(req.user, platform);
+      const credentials = await platformAccountService.getPlatformCredentialsFromDB(req.session.user.id, platform);
       
       if (!credentials) {
         missingPlatforms.push(platform);
@@ -119,7 +119,7 @@ export const multiplePlatformGuard = (platforms: SocialPlatform[]) => {
  */
 export const anyPlatformGuard = (platforms: SocialPlatform[]) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    if (!req.user) {
+    if (!req.session?.user) {
       res.status(401).json({
         success: false,
         error: {
@@ -131,7 +131,7 @@ export const anyPlatformGuard = (platforms: SocialPlatform[]) => {
 
     const validationResults = await Promise.all(
       platforms.map(async (platform) => {
-        const credentials = platformAccountService.getPlatformCredentials(req.user!, platform);
+        const credentials = await platformAccountService.getPlatformCredentialsFromDB(req.session.user!.id, platform);
         
         if (!credentials) {
           return false;

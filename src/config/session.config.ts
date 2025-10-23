@@ -17,16 +17,25 @@ export const sessionConfig: session.SessionOptions = {
   },
 };
 
+// Simple session user interface
+export interface SessionUser {
+  id: string;
+  _id: string;
+  email: string;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  role: string;
+  permissions: string[];
+  isEmailVerified: boolean;
+  lastLoginAt?: Date;
+  createdAt: Date;
+}
+
 // Extend Express Session interface to include user
 declare module 'express-session' {
   interface SessionData {
-    user?: {
-      id: string;
-      email: string;
-      username: string;
-      role: string;
-      permissions: string[];
-    };
+    user?: SessionUser;
     isAuthenticated?: boolean;
   }
 }

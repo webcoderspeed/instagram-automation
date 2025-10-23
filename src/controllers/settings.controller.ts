@@ -27,7 +27,7 @@ export class SettingsController {
    * @access  Private
    */
   getSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     try {
       const settings = await settingsService.getUserSettings(userId);
@@ -45,7 +45,7 @@ export class SettingsController {
    * @access  Private
    */
   getProfileSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     try {
       const settings = await settingsService.getUserSettings(userId);
@@ -63,7 +63,7 @@ export class SettingsController {
    * @access  Private
    */
   updateProfileSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const updates = req.body as UpdateProfileRequest;
 
     try {
@@ -82,7 +82,7 @@ export class SettingsController {
    * @access  Private
    */
   getNotificationSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     try {
       const settings = await settingsService.getUserSettings(userId);
@@ -100,7 +100,7 @@ export class SettingsController {
    * @access  Private
    */
   updateNotificationSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const updates = req.body as UpdateNotificationSettingsRequest;
 
     try {
@@ -119,7 +119,7 @@ export class SettingsController {
    * @access  Private
    */
   getPrivacySettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     try {
       const settings = await settingsService.getUserSettings(userId);
@@ -137,7 +137,7 @@ export class SettingsController {
    * @access  Private
    */
   updatePrivacySettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const updates = req.body as UpdatePrivacySettingsRequest;
 
     try {
@@ -156,7 +156,7 @@ export class SettingsController {
    * @access  Private
    */
   getAutomationSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     try {
       const settings = await settingsService.getUserSettings(userId);
@@ -174,7 +174,7 @@ export class SettingsController {
    * @access  Private
    */
   updateAutomationSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const updates = req.body as UpdateAutomationSettingsRequest;
 
     try {
@@ -193,7 +193,7 @@ export class SettingsController {
    * @access  Private
    */
   getBillingSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     try {
       const settings = await settingsService.getUserSettings(userId);
@@ -211,7 +211,7 @@ export class SettingsController {
    * @access  Private
    */
   updateBillingSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const updates = req.body as UpdateBillingSettingsRequest;
 
     try {
@@ -230,7 +230,7 @@ export class SettingsController {
    * @access  Private
    */
   getSecuritySettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     try {
       const settings = await settingsService.getUserSettings(userId);
@@ -248,7 +248,7 @@ export class SettingsController {
    * @access  Private
    */
   updateSecuritySettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const updates = req.body as UpdateSecuritySettingsRequest;
 
     try {
@@ -267,7 +267,7 @@ export class SettingsController {
    * @access  Private
    */
   updateSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const updates = req.body as UpdateSettingsRequest;
 
     try {
@@ -286,7 +286,7 @@ export class SettingsController {
    * @access  Private
    */
   exportSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     try {
       const settingsExport = await settingsService.exportSettings(userId);
@@ -304,7 +304,7 @@ export class SettingsController {
    * @access  Private
    */
   resetSettings = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const { categories } = req.body;
 
     try {

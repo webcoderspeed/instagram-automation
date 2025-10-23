@@ -3,20 +3,21 @@
  * Handles user authentication and session management
  */
 
-import { Request } from 'express';
-import { UserModel, UserDocument } from '../../models/user.model';
-import { LoginHistoryModel } from '../../models/login-history.model';
-import { ApiError } from '../../utils/api-error';
-import logger from '../../utils/logger';
-import { 
-  generateDeviceFingerprint, 
-  getClientIP, 
+import { Request } from "express";
+import { UserModel, UserDocument } from "../../models/user.model";
+import { LoginHistoryModel } from "../../models/login-history.model";
+import { ApiError } from "../../utils/api-error";
+import logger from "../../utils/logger";
+import { SessionUser } from "../../config/session.config";
+import {
+  generateDeviceFingerprint,
+  getClientIP,
   getLocationFromIP,
   formatLocationForDisplay,
   formatUserAgentForDisplay,
   isSuspiciousLogin,
-  parseUserAgent
-} from '../../utils/device-tracking';
+  parseUserAgent,
+} from "../../utils/device-tracking";
 
 export interface LoginData {
   email: string;
@@ -39,32 +40,36 @@ class LoginService {
       const { email, password, rememberMe = false } = data;
 
       // Find user by email
-      const user = await UserModel.findOne({ 
+      const user = await UserModel.findOne({
         email: email.toLowerCase().trim(),
-        deletedAt: null 
-      }).select('+passwordHash');
+        deletedAt: null,
+      }).select("+passwordHash").populate("platformAccounts");
 
       if (!user) {
-        throw ApiError.unauthorized('Invalid email or password');
+        throw ApiError.unauthorized("Invalid email or password");
       }
 
       // Check if account is locked
       if (user.isAccountLocked()) {
-        throw ApiError.unauthorized('Account is temporarily locked due to too many failed login attempts');
+        throw ApiError.unauthorized(
+          "Account is temporarily locked due to too many failed login attempts"
+        );
       }
 
       // Verify password
       const isPasswordValid = await user.comparePassword(password);
-      
+
       if (!isPasswordValid) {
         // Increment login attempts
         await user.incrementLoginAttempts();
-        throw ApiError.unauthorized('Invalid email or password');
+        throw ApiError.unauthorized("Invalid email or password");
       }
 
       // Check if email is verified
       if (!user.isEmailVerified) {
-        throw ApiError.unauthorized('Please verify your email before logging in');
+        throw ApiError.unauthorized(
+          "Please verify your email before logging in"
+        );
       }
 
       // Reset login attempts on successful login
@@ -72,11 +77,11 @@ class LoginService {
 
       // Capture comprehensive login tracking data
       const clientIP = getClientIP(req);
-      const userAgent = req.get('User-Agent') || '';
+      const userAgent = req.get("User-Agent") || "";
       const deviceFingerprint = generateDeviceFingerprint(req);
       const locationData = await getLocationFromIP(clientIP);
       const location = formatLocationForDisplay(locationData);
-      
+
       // Check for suspicious login patterns
       const suspiciousCheck = isSuspiciousLogin(
         clientIP,
@@ -84,15 +89,15 @@ class LoginService {
         user.lastLoginIP,
         user.trustedDevices
       );
-      
+
       if (suspiciousCheck.isSuspicious) {
         logger.warn(`Suspicious login detected for user ${user.email}:`, {
           ip: clientIP,
           userAgent: formatUserAgentForDisplay(userAgent),
           reasons: suspiciousCheck.reasons,
-          deviceFingerprint
+          deviceFingerprint,
         });
-        
+
         // You could add additional security measures here:
         // - Send email notification
         // - Require additional verification
@@ -104,12 +109,12 @@ class LoginService {
         ip: clientIP,
         userAgent,
         location,
-        deviceFingerprint
+        deviceFingerprint,
       });
 
       // Parse user agent for detailed device info
       const deviceInfo = parseUserAgent(userAgent);
-      
+
       // Create login history record for analytics
       const loginHistory = new LoginHistoryModel({
         userId: user._id,
@@ -130,23 +135,30 @@ class LoginService {
         isNewLocation: user.lastLoginIP !== clientIP,
         rememberMe: rememberMe || false,
         sessionId: req.sessionID,
-        status: 'active',
+        status: "active",
         metadata: {
-          loginMethod: 'email_password',
+          loginMethod: "email_password",
           timestamp: new Date().toISOString(),
-        }
+        },
       });
-      
+
       await loginHistory.save();
 
       // Create session
       req.session.user = {
         id: String(user._id),
+        _id: String(user._id),
         email: user.email,
         username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role,
-        permissions: user.permissions
-      };
+        permissions: user.permissions ?? [],
+        isEmailVerified: user.isEmailVerified,
+        lastLoginAt: user.lastLoginAt,
+        createdAt: user.createdAt ?? new Date(),
+      } as SessionUser;
+
       req.session.isAuthenticated = true;
 
       // Set session expiration based on rememberMe
@@ -161,15 +173,14 @@ class LoginService {
       return {
         user,
         success: true,
-        message: 'Login successful'
+        message: "Login successful",
       };
-
     } catch (error: unknown) {
-      logger.error('Login error:', error);
+      logger.error("Login error:", error);
       if (error instanceof ApiError) {
         throw error;
       }
-      throw ApiError.internal('Login failed');
+      throw ApiError.internal("Login failed");
     }
   }
 
@@ -180,37 +191,36 @@ class LoginService {
     try {
       const userId = req.session.user?.id;
       const sessionId = req.sessionID;
-      
+
       // Update login history to mark session as logged out
       if (userId && sessionId) {
         await LoginHistoryModel.findOneAndUpdate(
-          { 
-            userId, 
-            sessionId, 
-            status: 'active' 
+          {
+            userId,
+            sessionId,
+            status: "active",
           },
-          { 
-            $set: { 
-              status: 'logged_out',
-              logoutAt: new Date()
-            }
+          {
+            $set: {
+              status: "logged_out",
+              logoutAt: new Date(),
+            },
           }
         );
       }
-      
+
       // Destroy session
       req.session.destroy((err) => {
         if (err) {
-          logger.error('Session destruction error:', err);
-          throw ApiError.internal('Logout failed');
+          logger.error("Session destruction error:", err);
+          throw ApiError.internal("Logout failed");
         }
       });
 
       logger.info(`User logged out: ${userId}`);
-      
     } catch (error: unknown) {
-      logger.error('Logout error:', error);
-      throw ApiError.internal('Logout failed');
+      logger.error("Logout error:", error);
+      throw ApiError.internal("Logout failed");
     }
   }
 
@@ -224,9 +234,9 @@ class LoginService {
   /**
    * Get current user from session
    */
-  getCurrentUser(req: Request): any {
+  getCurrentUser(req: Request): SessionUser | null {
     if (this.isAuthenticated(req)) {
-      return req.session.user;
+      return req.session.user ?? null;
     }
     return null;
   }

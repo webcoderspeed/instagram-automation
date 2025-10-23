@@ -118,7 +118,7 @@ class PasswordResetController {
   async changePassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { currentPassword, newPassword, confirmPassword }: ChangePasswordRequest = req.body;
-      const userId = req.user?.id;
+      const userId = req.session.user?.id;
 
       if (!userId) {
         throw ApiError.unauthorized('User not authenticated');

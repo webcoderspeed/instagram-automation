@@ -703,7 +703,7 @@ export class DashboardController {
    * Get detailed analytics
    */
   getDetailedAnalytics = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const { 
       timeRange = '30d',
       platform,
@@ -755,7 +755,7 @@ export class DashboardController {
    * Get content calendar service
    */
   getContentCalendarService = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const { 
       startDate,
       endDate,

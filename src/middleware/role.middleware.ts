@@ -21,7 +21,7 @@ class RoleMiddleware {
     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
       try {
         // First ensure user is authenticated
-        if (!req.user) {
+        if (!req.session?.user) {
           // Try to authenticate first
           await new Promise<void>((resolve, reject) => {
             authMiddleware.authenticate(req, res, (err?: unknown) => {
@@ -32,7 +32,7 @@ class RoleMiddleware {
         }
 
         // Ensure email is verified
-        if (!req.user?.isEmailVerified) {
+        if (!req.session?.user?.isEmailVerified) {
           await new Promise<void>((resolve, reject) => {
             authMiddleware.requireEmailVerified(req, res, (err?: unknown) => {
               if (err) reject(err);
@@ -42,7 +42,7 @@ class RoleMiddleware {
         }
 
         // Check permission
-        const userPermissions = req.user?.permissions || [];
+        const userPermissions = req.session?.user?.permissions || [];
         if (!userPermissions.includes(permission)) {
           throw ApiError.forbidden(`Permission required: ${permission}`);
         }
@@ -61,11 +61,11 @@ class RoleMiddleware {
   requireAnyPermission(permissions: PermissionType[]) {
     return (req: Request, res: Response, next: NextFunction): void => {
       try {
-        if (!req.user) {
+        if (!req.session?.user) {
           throw ApiError.unauthorized('User not authenticated');
         }
 
-        const userPermissions = req.user.permissions || [];
+        const userPermissions = req.session?.user?.permissions || [];
 
         const hasPermission = permissions.some(permission => 
           userPermissions.includes(permission)
@@ -89,11 +89,11 @@ class RoleMiddleware {
   requireRole(roles: string | string[]) {
     return (req: Request, res: Response, next: NextFunction): void => {
       try {
-        if (!req.user) {
+        if (!req.session?.user) {
           throw ApiError.unauthorized('User not authenticated');
         }
 
-        const userRole = req.user.role;
+        const userRole = req.session?.user?.role;
         const allowedRoles = Array.isArray(roles) ? roles : [roles];
 
         if (!allowedRoles.includes(userRole)) {

@@ -1,10 +1,20 @@
 import axios from "axios";
 import { AuthenticatedUser } from "../../types/user.types";
+import { SessionUser } from "../../config/session.config";
 import { PlatformAccount } from "../../types/platform.types";
 import { SocialPlatform } from "../../types/common.types";
 import envConfig from "../../config/env.config";
 import logger from "../../utils/logger";
 import { instagramTokenService } from "./instagram-token.service";
+import { PlatformAccountModel } from "../../models/platform-account.model";
+
+// Import specialized services
+import { instagramAuthService } from "./auth/auth.service";
+import { instagramProfileService } from "./profile/profile.service";
+import { instagramMediaService } from "./media/media.service";
+import { instagramMessagingService } from "./messaging/messaging.service";
+import { instagramInsightsService } from "./insights/insights.service";
+import { instagramContentPublishingService } from "./content-publishing/content-publishing.service";
 
 
 
@@ -70,22 +80,29 @@ export class InstagramIntegrationService {
   private readonly baseUrl = envConfig.INSTAGRAM_API_BASE_URL;
   private readonly graphUrl = envConfig.INSTAGRAM_GRAPH_API_BASE_URL;
 
+  // Specialized service instances
+  public readonly auth = instagramAuthService;
+  public readonly profile = instagramProfileService;
+  public readonly media = instagramMediaService;
+  public readonly messaging = instagramMessagingService;
+  public readonly insights = instagramInsightsService;
+  public readonly contentPublishing = instagramContentPublishingService;
+
   /**
    * Generate Instagram OAuth authorization URL
    */
   getAuthUrl(userId: string): InstagramAuthUrl {
-    const state = this.generateState(userId);
-    const params = new URLSearchParams({
-      force_reauth: "true",
-      client_id: envConfig.INSTAGRAM_APP_ID,
-      redirect_uri: envConfig.INSTAGRAM_REDIRECT_URI,
-      response_type: "code",
-      scope:
-        "instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights",
-      state,
-    });
+    const authUrl = this.auth.generateAuthUrl(userId, [
+      'instagram_business_basic',
+      'instagram_business_manage_messages',
+      'instagram_business_manage_comments',
+      'instagram_business_content_publish',
+      'instagram_business_manage_insights'
+    ]);
 
-    const authUrl = `https://www.instagram.com/oauth/authorize?${params.toString()}`;
+    // Extract state from URL for backward compatibility
+    const urlParams = new URLSearchParams(authUrl.split('?')[1]);
+    const state = urlParams.get('state') || '';
 
     logger.info("Generated Instagram auth URL", { userId, state });
     return { authUrl, state };
@@ -100,8 +117,8 @@ export class InstagramIntegrationService {
     user: AuthenticatedUser
   ): Promise<InstagramCallbackResult> {
     try {
-      // Validate state
-      if (!this.validateState(state, user.id)) {
+      // Validate state using auth service
+      if (!this.auth.validateState(state, user.id)) {
         return {
           success: false,
           error: "Invalid state parameter",
@@ -109,7 +126,7 @@ export class InstagramIntegrationService {
       }
 
       // Exchange code for short-lived token
-      const shortLivedTokenResponse = await this.exchangeCodeForToken(code);
+      const shortLivedTokenResponse = await this.auth.exchangeCodeForToken(code);
       if (!shortLivedTokenResponse || !shortLivedTokenResponse.access_token) {
         return {
           success: false,
@@ -118,37 +135,117 @@ export class InstagramIntegrationService {
       }
 
       // Exchange for long-lived token
-      const longLivedToken = await this.exchangeForLongLivedToken(
+      const longLivedToken = await this.auth.exchangeForLongLivedToken(
         shortLivedTokenResponse.access_token
       );
-      if (!longLivedToken) {
+      if (!longLivedToken || !longLivedToken.access_token) {
         return {
           success: false,
           error: "Failed to get long-lived token",
         };
       }
 
-      // Get user profile
-      const userProfile = await this.getUserProfileForOAuth(
-        longLivedToken.access_token
-      );
-      if (!userProfile) {
+      // Get comprehensive user profile using profile service
+      const profileResponse = await this.profile.getUserProfile({
+        access_token: longLivedToken.access_token,
+        fields: [
+          'user_id', 
+          'username', 
+          'name', 
+          'profile_picture_url',
+          'account_type',
+          'followers_count',
+          'follows_count',
+          'media_count',
+          'biography',
+          'website',
+        ]
+      });
+      
+      if (!profileResponse.success || !profileResponse.data) {
         return {
           success: false,
           error: "Failed to fetch user profile",
         };
       }
 
-      // Create platform account
+      const userProfile = profileResponse.data;
+
+      // Fetch initial media data for additional insights
+      let initialMediaData = null;
+      let latestPostDate = null;
+      try {
+        const mediaResponse = await this.media.getUserMedia({
+          access_token: longLivedToken.access_token,
+          fields: ['id', 'timestamp', 'media_type', 'like_count', 'comments_count'],
+          limit: 5 // Get last 5 posts for engagement calculation
+        });
+        
+        if (mediaResponse.success && mediaResponse.data) {
+          initialMediaData = mediaResponse.data;
+          // Get the latest post date
+          if (initialMediaData.data && initialMediaData.data.length > 0) {
+            latestPostDate = new Date(initialMediaData.data[0].timestamp);
+          }
+        }
+      } catch (error) {
+        logger.warn("Failed to fetch initial media data", { 
+          userId: user.id,
+          instagramId: userProfile.user_id,
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+
+      // Fetch account insights if it's a business account
+      let accountInsights = null;
+      if (userProfile.account_type === 'BUSINESS' || userProfile.account_type === 'CREATOR') {
+        try {
+          const insightsResponse = await this.insights.getAccountInsights({
+            access_token: longLivedToken.access_token,
+            metric: [
+              'reach',
+              'impressions',
+              'follower_count'
+            ],
+            period: 'day'
+          });
+          
+          if (insightsResponse.success && insightsResponse.data) {
+            accountInsights = insightsResponse.data;
+          }
+        } catch (error) {
+          logger.warn("Failed to fetch account insights", { 
+            userId: user.id,
+            instagramId: userProfile.user_id,
+            accountType: userProfile.account_type,
+            error: error instanceof Error ? error.message : "Unknown error"
+          });
+        }
+      }
+
+      // Calculate basic engagement rate if we have media data
+      let engagementRate = 0;
+      if (initialMediaData?.data && initialMediaData.data.length > 0 && userProfile.followers_count > 0) {
+        const totalEngagement = initialMediaData.data.reduce((sum: number, post: any) => {
+          return sum + (post.like_count || 0) + (post.comments_count || 0);
+        }, 0);
+        const avgEngagement = totalEngagement / initialMediaData.data.length;
+        engagementRate = (avgEngagement / userProfile.followers_count) * 100;
+      }
+
+      // Create platform account with comprehensive data
       const platformAccount: PlatformAccount = {
-        id: userProfile.id,
+        id: userProfile.user_id,
         userId: user.id,
         platform: "instagram" as SocialPlatform,
-        platformUserId: userProfile.id,
+        platformUserId: userProfile.user_id,
         username: userProfile.username,
-        displayName: userProfile.name || userProfile.username,
+        displayName: userProfile.name ?? userProfile.username,
         profilePicture: userProfile.profile_picture_url,
         isVerified: false,
+        followerCount: userProfile.followers_count,
+        followingCount: userProfile.follows_count,
+        postCount: userProfile.media_count,
         isActive: true,
         credentials: {
           accessToken: longLivedToken.access_token,
@@ -156,16 +253,49 @@ export class InstagramIntegrationService {
           expiresAt: instagramTokenService.calculateExpirationDate(
             longLivedToken.expires_in
           ),
-          scope: ["user_profile", "user_media"],
+          scope: [
+            "instagram_business_basic",
+            "instagram_business_manage_messages",
+            "instagram_business_manage_comments", 
+            "instagram_business_content_publish",
+            "instagram_business_manage_insights"
+          ],
         },
         createdAt: new Date(),
         updatedAt: new Date(),
         lastSyncAt: new Date(),
+        metadata: {
+          accountType: userProfile.account_type,
+          biography: userProfile.biography,
+          website: userProfile.website,
+          instagramId: userProfile.id, // Secondary Instagram ID
+          engagementRate: engagementRate,
+          lastPostDate: latestPostDate,
+          initialConnectionData: {
+            fetchedAt: new Date(),
+            profileFields: [
+              'user_id', 
+              'username', 
+              'name', 
+              'profile_picture_url',
+              'account_type',
+              'followers_count',
+              'follows_count',
+              'media_count',
+              'biography',
+              'website',
+            ],
+            mediaDataFetched: initialMediaData !== null,
+            mediaCount: initialMediaData?.data?.length || 0,
+            insightsDataFetched: accountInsights !== null,
+            accountInsights: accountInsights
+          }
+        }
       };
 
       logger.info("Instagram OAuth callback successful", {
         userId: user.id,
-        instagramId: userProfile.id,
+        instagramId: userProfile.user_id,
         username: userProfile.username,
       });
 
@@ -196,19 +326,19 @@ export class InstagramIntegrationService {
         return false;
       }
 
-      // Validate token
-      const tokenValidation = instagramTokenService.validateToken(
-        account.credentials
-      );
-      if (!tokenValidation.isValid) {
+      // Validate token using auth service
+      const isTokenValid = await this.auth.validateAccessToken(account.credentials.accessToken);
+      if (!isTokenValid) {
         return false;
       }
 
-      // Test API call
-      const response = await fetch(
-        `${this.graphUrl}/me?fields=id,username&access_token=${account.credentials.accessToken}`
-      );
-      return response.ok;
+      // Test API call using profile service
+      const profileResponse = await this.profile.getUserProfile({
+        access_token: account.credentials.accessToken,
+        fields: ['user_id', 'username']
+      });
+      
+      return profileResponse.success;
     } catch (error) {
       logger.error("Instagram connection test failed", {
         userId: user.id,
@@ -263,7 +393,7 @@ export class InstagramIntegrationService {
 
       // Instagram long-lived tokens can be refreshed before expiry
       if (tokenInfo.needsRefresh) {
-        const refreshResult = await instagramTokenService.refreshLongLivedToken(
+        const refreshResult = await this.auth.refreshLongLivedToken(
           account.credentials.accessToken
         );
 
@@ -275,6 +405,9 @@ export class InstagramIntegrationService {
               refreshResult.newToken.expires_in
             );
           account.lastSyncAt = new Date();
+
+          // Save the updated credentials to the database
+          await this.savePlatformAccountCredentials(user.id, account);
 
           logger.info("Instagram token refreshed successfully", {
             userId: user.id,
@@ -295,196 +428,240 @@ export class InstagramIntegrationService {
     }
   }
 
+  // Convenience methods that delegate to specialized services
+
   /**
-   * Exchange authorization code for short-lived token
+   * Get user profile
    */
-  private async exchangeCodeForToken(
-    code: string
-  ): Promise<InstagramTokenResponse | null> {
+  async getUserProfile(accessToken: string, fields?: string[]) {
+    return this.profile.getUserProfile({
+      access_token: accessToken,
+      fields
+    });
+  }
+
+  /**
+   * Get user media
+   */
+  async getUserMedia(accessToken: string, options?: { limit?: number; after?: string; before?: string }) {
+    return this.media.getUserMedia({
+      access_token: accessToken,
+      ...options
+    });
+  }
+
+  /**
+   * Send message
+   */
+  async sendMessage(accessToken: string, recipientId: string, text: string) {
+    return this.messaging.sendTextMessage(recipientId, text, accessToken);
+  }
+
+  /**
+   * Get account insights
+   */
+  async getAccountInsights(
+    accessToken: string, 
+    period: 'day' | 'week' | 'days_28' | 'lifetime' = 'day'
+  ) {
+    return this.insights.getAccountInsights({
+      access_token: accessToken,
+      metric: [
+        'reach',
+        'impressions',
+        'follower_count'
+      ],
+      period
+    });
+  }
+
+  /**
+   * Create and publish media
+   */
+  async createAndPublishMedia(accessToken: string, mediaUrl: string, caption?: string) {
+    return this.contentPublishing.createAndPublishMedia({
+      access_token: accessToken,
+      media_url: mediaUrl,
+      caption
+    });
+  }
+
+  /**
+   * Save updated platform account credentials to the database
+   */
+  private async savePlatformAccountCredentials(userId: string, account: PlatformAccount): Promise<void> {
     try {
-      const params: TokenExchangeParams = {
-        client_id: envConfig.INSTAGRAM_APP_ID,
-        client_secret: envConfig.INSTAGRAM_APP_SECRET,
-        grant_type: "authorization_code",
-        redirect_uri: envConfig.INSTAGRAM_REDIRECT_URI,
-        code,
-      };
-
-      logger.info("Exchanging code for token", {
-        url: `${this.baseUrl}/oauth/access_token`,
-        params: { ...params, client_secret: "[REDACTED]" },
+      // Find the platform account in the database
+      const platformAccount = await PlatformAccountModel.findOne({
+        userId,
+        platform: account.platform,
+        id: account.platformUserId
       });
 
-      const response = await axios.post<InstagramTokenResponse>(
-        `${this.baseUrl}/oauth/access_token`,
-        {
-          client_id: params.client_id,
-          client_secret: params.client_secret,
-          grant_type: params.grant_type,
-          redirect_uri: params.redirect_uri,
-          code: params.code,
-        },
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
+      if (platformAccount) {
+        // Update the credentials
+        platformAccount.accessToken = account.credentials.accessToken;
+        if (account.credentials.refreshToken) {
+          platformAccount.refreshToken = account.credentials.refreshToken;
         }
-      );
+        if (account.credentials.expiresAt) {
+          platformAccount.tokenExpiresAt = account.credentials.expiresAt;
+        }
+        platformAccount.lastSyncAt = account.lastSyncAt || new Date();
 
-      logger.info("Token exchange successful", {
-        hasAccessToken: !!response.data.access_token,
-        tokenType: response.data.token_type,
-      });
+        // Save the updated account (encryption will be handled by model hooks)
+        await platformAccount.save();
 
-      return response.data;
-    } catch (error: unknown) {
-      if (error && typeof error === "object" && "isAxiosError" in error) {
-        const axiosError = error as {
-          response?: { status?: number; statusText?: string; data?: unknown };
-          message?: string;
-        };
-        logger.error("Token exchange failed", {
-          status: axiosError.response?.status,
-          statusText: axiosError.response?.statusText,
-          response: axiosError.response?.data,
-          message: axiosError.message,
+        logger.info("Platform account credentials updated successfully", {
+          userId,
+          platform: account.platform,
+          platformUserId: account.platformUserId
         });
       } else {
-        logger.error("Failed to exchange code for token", {
-          error: error instanceof Error ? error.message : String(error),
-          code: code?.substring(0, 10) + "...",
+        logger.warn("Platform account not found for credential update", {
+          userId,
+          platform: account.platform,
+          platformUserId: account.platformUserId
         });
       }
-      return null;
+    } catch (error) {
+      logger.error("Failed to save platform account credentials", {
+        userId,
+        platform: account.platform,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+      throw error;
     }
   }
 
+  // New methods for SessionUser that fetch platform account data from database
+
   /**
-   * Exchange short-lived token for long-lived token
+   * Test connection using SessionUser (fetches platform account from DB)
    */
-  private async exchangeForLongLivedToken(
-    shortLivedToken: string
-  ): Promise<InstagramLongLivedTokenResponse | null> {
+  async testConnectionFromDB(userId: string): Promise<boolean> {
     try {
-      logger.info("Exchanging for long-lived token", {
-        url: `${this.graphUrl}/access_token`,
-        params: {
-            grant_type: "ig_exchange_token",
-            client_secret: envConfig.INSTAGRAM_APP_SECRET,
-            access_token: shortLivedToken,
-        },
+      const platformAccount = await PlatformAccountModel.findOne({
+        userId,
+        platform: 'instagram',
+        isActive: true
       });
 
-      const response = await axios.get<InstagramLongLivedTokenResponse>(
-        `${this.graphUrl}/access_token`,
-        {
-          params: {
-            grant_type: "ig_exchange_token",
-            client_secret: envConfig.INSTAGRAM_APP_SECRET,
-            access_token: shortLivedToken,
-          },
-        }
-      );
-
-      logger.info("Long-lived token exchange successful", {
-        hasAccessToken: !!response.data.access_token,
-        expiresIn: response.data.expires_in,
-        tokenType: response.data.token_type,
-      });
-
-      return response.data;
-    } catch (error: unknown) {
-      if (error && typeof error === "object" && "isAxiosError" in error) {
-        const axiosError = error as {
-          response?: { status?: number; statusText?: string; data?: unknown };
-          message?: string;
-        };
-        logger.error("Long-lived token exchange failed", {
-          status: axiosError.response?.status,
-          statusText: axiosError.response?.statusText,
-          response: axiosError.response?.data,
-          url: `${this.graphUrl}/access_token`,
-          message: axiosError.message,
-        });
-      } else {
-        logger.error("Failed to exchange for long-lived token", {
-          error: error instanceof Error ? error.message : String(error),
-          shortLivedToken: shortLivedToken?.substring(0, 20) + "...",
-        });
-      }
-      return null;
-    }
-  }
-
-  /**
-   * Get user profile for OAuth
-   */
-  private async getUserProfileForOAuth(
-    accessToken: string
-  ): Promise<InstagramUserProfile | null> {
-    try {
-      const response = await axios.get<InstagramUserProfile>(
-        `${this.graphUrl}/me`,
-        {
-          params: {
-            fields: "id,username,name,profile_picture_url",
-            access_token: accessToken,
-          },
-        }
-      );
-
-      return response.data;
-    } catch (error: unknown) {
-      if (error && typeof error === "object" && "isAxiosError" in error) {
-        const axiosError = error as {
-          response?: { status?: number; statusText?: string; data?: unknown };
-          message?: string;
-        };
-        logger.error("Profile fetch failed", {
-          status: axiosError.response?.status,
-          statusText: axiosError.response?.statusText,
-          response: axiosError.response?.data,
-          message: axiosError.message,
-        });
-      } else {
-        logger.error("Failed to fetch user profile", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-      return null;
-    }
-  }
-
-  /**
-   * Generate state parameter for OAuth
-   */
-  private generateState(userId: string): string {
-    const timestamp = Date.now().toString();
-    const random = Math.random().toString(36).substring(2);
-    return Buffer.from(`${userId}:${timestamp}:${random}`).toString("base64");
-  }
-
-  /**
-   * Validate state parameter
-   */
-  private validateState(state: string, userId: string): boolean {
-    try {
-      const decoded = Buffer.from(state, "base64").toString();
-      const [stateUserId, timestamp] = decoded.split(":");
-
-      // Check if user ID matches
-      if (stateUserId !== userId) {
+      if (!platformAccount?.accessToken) {
         return false;
       }
 
-      // Check if state is not too old (5 minutes)
-      const stateTime = parseInt(timestamp);
-      const now = Date.now();
-      const maxAge = 5 * 60 * 1000; // 5 minutes
+      // Validate token using auth service
+      const isTokenValid = await this.auth.validateAccessToken(platformAccount.accessToken);
+      if (!isTokenValid) {
+        return false;
+      }
 
-      return now - stateTime <= maxAge;
+      // Test API call using profile service
+      const profileResponse = await this.profile.getUserProfile({
+        access_token: platformAccount.accessToken,
+        fields: ['user_id', 'username']
+      });
+      
+      return profileResponse.success;
     } catch (error) {
-      logger.error("State validation failed", { error });
+      logger.error("Instagram connection test failed", {
+        userId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Get connection status using SessionUser (fetches platform account from DB)
+   */
+  async getConnectionStatusFromDB(userId: string): Promise<InstagramConnectionStatus> {
+    const platformAccount = await PlatformAccountModel.findOne({
+      userId,
+      platform: 'instagram'
+    });
+
+    if (!platformAccount) {
+      return { isConnected: false };
+    }
+
+    const tokenStatus = instagramTokenService.validateToken({
+      accessToken: platformAccount.accessToken,
+      refreshToken: platformAccount.refreshToken,
+      expiresAt: platformAccount.tokenExpiresAt
+    });
+
+    return {
+       isConnected: platformAccount.isActive && tokenStatus.isValid,
+       accountInfo: {
+         id: platformAccount.id,
+         username: platformAccount.username,
+         name: platformAccount.displayName || platformAccount.username,
+       },
+      tokenStatus: {
+        isValid: tokenStatus.isValid,
+        expiresAt: platformAccount.tokenExpiresAt,
+        needsRefresh: tokenStatus.needsRefresh || false,
+      },
+    };
+  }
+
+  /**
+   * Check and refresh token using SessionUser (fetches platform account from DB)
+   */
+  async checkAndRefreshTokenFromDB(userId: string): Promise<boolean> {
+    try {
+      const platformAccount = await PlatformAccountModel.findOne({
+        userId,
+        platform: 'instagram',
+        isActive: true
+      });
+
+      if (!platformAccount?.accessToken) {
+        return false;
+      }
+
+      const tokenInfo = instagramTokenService.getTokenInfo({
+        accessToken: platformAccount.accessToken,
+        refreshToken: platformAccount.refreshToken,
+        expiresAt: platformAccount.tokenExpiresAt
+      });
+
+      // Instagram long-lived tokens can be refreshed before expiry
+      if (tokenInfo.needsRefresh) {
+        const refreshResult = await this.auth.refreshLongLivedToken(
+          platformAccount.accessToken
+        );
+
+        if (refreshResult.success && refreshResult.newToken) {
+          // Update credentials with new token
+          platformAccount.accessToken = refreshResult.newToken.access_token;
+          if (refreshResult.newToken.expires_in) {
+            platformAccount.tokenExpiresAt = instagramTokenService.calculateExpirationDate(
+              refreshResult.newToken.expires_in
+            );
+          }
+          platformAccount.lastSyncAt = new Date();
+
+          // Save the updated account
+          await platformAccount.save();
+
+          logger.info("Instagram token refreshed successfully", {
+            userId,
+            instagramId: platformAccount.id,
+          });
+
+          return true;
+        }
+      }
+
+      return tokenInfo.isValid;
+    } catch (error) {
+      logger.error("Instagram token refresh failed", {
+        userId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
       return false;
     }
   }

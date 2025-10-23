@@ -6,10 +6,8 @@
 import { Request, Response, NextFunction } from "express";
 import { UserModel } from "../models/user.model";
 import { ApiError } from "../utils/api-error";
-import { AuthenticatedUser } from "../types/user.types";
-import { ROLE_PERMISSIONS, ROLES } from "../constants/permissions";
-import { UserRoleType } from "../models/user.model";
 import logger from "../utils/logger";
+import { AuthenticatedUser } from "../types";
 
 class AuthMiddleware {
   /**
@@ -28,10 +26,11 @@ class AuthMiddleware {
 
       const sessionUser = req.session.user;
 
-      // Get fresh user data from database
-      const user = await UserModel.findById(sessionUser.id).select(
-        "-passwordHash"
-      );
+      // Get fresh user data from database with populated platform accounts
+      const user = await UserModel.findById(sessionUser.id)
+        .select("-passwordHash")
+        .populate("platformAccounts");
+
       if (!user) {
         // User not found, destroy session
         req.session.destroy(() => {});
@@ -49,17 +48,7 @@ class AuthMiddleware {
         throw ApiError.unauthorized("Email verification required");
       }
 
-      // Update session with fresh user data
       req.session.user = {
-        id: String(user._id),
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        permissions: user.permissions,
-      };
-
-      // Attach user to request
-      req.user = {
         id: String(user._id),
         _id: String(user._id),
         email: user.email,
@@ -87,11 +76,11 @@ class AuthMiddleware {
   requireRole(roles: string | string[]) {
     return (req: Request, res: Response, next: NextFunction): void => {
       try {
-        if (!req.user) {
+        if (!req.session?.user) {
           throw ApiError.unauthorized("User not authenticated");
         }
 
-        const userRole = req.user.role;
+        const userRole = req.session.user.role;
         const allowedRoles = Array.isArray(roles) ? roles : [roles];
 
         if (!allowedRoles.includes(userRole)) {
@@ -118,11 +107,11 @@ class AuthMiddleware {
    */
   requireEmailVerified(req: Request, res: Response, next: NextFunction): void {
     try {
-      if (!req.user) {
+      if (!req.session?.user) {
         throw ApiError.unauthorized("User not authenticated");
       }
 
-      if (!req.user.isEmailVerified) {
+      if (!req.session?.user?.isEmailVerified) {
         throw ApiError.forbidden("Email verification required");
       }
 
@@ -151,26 +140,12 @@ class AuthMiddleware {
 
       const sessionUser = req.session.user;
 
-      // Get user from database
-      const user = await UserModel.findById(sessionUser.id).select(
-        "-passwordHash"
-      );
+      // Get user from database with populated platform accounts
+      const user = await UserModel.findById(sessionUser.id)
+        .select("-passwordHash")
+        .populate("platformAccounts");
       if (user && !user.deletedAt && user.isEmailVerified) {
-        // Attach user to request
-        req.user = {
-          id: String(user._id),
-          _id: String(user._id),
-          email: user.email,
-          username: user.username,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-          permissions: user.permissions ?? [],
-          isEmailVerified: user.isEmailVerified,
-          lastLoginAt: user.lastLoginAt,
-          createdAt: user.createdAt ?? new Date(),
-          connectedAccounts: user.platformAccounts ?? [],
-        } as AuthenticatedUser;
+        // No need to attach user to req.user, using req.session.user instead
       }
 
       next();
@@ -191,9 +166,9 @@ class AuthMiddleware {
   /**
    * Get current user from session
    */
-  getCurrentUser(req: Request): AuthenticatedUser | null {
+  getCurrentUser(req: Request): any | null {
     if (this.isAuthenticated(req) && req.session.user) {
-      return req.session.user as AuthenticatedUser;
+      return req.session.user;
     }
     return null;
   }

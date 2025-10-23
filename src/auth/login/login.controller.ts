@@ -77,7 +77,7 @@ class LoginController {
    */
   async getProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const user = req.user;
+      const user = req.session?.user;
 
       if (!user) {
         throw ApiError.unauthorized('User not authenticated');

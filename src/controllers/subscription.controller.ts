@@ -51,7 +51,7 @@ export class SubscriptionController {
    * Get current subscription details
    */
   getCurrentSubscription = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     try {
       // Get subscription from database
@@ -220,7 +220,7 @@ export class SubscriptionController {
    * Create subscription checkout session
    */
   createCheckoutSession = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const { planId, interval = "month" } = req.body;
 
     if (!this.stripeService) {
@@ -300,7 +300,7 @@ export class SubscriptionController {
    */
   activateSubscription = asyncHandler(async (req: Request, res: Response) => {
     const { sessionId, planId, paymentIntentId } = req.body;
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     // In a real implementation, verify the payment with Stripe
     logger.info("Activating subscription", { userId, planId, sessionId });
@@ -355,7 +355,7 @@ export class SubscriptionController {
    * Cancel subscription
    */
   cancelSubscription = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const { cancelAtPeriodEnd = true } = req.body;
 
     const subscription = await SubscriptionModel.findOne({
@@ -394,7 +394,7 @@ export class SubscriptionController {
    * Reactivate canceled subscription
    */
   reactivateSubscription = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     const subscription = await SubscriptionModel.findOne({
       userId,
@@ -424,7 +424,7 @@ export class SubscriptionController {
    * Update payment method
    */
   updatePaymentMethod = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
     const { paymentMethodId } = req.body;
 
     const subscription = await SubscriptionModel.findOne({
@@ -532,7 +532,7 @@ export class SubscriptionController {
    * Get usage statistics
    */
   getUsageStats = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.session.user!.id;
 
     try {
       // Get user's current subscription to determine limits

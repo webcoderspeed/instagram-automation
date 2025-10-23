@@ -25,11 +25,11 @@ export interface SubscriptionRequirement {
 export function requirePlan(plans: string | string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.user) {
+      if (!req.session?.user) {
         throw new ApiError(401, 'Authentication required');
       }
 
-      const user = req.user as AuthenticatedUser;
+      const user = req.session?.user as AuthenticatedUser;
       const subscription = await SubscriptionModel.findOne({ 
         userId: user._id,
         status: 'active'
@@ -57,11 +57,11 @@ export function requirePlan(plans: string | string[]) {
 export function requireFeature(feature: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.user) {
+      if (!req.session?.user) {
         throw new ApiError(401, 'Authentication required');
       }
 
-      const user = req.user as AuthenticatedUser;
+      const user = req.session?.user;
       const subscription = await SubscriptionModel.findOne({ 
         userId: user._id,
         status: 'active'
@@ -72,7 +72,7 @@ export function requireFeature(feature: string) {
       }
 
       // Check if feature is available in current plan
-       const planFeatures = subscription.features;
+       const planFeatures = subscription.features ?? {};
        if (!planFeatures || !planFeatures[feature as keyof typeof planFeatures]) {
          throw new ApiError(403, `Feature '${feature}' not available in current plan`);
        }
@@ -90,25 +90,25 @@ export function requireFeature(feature: string) {
 export function checkUsageLimit(feature: string, limit: number) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.user) {
-        throw new ApiError(401, 'Authentication required');
+      if (!req.session?.user) {
+        throw ApiError.unauthorized('Authentication required');
       }
 
-      const user = req.user as AuthenticatedUser;
+      const user = req.session?.user;
       const subscription = await SubscriptionModel.findOne({ 
         userId: user._id,
         status: 'active'
       });
 
       if (!subscription) {
-        throw new ApiError(403, 'Active subscription required');
+        throw ApiError.forbidden('Active subscription required');
       }
 
       // Get current usage for the feature
       const currentUsage = subscription.usage?.[feature as keyof typeof subscription.usage] || 0;
       
       if (currentUsage >= limit) {
-        throw new ApiError(403, `Usage limit exceeded for ${feature}. Upgrade your plan for more access.`);
+        throw ApiError.forbidden(`Usage limit exceeded for ${feature}. Upgrade your plan for more access.`);
       }
 
       // Increment usage count
@@ -130,18 +130,18 @@ export function checkUsageLimit(feature: string, limit: number) {
 export function requireActiveSubscription() {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.user) {
-        throw new ApiError(401, 'Authentication required');
+      if (!req.session?.user) {
+        throw ApiError.unauthorized('Authentication required');
       }
 
-      const user = req.user as AuthenticatedUser;
+      const user = req.session?.user;
       const subscription = await SubscriptionModel.findOne({ 
         userId: user._id,
         status: 'active'
       });
 
       if (!subscription) {
-        throw new ApiError(403, 'Active subscription required');
+        throw ApiError.forbidden('Active subscription required');
       }
 
       next();
@@ -157,11 +157,11 @@ export function requireActiveSubscription() {
 export function createSubscriptionProtectedRoute(requirements: SubscriptionRequirement) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.user) {
-        throw new ApiError(401, 'Authentication required');
+      if (!req.session?.user) {
+        throw ApiError.unauthorized('Authentication required');
       }
 
-      const user = req.user as AuthenticatedUser;
+      const user = req.session?.user;
       
       // Get user's subscription
       const subscription = await SubscriptionModel.findOne({ 
@@ -170,20 +170,20 @@ export function createSubscriptionProtectedRoute(requirements: SubscriptionRequi
       });
 
       if (!subscription) {
-        throw new ApiError(403, 'Valid subscription required');
+        throw ApiError.forbidden('Valid subscription required');
       }
 
       // Check plan requirement
       if (requirements.plan) {
         const allowedPlans = Array.isArray(requirements.plan) ? requirements.plan : [requirements.plan];
         if (!allowedPlans.includes(subscription.plan)) {
-          throw new ApiError(403, `Subscription plan ${allowedPlans.join(' or ')} required`);
+          throw ApiError.forbidden(`Subscription plan ${allowedPlans.join(' or ')} required`);
         }
       }
 
       // Check feature requirement
        if (requirements.feature) {
-         const planFeatures = subscription.features;
+         const planFeatures = subscription.features ?? {};
          if (!planFeatures || !planFeatures[requirements.feature as keyof typeof planFeatures]) {
            throw new ApiError(403, `Feature '${requirements.feature}' not available in current plan`);
          }
@@ -192,10 +192,10 @@ export function createSubscriptionProtectedRoute(requirements: SubscriptionRequi
       // Check usage limit
       if (requirements.usageLimit) {
         const { feature, limit } = requirements.usageLimit;
-        const currentUsage = subscription.usage?.[feature as keyof typeof subscription.usage] || 0;
+        const currentUsage = (subscription.usage ?? {})[feature as keyof typeof subscription.usage] ?? 0;
         
         if (currentUsage >= limit) {
-          throw new ApiError(403, `Usage limit exceeded for ${feature}. Upgrade your plan for more access.`);
+          throw ApiError.forbidden(`Usage limit exceeded for ${feature}. Upgrade your plan for more access.`);
         }
 
         // Increment usage count

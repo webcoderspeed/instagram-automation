@@ -12,11 +12,11 @@ export class AutomationController {
   /**
    * Get authenticated user from request
    */
-  private getAuthenticatedUser(req: Request) {
-    if (!req.user) {
-      throw new ApiError(401, 'User not authenticated');
+  private getAuthenticatedUser(req: Request): any {
+    if (!req.session.user) {
+      throw ApiError.unauthorized("User not authenticated");
     }
-    return req.user;
+    return req.session.user;
   }
 
   /**

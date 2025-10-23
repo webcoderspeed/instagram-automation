@@ -17,13 +17,13 @@ export class InstagramController {
    * Initiate Instagram OAuth connection
    */
   connect = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (!req.user) {
+    if (!req.session.user) {
       sendError(res, 'Authentication required', 401, createMeta({ requestId: req.headers['x-request-id'] as string }));
       return;
     }
 
     try {
-      const userId = req.user.id;
+      const userId = req.session.user.id;
       const { authUrl, state } = instagramIntegrationService.getAuthUrl(userId);
       
       logger.info('Generated Instagram OAuth URL', { userId, state });
@@ -46,6 +46,8 @@ export class InstagramController {
     try {
       const { code, state, error: oauthError } = req.query;
 
+      console.log('Received Instagram callback:', { code, state, oauthError });
+
       // Check for OAuth errors
       if (oauthError) {
         logger.error('Instagram OAuth error:', { error: oauthError });
@@ -59,13 +61,11 @@ export class InstagramController {
         return;
       }
 
-      // Extract user ID from state parameter (since this is a non-protected route)
-      const { userId, timestamp } = this.decodeState(state as string);
-      
-      // Validate state timestamp (should be within last 10 minutes)
-      const now = Date.now();
-      if (now - timestamp > 10 * 60 * 1000) {
-        sendError(res, 'OAuth state has expired', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
+      // Since this is a non-protected route, we need to get the userId from the state
+      // The state is stored in the auth service's Map, so we need to validate it first
+      const userId = instagramIntegrationService.auth.getUserIdFromState(state as string);
+      if (!userId) {
+        sendError(res, 'Invalid or expired OAuth state', 400, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
@@ -135,13 +135,13 @@ export class InstagramController {
    * Disconnect Instagram account
    */
   disconnect = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (!req.user) {
+    if (!req.session.user) {
       sendError(res, 'Authentication required', 401, createMeta({ requestId: req.headers['x-request-id'] as string }));
       return;
     }
 
     try {
-      const userId = req.user.id;
+      const userId = req.session.user.id;
       
       // Find and deactivate the Instagram platform account
       const { PlatformAccountModel } = await import('../models/platform-account.model');
@@ -175,17 +175,17 @@ export class InstagramController {
    * Get connected Instagram account status
    */
   getConnectionStatus = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (!req.user) {
+    if (!req.session.user) {
       sendError(res, 'Authentication required', 401, createMeta({ requestId: req.headers['x-request-id'] as string }));
       return;
     }
 
     try {
       // Check and refresh token if needed
-      await instagramIntegrationService.checkAndRefreshToken(req.user);
+      await instagramIntegrationService.checkAndRefreshTokenFromDB(req.session.user.id);
       
       // Get connection status
-      const status = await instagramIntegrationService.getConnectionStatus(req.user);
+      const status = await instagramIntegrationService.getConnectionStatusFromDB(req.session.user.id);
 
       if (!status.isConnected) {
         sendSuccess(res, {
@@ -196,7 +196,7 @@ export class InstagramController {
       }
 
       // Test connection
-      const connectionTest = await instagramIntegrationService.testConnection(req.user);
+      const connectionTest = await instagramIntegrationService.testConnectionFromDB(req.session.user.id);
 
       sendSuccess(res, {
         connected: status.isConnected,
@@ -214,12 +214,12 @@ export class InstagramController {
   });
 
   getProfile = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (!req.user) {
+    if (!req.session.user) {
       sendError(res, 'Authentication required', 401, createMeta({ requestId: req.headers['x-request-id'] as string }));
       return;
     }
 
-    const credentials = platformAccountService.getPlatformCredentials(req.user, 'instagram');
+    const credentials = await platformAccountService.getPlatformCredentialsFromDB(req.session.user.id, 'instagram');
     
     if (!credentials) {
       sendError(res, 'Instagram credentials not found', 401, createMeta({ requestId: req.headers['x-request-id'] as string }));
@@ -234,12 +234,12 @@ export class InstagramController {
 
   async getMedia(req: Request, res: Response): Promise<void> {
     try {
-      if (!req.user) {
+      if (!req.session.user) {
         sendError(res, 'Authentication required', 401, createMeta({ requestId: req.headers['x-request-id'] as string }));
         return;
       }
 
-      const credentials = platformAccountService.getPlatformCredentials(req.user, 'instagram');
+      const credentials = await platformAccountService.getPlatformCredentialsFromDB(req.session.user.id, 'instagram');
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 25;
       
       if (!credentials) {
@@ -420,29 +420,7 @@ export class InstagramController {
     }
   }
 
-  /**
-   * Helper method to decode state parameter
-   */
-  private decodeState(state: string): { userId: string; timestamp: number } {
-    try {
-      const decoded = Buffer.from(state, 'base64').toString();
-      const [userId, timestampStr] = decoded.split(':');
-      
-      if (!userId || !timestampStr) {
-        throw new Error('Invalid state format');
-      }
-      
-      const timestamp = parseInt(timestampStr);
-      if (isNaN(timestamp)) {
-        throw new Error('Invalid timestamp in state');
-      }
-      
-      return { userId, timestamp };
-    } catch (error) {
-      logger.error('Failed to decode state parameter:', error);
-      throw new AppError('Invalid state parameter', 400);
-    }
-  }
+
 
   /**
    * Helper method to save platform account to database
