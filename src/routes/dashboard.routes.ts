@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { DashboardController } from '../controllers/dashboard.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
-import { createProtectedRoute } from '../middleware/guards/protected-routes.middleware';
+import { createProtectedRoute } from '../middleware/role.middleware';
 import { Permissions } from '../middleware/role.middleware';
 
 const router = Router();

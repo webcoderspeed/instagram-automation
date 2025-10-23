@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { WebhookController } from '../controllers/webhook.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
-import { createProtectedRoute } from '../middleware/guards/protected-routes.middleware';
+import { createProtectedRoute } from '../middleware/role.middleware';
 import { validate } from '../validators/common.validator';
 import { 
   verifyWebhookSchema, 

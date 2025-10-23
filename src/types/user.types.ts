@@ -216,6 +216,7 @@ export interface AuthenticatedUser {
   firstName?: string;
   lastName?: string;
   role: string;
+  permissions: string[];
   isEmailVerified: boolean;
   lastLoginAt?: Date;
   createdAt: Date;

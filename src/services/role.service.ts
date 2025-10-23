@@ -3,7 +3,7 @@
  * Centralized service for managing user roles, permissions, and subscription-based access control
  */
 
-import { UserDocument, UserRole, UserRoleType } from "../models/user.model";
+import { UserDocument, UserRoleType } from "../models/user.model";
 import {
   SubscriptionDocument,
   SubscriptionPlan,
@@ -48,16 +48,19 @@ class RoleService {
    */
   hasPermission(user: UserDocument, permission: string): boolean {
     // Map user model roles to permission system roles
-    const roleMapping: Record<UserRoleType, keyof typeof ROLE_PERMISSIONS> = {
-      [UserRole.ADMIN]: 'admin',
-      [UserRole.USER]: 'user',
-      [UserRole.MODERATOR]: 'manager'
+    const roleMapping: Partial<Record<UserRoleType, keyof typeof ROLE_PERMISSIONS>> = {
+      [ROLES.SUPER_ADMIN]: 'super_admin',
+      [ROLES.ADMIN]: 'admin',
+      [ROLES.MANAGER]: 'manager',
+      [ROLES.USER]: 'user',
+      [ROLES.VIEWER]: 'viewer',
+      [ROLES.API_CLIENT]: 'api_client'
     };
 
     const permissionRole = roleMapping[user.role];
     
     // Check role-based permissions
-    const rolePermissions = ROLE_PERMISSIONS[permissionRole] || [];
+    const rolePermissions = permissionRole ? ROLE_PERMISSIONS[permissionRole] || [] : [];
     if (rolePermissions.includes(permission as any)) {
       return true;
     }
@@ -204,14 +207,17 @@ class RoleService {
    */
   getUserPermissions(user: UserDocument): string[] {
     // Map user model roles to permission system roles
-    const roleMapping: Record<UserRoleType, keyof typeof ROLE_PERMISSIONS> = {
-      [UserRole.ADMIN]: 'admin',
-      [UserRole.USER]: 'user',
-      [UserRole.MODERATOR]: 'manager'
+    const roleMapping: Partial<Record<UserRoleType, keyof typeof ROLE_PERMISSIONS>> = {
+      [ROLES.SUPER_ADMIN]: 'super_admin',
+      [ROLES.ADMIN]: 'admin',
+      [ROLES.MANAGER]: 'manager',
+      [ROLES.USER]: 'user',
+      [ROLES.VIEWER]: 'viewer',
+      [ROLES.API_CLIENT]: 'api_client'
     };
 
     const permissionRole = roleMapping[user.role];
-    const rolePermissions = ROLE_PERMISSIONS[permissionRole] || [];
+    const rolePermissions = permissionRole ? ROLE_PERMISSIONS[permissionRole] || [] : [];
     const userPermissions = user.permissions || [];
     
     // Combine and deduplicate
@@ -397,29 +403,26 @@ class RoleService {
    * Validate role assignment
    */
   canAssignRole(assignerRole: UserRoleType, targetRole: UserRoleType): boolean {
-    // Map user model roles to permission roles for comparison
-    const roleMapping: Record<UserRoleType, string> = {
-      [UserRole.ADMIN]: ROLES.ADMIN,
-      [UserRole.USER]: ROLES.USER,
-      [UserRole.MODERATOR]: ROLES.MANAGER
-    };
-
-    const assignerPermissionRole = roleMapping[assignerRole];
-    const targetPermissionRole = roleMapping[targetRole];
-
-    // Only super admin can assign super admin role (not available in user model)
-    if (targetPermissionRole === ROLES.SUPER_ADMIN) {
-      return assignerPermissionRole === ROLES.SUPER_ADMIN;
+    // Only super admin can assign super admin role
+    if (targetRole === ROLES.SUPER_ADMIN) {
+      return assignerRole === ROLES.SUPER_ADMIN;
     }
 
-    // Admin can assign admin, manager, user roles
-    if (assignerPermissionRole === ROLES.ADMIN) {
-      return [ROLES.ADMIN, ROLES.MANAGER, ROLES.USER].includes(targetPermissionRole as any);
+    // Super admin can assign any role
+    if (assignerRole === ROLES.SUPER_ADMIN) {
+      return true;
     }
 
-    // Manager can assign user roles
-    if (assignerPermissionRole === ROLES.MANAGER) {
-      return [ROLES.USER].includes(targetPermissionRole as any);
+    // Admin can assign admin, manager, user, viewer, api_client roles
+    if (assignerRole === ROLES.ADMIN) {
+      const adminAssignableRoles: UserRoleType[] = [ROLES.ADMIN, ROLES.MANAGER, ROLES.USER, ROLES.VIEWER, ROLES.API_CLIENT];
+      return adminAssignableRoles.includes(targetRole);
+    }
+
+    // Manager can assign user, viewer roles
+    if (assignerRole === ROLES.MANAGER) {
+      const managerAssignableRoles: UserRoleType[] = [ROLES.USER, ROLES.VIEWER];
+      return managerAssignableRoles.includes(targetRole);
     }
 
     return false;

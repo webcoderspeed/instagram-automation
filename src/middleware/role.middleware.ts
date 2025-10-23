@@ -1,127 +1,17 @@
 /**
  * Role-based Access Control Middleware
- * Handles user roles, permissions, and subscription-based access control
+ * Consolidated middleware for authentication, permissions, and route protection
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../utils/api-error';
-import { UserRole } from '../models/user.model';
-import { SubscriptionModel } from '../models/subscription.model';
+import { PERMISSIONS } from '../constants/permissions';
+import { authMiddleware } from './auth.middleware';
 import logger from '../utils/logger';
 
-// Define permissions for different features
-export const Permissions = {
-  // User management
-  USER_READ: 'user:read',
-  USER_WRITE: 'user:write',
-  USER_DELETE: 'user:delete',
-  
-  // Admin permissions
-  ADMIN_PANEL: 'admin:panel',
-  ADMIN_USERS: 'admin:users',
-  ADMIN_ANALYTICS: 'admin:analytics',
-  ADMIN_SETTINGS: 'admin:settings',
-  
-  // Content management
-  CONTENT_CREATE: 'content:create',
-  CONTENT_READ: 'content:read',
-  CONTENT_UPDATE: 'content:update',
-  CONTENT_DELETE: 'content:delete',
-  CONTENT_SCHEDULE: 'content:schedule',
-  
-  // Automation
-  AUTOMATION_CREATE: 'automation:create',
-  AUTOMATION_READ: 'automation:read',
-  AUTOMATION_UPDATE: 'automation:update',
-  AUTOMATION_DELETE: 'automation:delete',
-  AUTOMATION_EXECUTE: 'automation:execute',
-  
-  // Analytics
-  ANALYTICS_READ: 'analytics:read',
-  ANALYTICS_EXPORT: 'analytics:export',
-  ANALYTICS_ADVANCED: 'analytics:advanced',
-  
-  // Integrations
-  INTEGRATION_CONNECT: 'integration:connect',
-  INTEGRATION_DISCONNECT: 'integration:disconnect',
-  INTEGRATION_MANAGE: 'integration:manage',
-  
-  // Billing
-  BILLING_READ: 'billing:read',
-  BILLING_MANAGE: 'billing:manage',
-} as const;
-
-export type PermissionType = typeof Permissions[keyof typeof Permissions];
-
-// Role-based permissions mapping
-export const RolePermissions: Record<string, PermissionType[]> = {
-  [UserRole.ADMIN]: [
-    // Admin has all permissions
-    ...Object.values(Permissions)
-  ],
-  [UserRole.MODERATOR]: [
-    // Moderator permissions
-    Permissions.USER_READ,
-    Permissions.CONTENT_CREATE,
-    Permissions.CONTENT_READ,
-    Permissions.CONTENT_UPDATE,
-    Permissions.CONTENT_DELETE,
-    Permissions.CONTENT_SCHEDULE,
-    Permissions.AUTOMATION_READ,
-    Permissions.ANALYTICS_READ,
-    Permissions.INTEGRATION_CONNECT,
-    Permissions.INTEGRATION_DISCONNECT,
-    Permissions.BILLING_READ,
-  ],
-  [UserRole.USER]: [
-    // Basic user permissions
-    Permissions.USER_READ,
-    Permissions.CONTENT_CREATE,
-    Permissions.CONTENT_READ,
-    Permissions.CONTENT_UPDATE,
-    Permissions.CONTENT_DELETE,
-    Permissions.ANALYTICS_READ,
-    Permissions.INTEGRATION_CONNECT,
-    Permissions.INTEGRATION_DISCONNECT,
-    Permissions.BILLING_READ,
-  ]
-};
-
-// Subscription tier limits
-export const SubscriptionLimits = {
-  FREE: {
-    maxPosts: 10,
-    maxAutomations: 1,
-    maxConnectedAccounts: 1,
-    advancedAnalytics: false,
-    prioritySupport: false,
-    customBranding: false,
-  },
-  BASIC: {
-    maxPosts: 100,
-    maxAutomations: 5,
-    maxConnectedAccounts: 3,
-    advancedAnalytics: false,
-    prioritySupport: false,
-    customBranding: false,
-  },
-  PRO: {
-    maxPosts: 1000,
-    maxAutomations: 20,
-    maxConnectedAccounts: 10,
-    advancedAnalytics: true,
-    prioritySupport: true,
-    customBranding: false,
-  },
-  ENTERPRISE: {
-    maxPosts: -1, // unlimited
-    maxAutomations: -1, // unlimited
-    maxConnectedAccounts: -1, // unlimited
-    advancedAnalytics: true,
-    prioritySupport: true,
-    customBranding: true,
-  }
-};
+// Export permissions for easy access
+export const Permissions = PERMISSIONS;
+export type PermissionType = typeof PERMISSIONS[keyof typeof PERMISSIONS];
 
 class RoleMiddleware {
   /**
@@ -134,8 +24,7 @@ class RoleMiddleware {
           throw ApiError.unauthorized('User not authenticated');
         }
 
-        const userRole = req.user.role;
-        const userPermissions = RolePermissions[userRole] || [];
+        const userPermissions = req.user.permissions || [];
 
         if (!userPermissions.includes(permission)) {
           throw ApiError.forbidden(`Permission required: ${permission}`);
@@ -159,8 +48,7 @@ class RoleMiddleware {
           throw ApiError.unauthorized('User not authenticated');
         }
 
-        const userRole = req.user.role;
-        const userPermissions = RolePermissions[userRole] || [];
+        const userPermissions = req.user.permissions || [];
 
         const hasPermission = permissions.some(permission => 
           userPermissions.includes(permission)
@@ -202,123 +90,95 @@ class RoleMiddleware {
       }
     };
   }
-
-  /**
-   * Check subscription limits
-   */
-  requireSubscriptionFeature(feature: keyof typeof SubscriptionLimits.FREE) {
-    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        if (!req.user) {
-          throw ApiError.unauthorized('User not authenticated');
-        }
-
-        // Get user's subscription
-        const subscription = await SubscriptionModel.findById(req.user.id);
-        if (!subscription) {
-          throw ApiError.forbidden('No active subscription found');
-        }
-
-        const subscriptionTier = subscription.plan.toUpperCase() as keyof typeof SubscriptionLimits;
-        const limits = SubscriptionLimits[subscriptionTier] || SubscriptionLimits.FREE;
-
-        // Check if feature is available for this subscription tier
-        if (feature === 'advancedAnalytics' && !limits.advancedAnalytics) {
-          throw ApiError.forbidden('Advanced analytics requires Pro or Enterprise subscription');
-        }
-
-        if (feature === 'prioritySupport' && !limits.prioritySupport) {
-          throw ApiError.forbidden('Priority support requires Pro or Enterprise subscription');
-        }
-
-        if (feature === 'customBranding' && !limits.customBranding) {
-          throw ApiError.forbidden('Custom branding requires Enterprise subscription');
-        }
-
-        // Attach subscription info to request
-        req.subscription = {
-          tier: subscriptionTier,
-          limits: limits
-        };
-
-        next();
-      } catch (error: unknown) {
-        logger.error('Subscription check failed:', error);
-        next(error);
-      }
-    };
-  }
-
-  /**
-   * Check usage limits based on subscription
-   */
-  checkUsageLimit(limitType: 'maxPosts' | 'maxAutomations' | 'maxConnectedAccounts') {
-    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        if (!req.user) {
-          throw ApiError.unauthorized('User not authenticated');
-        }
-
-        // Get user's subscription
-        const subscription = await SubscriptionModel.findById(req.user.id);
-        if (!subscription) {
-          throw ApiError.forbidden('No active subscription found');
-        }
-
-        const subscriptionTier = subscription.plan.toUpperCase() as keyof typeof SubscriptionLimits;
-        const limits = SubscriptionLimits[subscriptionTier] || SubscriptionLimits.FREE;
-        const limit = limits[limitType];
-
-        // -1 means unlimited
-        if (limit === -1) {
-          next();
-          return;
-        }
-
-        // Check current usage (this would need to be implemented based on your data models)
-        let currentUsage = 0;
-        
-        switch (limitType) {
-          case 'maxPosts':
-            // Get user's post count - implement based on your post model
-            currentUsage = 0; // placeholder
-            break;
-          case 'maxAutomations':
-            // Get user's automation count - implement based on your automation model
-            currentUsage = 0; // placeholder
-            break;
-          case 'maxConnectedAccounts':
-            // Count non-null platform accounts
-            const connectedAccounts = req.user.connectedAccounts;
-            currentUsage = connectedAccounts ? Object.values(connectedAccounts).filter(account => account !== null && account !== undefined).length : 0;
-            break;
-        }
-
-        if (currentUsage >= limit) {
-          throw ApiError.forbidden(`${limitType} limit reached. Upgrade your subscription to continue.`);
-        }
-
-        next();
-      } catch (error: unknown) {
-        logger.error('Usage limit check failed:', error);
-        next(error);
-      }
-    };
-  }
-
-  /**
-   * Admin only access
-   */
-  requireAdmin(req: Request, res: Response, next: NextFunction): void {
-    this.requireRole(UserRole.ADMIN)(req, res, next);
-  }
-
-  /**
-   * Moderator or Admin access
-   */
-  requireModerator(req: Request, res: Response, next: NextFunction): void {
-    this.requireRole([UserRole.ADMIN, UserRole.MODERATOR])(req, res, next);
-  }
 }
+
+/**
+ * Simple route protection levels
+ */
+export const ProtectionLevels = {
+  PUBLIC: 'PUBLIC',
+  AUTHENTICATED: 'AUTHENTICATED', 
+  VERIFIED_USER: 'VERIFIED_USER',
+  ADMIN_ONLY: 'ADMIN_ONLY',
+  ANALYTICS_ACCESS: 'ANALYTICS_ACCESS',
+  CONTENT_MANAGER: 'CONTENT_MANAGER',
+  INTEGRATION_MANAGER: 'INTEGRATION_MANAGER',
+  CONNECT_ACCOUNT: 'CONNECT_ACCOUNT'
+} as const;
+
+export type ProtectionLevel = typeof ProtectionLevels[keyof typeof ProtectionLevels];
+
+/**
+ * Create protected route middleware
+ */
+export const createProtectedRoute = (level: ProtectionLevel) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Public routes - no protection needed
+      if (level === ProtectionLevels.PUBLIC) {
+        return next();
+      }
+
+      // All other levels require authentication
+      await new Promise<void>((resolve, reject) => {
+        authMiddleware.authenticate(req, res, (err?: any) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      // Verified user level requires email verification
+      if (level === ProtectionLevels.VERIFIED_USER || 
+          level === ProtectionLevels.ADMIN_ONLY ||
+          level === ProtectionLevels.ANALYTICS_ACCESS ||
+          level === ProtectionLevels.CONTENT_MANAGER ||
+          level === ProtectionLevels.INTEGRATION_MANAGER ||
+          level === ProtectionLevels.CONNECT_ACCOUNT) {
+        await new Promise<void>((resolve, reject) => {
+          authMiddleware.requireEmailVerified(req, res, (err?: any) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+      }
+
+      // Admin only level requires admin role
+      if (level === ProtectionLevels.ADMIN_ONLY) {
+        if (!req.user || req.user.role !== 'ADMIN') {
+          throw ApiError.forbidden('Admin access required');
+        }
+      }
+
+      // Role-based access for specific features
+      if (level === ProtectionLevels.ANALYTICS_ACCESS) {
+        if (!req.user?.permissions?.includes(PERMISSIONS.ANALYTICS_READ)) {
+          throw ApiError.forbidden('Analytics access required');
+        }
+      }
+
+      if (level === ProtectionLevels.CONTENT_MANAGER) {
+        if (!req.user?.permissions?.includes(PERMISSIONS.POST_CREATE)) {
+          throw ApiError.forbidden('Content management access required');
+        }
+      }
+
+      if (level === ProtectionLevels.INTEGRATION_MANAGER) {
+        if (!req.user?.permissions?.includes(PERMISSIONS.WEBHOOK_UPDATE)) {
+          throw ApiError.forbidden('Integration management access required');
+        }
+      }
+
+      if (level === ProtectionLevels.CONNECT_ACCOUNT) {
+        if (!req.user?.permissions?.includes(PERMISSIONS.USER_UPDATE)) {
+          throw ApiError.forbidden('Account connection access required');
+        }
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
 
 export const roleMiddleware = new RoleMiddleware();

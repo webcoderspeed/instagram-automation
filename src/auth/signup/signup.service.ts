@@ -5,7 +5,8 @@
 
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { UserModel, UserDocument } from '../../models/user.model';
+import { UserModel, UserDocument, UserRoleType } from '../../models/user.model';
+import { ROLES } from '../../constants/permissions';
 import { SubscriptionModel, SubscriptionPlan } from '../../models/subscription.model';
 import { NotificationModel, NotificationType, NotificationChannel, NotificationPriority } from '../../models/notification.model';
 import { ApiError } from '../../utils/api-error';
@@ -20,6 +21,7 @@ export interface SignupData {
   lastName?: string;
   timezone?: string;
   language?: string;
+  role?: string;
 }
 
 export interface SignupResult {
@@ -29,6 +31,9 @@ export interface SignupResult {
 }
 
 class SignupService {
+  // Define allowed roles for signup (excluding admin and superior roles)
+  private readonly ALLOWED_SIGNUP_ROLES: UserRoleType[] = [ROLES.USER, ROLES.MANAGER];
+
   /**
    * Register a new user
    */
@@ -39,6 +44,9 @@ class SignupService {
       if (existingUser) {
         throw new ApiError(400, 'User already exists with this email or username');
       }
+
+      // Validate and set role
+      const userRole = this.validateAndSetRole(data.role);
 
       // Hash password
       const passwordHash = await this.hashPassword(data.password);
@@ -53,6 +61,7 @@ class SignupService {
         displayName: data.firstName && data.lastName ? `${data.firstName} ${data.lastName}` : data.username,
         timezone: data.timezone || 'UTC',
         language: data.language || 'en',
+        role: userRole,
         isEmailVerified: false
       });
 
@@ -169,6 +178,23 @@ class SignupService {
     });
 
     return !!existingUser;
+  }
+
+  /**
+   * Validate and set user role
+   */
+  private validateAndSetRole(requestedRole?: string): UserRoleType {
+    // If no role is provided, default to USER
+    if (!requestedRole) {
+      return ROLES.USER;
+    }
+
+    // Check if the requested role is allowed for signup
+    if (!this.ALLOWED_SIGNUP_ROLES.includes(requestedRole as UserRoleType)) {
+      throw new ApiError(400, `Role '${requestedRole}' is not allowed during signup. Allowed roles: ${this.ALLOWED_SIGNUP_ROLES.join(', ')}`);
+    }
+
+    return requestedRole as UserRoleType;
   }
 
   /**

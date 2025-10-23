@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { IntegrationsController } from '../controllers/integrations.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
-import { createProtectedRoute } from '../middleware/guards/protected-routes.middleware';
+import { createProtectedRoute } from '../middleware/role.middleware';
 import { validate } from '../validators/common.validator';
 import { 
   connectPlatformSchema, 

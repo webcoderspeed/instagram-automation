@@ -18,6 +18,7 @@ export interface SignupRequest {
   lastName?: string;
   timezone?: string;
   language?: string;
+  role?: string;
 }
 
 export interface VerifyEmailRequest {
@@ -34,7 +35,7 @@ class SignupController {
    */
   async signup(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { email, username, password, firstName, lastName, timezone, language }: SignupRequest = req.body;
+      const { email, username, password, firstName, lastName, timezone, language, role }: SignupRequest = req.body;
 
       const result = await signupService.signup({
         email: email.toLowerCase().trim(),
@@ -43,7 +44,8 @@ class SignupController {
         firstName: firstName?.trim(),
         lastName: lastName?.trim(),
         timezone,
-        language
+        language,
+        role
       });
 
       logger.info(`User signup successful: ${email}`);

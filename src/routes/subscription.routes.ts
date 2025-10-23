@@ -6,7 +6,9 @@
 import { Router } from 'express';
 import { SubscriptionController } from '../controllers/subscription.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
-import { createProtectedRoute } from '../middleware/guards/protected-routes.middleware';
+import { createProtectedRoute } from '../middleware/role.middleware';
+import { roleMiddleware } from '../middleware/role.middleware';
+import { PERMISSIONS } from '../constants/permissions';
 import { validate } from '../validators/common.validator';
 import { 
   createCheckoutSessionSchema, 
@@ -30,6 +32,7 @@ router.use(authMiddleware.authenticate);
 router.get(
   '/current',
   createProtectedRoute('VERIFIED_USER'),
+  roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_READ),
   subscriptionController.getCurrentSubscription
 );
 
@@ -41,6 +44,7 @@ router.get(
 router.get(
   '/plans',
   createProtectedRoute('VERIFIED_USER'),
+  roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_READ),
   subscriptionController.getPlans
 );
 
@@ -52,6 +56,7 @@ router.get(
 router.post(
   '/checkout',
   createProtectedRoute('VERIFIED_USER'),
+  roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(createCheckoutSessionSchema),
   subscriptionController.createCheckoutSession
 );
@@ -64,6 +69,7 @@ router.post(
 router.post(
   '/activate',
   createProtectedRoute('VERIFIED_USER'),
+  roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(activateSubscriptionSchema),
   subscriptionController.activateSubscription
 );
@@ -76,6 +82,7 @@ router.post(
 router.post(
   '/cancel',
   createProtectedRoute('VERIFIED_USER'),
+  roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(cancelSubscriptionSchema),
   subscriptionController.cancelSubscription
 );
@@ -88,6 +95,7 @@ router.post(
 router.post(
   '/reactivate',
   createProtectedRoute('VERIFIED_USER'),
+  roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(reactivateSubscriptionSchema),
   subscriptionController.reactivateSubscription
 );
@@ -100,6 +108,7 @@ router.post(
 router.put(
   '/payment-method',
   createProtectedRoute('VERIFIED_USER'),
+  roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_UPDATE),
   validate(updatePaymentMethodSchema),
   subscriptionController.updatePaymentMethod
 );
@@ -112,6 +121,7 @@ router.put(
 router.get(
   '/billing-history',
   createProtectedRoute('VERIFIED_USER'),
+  roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_READ),
   subscriptionController.getBillingHistory
 );
 
@@ -123,6 +133,7 @@ router.get(
 router.get(
   '/usage',
   createProtectedRoute('VERIFIED_USER'),
+  roleMiddleware.requirePermission(PERMISSIONS.SUBSCRIPTION_READ),
   subscriptionController.getUsageStats
 );
 

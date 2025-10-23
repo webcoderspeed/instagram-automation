@@ -6,15 +6,10 @@
 import { Schema, model, Types, Document } from "mongoose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { ROLES, ROLE_PERMISSIONS } from "../constants/permissions";
 
-// User Role const object
-export const UserRole = {
-  ADMIN: "admin",
-  USER: "user",
-  MODERATOR: "moderator",
-} as const;
-
-export type UserRoleType = (typeof UserRole)[keyof typeof UserRole];
+// User Role type based on permissions constants - now includes all roles
+export type UserRoleType = typeof ROLES.SUPER_ADMIN | typeof ROLES.ADMIN | typeof ROLES.MANAGER | typeof ROLES.USER | typeof ROLES.VIEWER | typeof ROLES.API_CLIENT;
 
 // Note: SubscriptionStatus moved to subscription.model.ts
 
@@ -216,8 +211,8 @@ const userSchema = new Schema(
     // Role and permissions
     role: {
       type: String,
-      enum: Object.values(UserRole),
-      default: UserRole.USER,
+      enum: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.USER, ROLES.VIEWER, ROLES.API_CLIENT],
+      default: ROLES.USER,
     },
     permissions: [
       {
@@ -473,6 +468,31 @@ userSchema.methods.toPublicJSON = function (
   delete obj.twoFactorSecret;
   return obj;
 };
+
+// Pre-save hook to populate permissions based on role
+userSchema.pre('save', function(this: UserDocument, next) {
+  // Only populate permissions if role has changed or permissions are empty
+  if (this.isModified('role') || !this.permissions || this.permissions.length === 0) {
+    // Map user model roles to permission system roles
+    const roleMapping: Partial<Record<UserRoleType, keyof typeof ROLE_PERMISSIONS>> = {
+      [ROLES.SUPER_ADMIN]: 'super_admin',
+      [ROLES.ADMIN]: 'admin',
+      [ROLES.MANAGER]: 'manager',
+      [ROLES.USER]: 'user',
+      [ROLES.VIEWER]: 'viewer',
+      [ROLES.API_CLIENT]: 'api_client'
+    };
+
+    const permissionRole = roleMapping[this.role];
+    if (permissionRole && ROLE_PERMISSIONS[permissionRole]) {
+      this.permissions = [...ROLE_PERMISSIONS[permissionRole]];
+    } else {
+      // Fallback to user permissions if role not found
+      this.permissions = [...ROLE_PERMISSIONS.user];
+    }
+  }
+  next();
+});
 
 // Export the model
 export const UserModel = model<UserDocument>("User", userSchema);

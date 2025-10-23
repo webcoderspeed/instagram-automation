@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ROLES } from '../constants/permissions';
 
 /**
  * Authentication Validation Schemas
@@ -6,6 +7,9 @@ import { z } from 'zod';
  * Zod schemas for validating authentication-related requests
  * ensuring type safety and data integrity across the application.
  */
+
+// Define allowed roles for signup (excluding admin and superior roles)
+const ALLOWED_SIGNUP_ROLES = [ROLES.USER, ROLES.MANAGER];
 
 // User registration schema
 export const registerSchema = z.object({
@@ -34,6 +38,10 @@ export const registerSchema = z.object({
       .string()
       .max(50, 'Last name must be less than 50 characters')
       .optional(),
+    role: z
+      .enum([ROLES.USER, ROLES.MANAGER])
+      .optional()
+      .default(ROLES.USER),
     timezone: z
       .string()
       .optional(),
