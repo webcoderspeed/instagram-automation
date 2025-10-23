@@ -10,7 +10,27 @@ const instagramController = new InstagramController();
 
 // Note: Authentication and email verification are now handled by requirePermission middleware
 
-// Routes
+// OAuth Routes
+router.get('/connect', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_CONNECT),
+  instagramController.connect
+);
+
+router.get('/callback', 
+  instagramController.callback
+);
+
+router.delete('/disconnect', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_DISCONNECT),
+  instagramController.disconnect
+);
+
+router.get('/status', 
+  roleMiddleware.requirePermission(PERMISSIONS.ACCOUNT_READ),
+  instagramController.getConnectionStatus
+);
+
+// API Routes
 router.get('/profile', 
   roleMiddleware.requirePermission(PERMISSIONS.POST_READ),
   instagramController.getProfile

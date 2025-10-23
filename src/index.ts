@@ -6,13 +6,10 @@ import express, { Request, Response, NextFunction } from "express";
 import morgan from "morgan";
 import logger from "./utils/logger";
 import { instagramService } from "./services/instagram";
-import { InstagramAuthService } from "./services/auth";
 import {
-  WebhookController,
   createWebhookController,
 } from "./services/webhook/webhook-controller";
 import {
-  OAuthController,
   createOAuthController,
   createOAuthConfig,
 } from "./services/oauth";
@@ -436,16 +433,7 @@ app.get("/api/instagram/rate-limit", async (req: Request, res: Response) => {
   }
 });
 
-// OAuth Authentication routes
-const authService = new InstagramAuthService({
-  appId: process.env.INSTAGRAM_APP_ID || "",
-  appSecret: process.env.INSTAGRAM_APP_SECRET || "",
-  redirectUri:
-    process.env.INSTAGRAM_REDIRECT_URI ||
-    "http://localhost:3000/auth/instagram/callback",
-});
-
-// New OAuth Controller
+// OAuth Controller
 const oauthConfig = createOAuthConfig(
   process.env.INSTAGRAM_APP_ID || "",
   process.env.INSTAGRAM_APP_SECRET || "",

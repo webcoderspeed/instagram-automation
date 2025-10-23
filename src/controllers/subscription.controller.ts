@@ -230,7 +230,7 @@ export class SubscriptionController {
     if (!planId || planId === "free") {
       throw new AppError("Invalid plan selected", 400);
     }
-
+    
     // Check if user already has an active subscription
     const existingSubscription = await SubscriptionModel.findOne({
       userId,

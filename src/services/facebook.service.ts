@@ -30,7 +30,7 @@ export class FacebookService {
    * Refresh access token
    */
   async refreshToken(platform: PlatformAccountDocument): Promise<PlatformAccountDocument> {
-    logger.info('Refreshing Facebook token', { platformId: platform.platformId });
+    logger.info('Refreshing Facebook token', { platformId: platform.id });
     throw new AppError('Facebook token refresh implementation pending', 501);
   }
 
@@ -39,11 +39,11 @@ export class FacebookService {
    */
   async testConnection(platform: PlatformAccountDocument): Promise<{ success: boolean; message: string; error?: string }> {
     try {
-      logger.info('Testing Facebook connection', { platformId: platform.platformId });
-      return {
-        success: true,
-        message: 'Connection test successful'
-      };
+      logger.info('Testing Facebook connection', { platformId: platform.id });
+    return {
+      success: true,
+      message: 'Connection test successful'
+    };
     } catch (error) {
       return {
         success: false,
@@ -57,7 +57,7 @@ export class FacebookService {
    * Get platform insights
    */
   async getInsights(platform: PlatformAccountDocument, period: string): Promise<any> {
-    logger.info('Getting Facebook insights', { platformId: platform.platformId, period });
+    logger.info('Getting Facebook insights', { platformId: platform.id, period });
     throw new AppError('Facebook insights implementation pending', 501);
   }
 }

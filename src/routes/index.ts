@@ -12,6 +12,7 @@ import webhookRoutes from './webhook.routes';
 
 const router = Router();
 
+
 // Mount route modules
 router.use('/analytics', analyticsRoutes);
 router.use('/auth', authRoutes);
@@ -23,6 +24,9 @@ router.use('/settings', settingsRoutes);
 router.use('/subscriptions', subscriptionRoutes);
 router.use('/users', userRoutes);
 router.use('/webhook', webhookRoutes);
-router.use('/webhook', webhookRoutes);
+
+
+
+
 
 export default router;

@@ -30,7 +30,7 @@ export class LinkedInService {
    * Refresh access token
    */
   async refreshToken(platform: PlatformAccountDocument): Promise<PlatformAccountDocument> {
-    logger.info('Refreshing LinkedIn token', { platformId: platform.platformId });
+    logger.info('Refreshing LinkedIn token', { platformId: platform.id });
     throw new AppError('LinkedIn token refresh implementation pending', 501);
   }
 
@@ -39,7 +39,7 @@ export class LinkedInService {
    */
   async testConnection(platform: PlatformAccountDocument): Promise<{ success: boolean; message: string; error?: string }> {
     try {
-      logger.info('Testing LinkedIn connection', { platformId: platform.platformId });
+      logger.info('Testing LinkedIn connection', { platformId: platform.id });
       return {
         success: true,
         message: 'Connection test successful'
@@ -57,7 +57,7 @@ export class LinkedInService {
    * Get platform insights
    */
   async getInsights(platform: PlatformAccountDocument, period: string): Promise<any> {
-    logger.info('Getting LinkedIn insights', { platformId: platform.platformId, period });
+    logger.info('Getting LinkedIn insights', { platformId: platform.id, period });
     throw new AppError('LinkedIn insights implementation pending', 501);
   }
 }

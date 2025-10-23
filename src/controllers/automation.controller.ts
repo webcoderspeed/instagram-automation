@@ -65,7 +65,7 @@ export class AutomationController {
 
     const [automations, total] = await Promise.all([
       AutomationModel.find(query)
-        .populate('platformAccounts', 'platform platformUsername')
+        .populate('platformAccounts', 'platform username')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -103,7 +103,7 @@ export class AutomationController {
       _id: id,
       userId,
       deletedAt: null
-    }).populate('platformAccounts', 'platform platformUsername').lean();
+    }).populate('platformAccounts', 'platform username').lean();
 
     if (!automation) {
       throw new ApiError(404, 'Automation not found');

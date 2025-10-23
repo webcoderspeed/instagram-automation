@@ -1,5 +1,80 @@
 import { z } from 'zod';
 
+// OAuth and Authentication Schemas
+
+// Instagram OAuth connect schema
+export const instagramConnectSchema = z.object({
+  query: z.object({
+    redirectUri: z.string().url("Invalid redirect URI").optional(),
+    state: z.string().optional(),
+    scopes: z.string().optional(), // comma-separated scopes
+  }),
+});
+
+// Instagram OAuth callback schema
+export const instagramCallbackSchema = z.object({
+  query: z.object({
+    code: z.string().min(1, "Authorization code is required"),
+    state: z.string().optional(),
+    error: z.string().optional(),
+    error_description: z.string().optional(),
+  }),
+});
+
+// Token refresh schema
+export const instagramRefreshTokenSchema = z.object({
+  body: z.object({
+    accessToken: z.string().min(1, "Access token is required"),
+    forceRefresh: z.boolean().default(false),
+  }),
+});
+
+// Connection status schema
+export const connectionStatusSchema = z.object({
+  query: z.object({
+    includeTokenInfo: z.string().transform(val => val === 'true').optional(),
+    includeProfile: z.string().transform(val => val === 'true').optional(),
+  }),
+});
+
+// Disconnect account schema
+export const disconnectAccountSchema = z.object({
+  body: z.object({
+    reason: z.enum([
+      'no_longer_needed',
+      'switching_accounts', 
+      'privacy_concerns',
+      'technical_issues',
+      'other'
+    ]).optional(),
+    feedback: z.string().max(500, "Feedback cannot exceed 500 characters").optional(),
+    deleteData: z.boolean().default(false),
+  }),
+});
+
+// Token validation schema
+export const validateTokenSchema = z.object({
+  body: z.object({
+    accessToken: z.string().min(1, "Access token is required"),
+    checkExpiration: z.boolean().default(true),
+    refreshIfNeeded: z.boolean().default(false),
+  }),
+});
+
+// Platform account data validation
+export const platformAccountDataSchema = z.object({
+  instagramId: z.string().min(1, "Instagram ID is required"),
+  username: z.string().min(1, "Username is required"),
+  accountType: z.enum(['PERSONAL', 'BUSINESS', 'CREATOR']),
+  profilePictureUrl: z.string().url().optional(),
+  followersCount: z.number().int().min(0).optional(),
+  followingCount: z.number().int().min(0).optional(),
+  mediaCount: z.number().int().min(0).optional(),
+  biography: z.string().optional(),
+  website: z.string().url().optional(),
+  name: z.string().optional(),
+});
+
 // Media type enum
 const MediaType = z.enum(['image', 'video', 'carousel', 'story', 'reel']);
 
@@ -189,6 +264,16 @@ export const searchUsersSchema = z.object({
 });
 
 // Export types
+// OAuth types
+export type InstagramConnectInput = z.infer<typeof instagramConnectSchema>;
+export type InstagramCallbackInput = z.infer<typeof instagramCallbackSchema>;
+export type InstagramRefreshTokenInput = z.infer<typeof instagramRefreshTokenSchema>;
+export type ConnectionStatusInput = z.infer<typeof connectionStatusSchema>;
+export type DisconnectAccountInput = z.infer<typeof disconnectAccountSchema>;
+export type ValidateTokenInput = z.infer<typeof validateTokenSchema>;
+export type PlatformAccountData = z.infer<typeof platformAccountDataSchema>;
+
+// Media and content types
 export type PublishPostInput = z.infer<typeof publishPostSchema>;
 export type PublishStoryInput = z.infer<typeof publishStorySchema>;
 export type GetMediaInsightsInput = z.infer<typeof getMediaInsightsSchema>;

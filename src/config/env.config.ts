@@ -26,6 +26,11 @@ const envSchema = z.object({
   INSTAGRAM_REDIRECT_URI: z
     .string()
     .default('http://localhost:3000/auth/instagram/callback'),
+
+  INSTAGRAM_API_BASE_URL: z.string().default('https://api.instagram.com'),
+  INSTAGRAM_API_VERSION: z.string().default('v24.0'),
+  INSTAGRAM_GRAPH_API_BASE_URL: z.string().default('https://graph.instagram.com'),
+
   INSTAGRAM_WEBHOOK_VERIFY_TOKEN: z.string().default('dev-webhook-verify-token'),
   
   // Future Social Media Platforms

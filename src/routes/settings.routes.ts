@@ -26,22 +26,22 @@ const router = Router();
 /**
  * @route   GET /api/settings
  * @desc    Get all user settings
- * @access  Private (USER_READ permission required)
+ * @access  Private (SETTINGS_READ permission required)
  */
 router.get(
   '/',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_READ),
   settingsController.getSettings
 );
 
 /**
  * @route   PUT /api/settings
  * @desc    Update multiple settings at once
- * @access  Private (USER_UPDATE permission required)
+ * @access  Private (SETTINGS_UPDATE permission required)
  */
 router.put(
   '/',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_UPDATE),
   validate(updateSettingsSchema),
   settingsController.updateSettings
 );
@@ -49,22 +49,22 @@ router.put(
 /**
  * @route   GET /api/settings/export
  * @desc    Export user settings
- * @access  Private (USER_READ permission required)
+ * @access  Private (SETTINGS_EXPORT permission required)
  */
 router.get(
   '/export',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_EXPORT),
   settingsController.exportSettings
 );
 
 /**
  * @route   POST /api/settings/reset
  * @desc    Reset settings to default values
- * @access  Private (USER_UPDATE permission required)
+ * @access  Private (SETTINGS_RESET permission required)
  */
 router.post(
   '/reset',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_RESET),
   validate(resetSettingsSchema),
   settingsController.resetSettings
 );
@@ -72,23 +72,23 @@ router.post(
 // Profile Settings Routes
 /**
  * @route   GET /api/settings/profile
- * @desc    Get user profile settings
- * @access  Private (USER_READ permission required)
+ * @desc    Get profile settings
+ * @access  Private (SETTINGS_READ permission required)
  */
 router.get(
   '/profile',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_READ),
   settingsController.getProfileSettings
 );
 
 /**
  * @route   PUT /api/settings/profile
- * @desc    Update user profile settings
- * @access  Private (USER_UPDATE permission required)
+ * @desc    Update profile settings
+ * @access  Private (SETTINGS_PROFILE_UPDATE permission required)
  */
 router.put(
   '/profile',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_PROFILE_UPDATE),
   validate(updateProfileSettingsSchema),
   settingsController.updateProfileSettings
 );
@@ -96,23 +96,23 @@ router.put(
 // Notification Settings Routes
 /**
  * @route   GET /api/settings/notifications
- * @desc    Get user notification settings
- * @access  Private (USER_READ permission required)
+ * @desc    Get notification settings
+ * @access  Private (SETTINGS_READ permission required)
  */
 router.get(
   '/notifications',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_READ),
   settingsController.getNotificationSettings
 );
 
 /**
  * @route   PUT /api/settings/notifications
- * @desc    Update user notification settings
- * @access  Private (USER_UPDATE permission required)
+ * @desc    Update notification settings
+ * @access  Private (SETTINGS_NOTIFICATION_UPDATE permission required)
  */
 router.put(
   '/notifications',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_NOTIFICATION_UPDATE),
   validate(updateNotificationSettingsSchema),
   settingsController.updateNotificationSettings
 );
@@ -120,23 +120,23 @@ router.put(
 // Privacy Settings Routes
 /**
  * @route   GET /api/settings/privacy
- * @desc    Get user privacy settings
- * @access  Private (USER_READ permission required)
+ * @desc    Get privacy settings
+ * @access  Private (SETTINGS_READ permission required)
  */
 router.get(
   '/privacy',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_READ),
   settingsController.getPrivacySettings
 );
 
 /**
  * @route   PUT /api/settings/privacy
- * @desc    Update user privacy settings
- * @access  Private (USER_UPDATE permission required)
+ * @desc    Update privacy settings
+ * @access  Private (SETTINGS_PRIVACY_UPDATE permission required)
  */
 router.put(
   '/privacy',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_PRIVACY_UPDATE),
   validate(updatePrivacySettingsSchema),
   settingsController.updatePrivacySettings
 );
@@ -192,23 +192,23 @@ router.put(
 // Security Settings Routes
 /**
  * @route   GET /api/settings/security
- * @desc    Get user security settings
- * @access  Private (USER_READ permission required)
+ * @desc    Get security settings
+ * @access  Private (SETTINGS_READ permission required)
  */
 router.get(
   '/security',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_READ),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_READ),
   settingsController.getSecuritySettings
 );
 
 /**
  * @route   PUT /api/settings/security
- * @desc    Update user security settings
- * @access  Private (USER_UPDATE permission required)
+ * @desc    Update security settings
+ * @access  Private (SETTINGS_SECURITY_UPDATE permission required)
  */
 router.put(
   '/security',
-  roleMiddleware.requirePermission(PERMISSIONS.USER_UPDATE),
+  roleMiddleware.requirePermission(PERMISSIONS.SETTINGS_SECURITY_UPDATE),
   validate(updateSecuritySettingsSchema),
   settingsController.updateSecuritySettings
 );

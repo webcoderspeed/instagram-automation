@@ -92,7 +92,7 @@ curl -X GET "http://localhost:3000/api/automation?page=1&limit=10&status=active"
 **Permission:** `AUTOMATION_READ`
 
 ```bash
-curl -X GET http://localhost:3000/api/automation/automation_id_here \
+curl -X GET http://localhost:3000/api/automations/automation_id_here \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -212,7 +212,7 @@ curl -X POST http://localhost:3000/api/automation \
 **Validation:** updateAutomationSchema applied
 
 ```bash
-curl -X PUT http://localhost:3000/api/automation/automation_id_here \
+curl -X PUT http://localhost:3000/api/automations/automation_id_here \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -267,7 +267,7 @@ curl -X PUT http://localhost:3000/api/automation/automation_id_here \
 **Permission:** `AUTOMATION_DELETE`
 
 ```bash
-curl -X DELETE http://localhost:3000/api/automation/automation_id_here \
+curl -X DELETE http://localhost:3000/api/automations/automation_id_here \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -291,7 +291,7 @@ curl -X DELETE http://localhost:3000/api/automation/automation_id_here \
 **Permission:** `AUTOMATION_LIST`
 
 ```bash
-curl -X GET http://localhost:3000/api/automation/templates \
+curl -X GET http://localhost:3000/api/automations/templates \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -346,7 +346,7 @@ curl -X GET http://localhost:3000/api/automation/templates \
 **Permission:** `AUTOMATION_START`
 
 ```bash
-curl -X POST http://localhost:3000/api/automation/automation_id_here/start \
+curl -X POST http://localhost:3000/api/automations/automation_id_here/start \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -374,7 +374,7 @@ curl -X POST http://localhost:3000/api/automation/automation_id_here/start \
 **Permission:** `AUTOMATION_STOP`
 
 ```bash
-curl -X POST http://localhost:3000/api/automation/automation_id_here/stop \
+curl -X POST http://localhost:3000/api/automations/automation_id_here/stop \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -401,7 +401,7 @@ curl -X POST http://localhost:3000/api/automation/automation_id_here/stop \
 **Permission:** `AUTOMATION_PAUSE`
 
 ```bash
-curl -X POST http://localhost:3000/api/automation/automation_id_here/pause \
+curl -X POST http://localhost:3000/api/automations/automation_id_here/pause \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -428,7 +428,7 @@ curl -X POST http://localhost:3000/api/automation/automation_id_here/pause \
 **Permission:** `AUTOMATION_EXECUTE`
 
 ```bash
-curl -X POST http://localhost:3000/api/automation/automation_id_here/execute \
+curl -X POST http://localhost:3000/api/automations/automation_id_here/execute \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -467,7 +467,7 @@ curl -X POST http://localhost:3000/api/automation/automation_id_here/execute \
 - `metrics` (optional): Specific metrics to include
 
 ```bash
-curl -X GET "http://localhost:3000/api/automation/automation_id_here/analytics?period=30d" \
+curl -X GET "http://localhost:3000/api/automations/automation_id_here/analytics?period=30d" \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -520,7 +520,7 @@ curl -X GET "http://localhost:3000/api/automation/automation_id_here/analytics?p
 **Permission:** `AUTOMATION_ANALYTICS`
 
 ```bash
-curl -X GET http://localhost:3000/api/automation/stats \
+curl -X GET http://localhost:3000/api/automations/stats/overview \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```

@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import logger from '../utils/logger';
 
 // Instagram Graph API configuration interface
@@ -206,7 +206,7 @@ class InstagramService {
         access_token: this.config.accessToken
       };
 
-      const response = await axios.post(`${this.baseUrl}/me/media`, params);
+      const response = await axios.post<MediaContainer>(`${this.baseUrl}/me/media`, params);
       
       logger.info('Media container created successfully', { id: response.data.id });
       return response.data;
@@ -234,7 +234,7 @@ class InstagramService {
         access_token: this.config.accessToken
       };
 
-      const response = await axios.post(`${this.baseUrl}/me/media_publish`, params);
+      const response = await axios.post<PublishResponse>(`${this.baseUrl}/me/media_publish`, params);
       
       logger.info('Media published successfully', { id: response.data.id });
       return response.data;
@@ -330,6 +330,8 @@ class InstagramService {
   getRateLimitStatus(): RateLimit {
     return { ...this.rateLimit };
   }
+
+
 }
 
 // Export singleton instance

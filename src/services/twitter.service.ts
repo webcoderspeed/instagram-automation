@@ -30,7 +30,7 @@ export class TwitterService {
    * Refresh access token
    */
   async refreshToken(platform: PlatformAccountDocument): Promise<PlatformAccountDocument> {
-    logger.info('Refreshing Twitter token', { platformId: platform.platformId });
+    logger.info('Refreshing Twitter token', { platformId: platform.id });
     throw new AppError('Twitter token refresh implementation pending', 501);
   }
 
@@ -39,7 +39,7 @@ export class TwitterService {
    */
   async testConnection(platform: PlatformAccountDocument): Promise<{ success: boolean; message: string; error?: string }> {
     try {
-      logger.info('Testing Twitter connection', { platformId: platform.platformId });
+      logger.info('Testing Twitter connection', { platformId: platform.id });
       return {
         success: true,
         message: 'Connection test successful'
@@ -57,7 +57,7 @@ export class TwitterService {
    * Get platform insights
    */
   async getInsights(platform: PlatformAccountDocument, period: string): Promise<any> {
-    logger.info('Getting Twitter insights', { platformId: platform.platformId, period });
+    logger.info('Getting Twitter insights', { platformId: platform.id, period });
     throw new AppError('Twitter insights implementation pending', 501);
   }
 }

@@ -21,8 +21,8 @@ export interface PlatformAccountDocument extends Document {
   // Basic info
   userId: Types.ObjectId;
   platform: SocialPlatform;
-  platformId: string;
-  platformUsername: string;
+  id: string; // Platform-specific user ID (e.g., Instagram user ID)
+  username: string; // Platform username
   displayName?: string;
   profilePicture?: string;
   
@@ -96,11 +96,11 @@ const platformAccountSchema = new Schema({
     enum: ['instagram', 'facebook', 'twitter', 'linkedin', 'youtube', 'tiktok'],
     required: true
   },
-  platformId: {
+  id: {
     type: String,
     required: true
   },
-  platformUsername: {
+  username: {
     type: String,
     required: true,
     trim: true
@@ -296,8 +296,8 @@ platformAccountSchema.statics.findByUserAndPlatform = function(userId: string | 
   return this.findOne({ userId, platform, deletedAt: null });
 };
 
-platformAccountSchema.statics.findByPlatformId = function(platform: SocialPlatform, platformId: string) {
-  return this.findOne({ platform, platformId, deletedAt: null });
+platformAccountSchema.statics.findByPlatformId = function(platform: SocialPlatform, id: string) {
+  return this.findOne({ platform, id, deletedAt: null });
 };
 
 platformAccountSchema.statics.findActiveAccounts = function() {

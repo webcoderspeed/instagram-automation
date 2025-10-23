@@ -48,7 +48,11 @@ export class OAuthController {
         state
       });
 
-      res.redirect(url);
+      return res.status(302).json({
+        success: true,
+        message: 'Redirecting to Instagram authorization',
+        url
+      });
 
     } catch (error: any) {
       logger.error('Failed to initiate OAuth flow', {
@@ -69,7 +73,9 @@ export class OAuthController {
   handleCallback = async (req: Request, res: Response) => {
     try {
       const { code, state, error, error_description } = req.query;
-      
+
+      console.log('req.query', req.query);
+
       logger.info('Instagram OAuth callback endpoint accessed', {
         code: code ? 'present' : 'missing',
         state: state ? 'present' : 'missing',

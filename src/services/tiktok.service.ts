@@ -30,7 +30,7 @@ export class TikTokService {
    * Refresh access token
    */
   async refreshToken(platform: PlatformAccountDocument): Promise<PlatformAccountDocument> {
-    logger.info('Refreshing TikTok token', { platformId: platform.platformId });
+    logger.info('Refreshing TikTok token', { platformId: platform.id });
     throw new AppError('TikTok token refresh implementation pending', 501);
   }
 
@@ -39,7 +39,7 @@ export class TikTokService {
    */
   async testConnection(platform: PlatformAccountDocument): Promise<{ success: boolean; message: string; error?: string }> {
     try {
-      logger.info('Testing TikTok connection', { platformId: platform.platformId });
+      logger.info('Testing TikTok connection', { platformId: platform.id });
       return {
         success: true,
         message: 'Connection test successful'
@@ -57,7 +57,7 @@ export class TikTokService {
    * Get platform insights
    */
   async getInsights(platform: PlatformAccountDocument, period: string): Promise<any> {
-    logger.info('Getting TikTok insights', { platformId: platform.platformId, period });
+    logger.info('Getting TikTok insights', { platformId: platform.id, period });
     throw new AppError('TikTok insights implementation pending', 501);
   }
 }

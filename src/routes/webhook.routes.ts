@@ -8,11 +8,27 @@ import {
   instagramWebhookSchema, 
   subscribeWebhookSchema 
 } from '../validators/webhook.validator';
+import { createOAuthConfig, createOAuthController } from '../services/oauth';
+import { env } from '../config';
 
 const router = Router();
 const webhookController = new WebhookController();
 
-// Note: Authentication and email verification are now handled by requirePermission middleware
+
+const oauthConfig = createOAuthConfig(
+  env.INSTAGRAM_APP_ID || "",
+  env.INSTAGRAM_APP_SECRET || "",
+  env.INSTAGRAM_REDIRECT_URI || "https://cd5a6d958e90.ngrok-free.app/api/instagram/callback"
+);
+
+const oauthController = createOAuthController(oauthConfig);
+
+
+router.get("/instagram", oauthController.initiateAuth);
+
+router.get("/instagram/callback", oauthController.handleCallback);
+
+router.post("/instagram/refresh", oauthController.refreshToken);
 
 // Webhook routes (verification doesn't need auth)
 router.get('/instagram', 

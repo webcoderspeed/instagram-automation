@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
 import { createWebhookController } from '../services/webhook/webhook-controller';
-import { instagramService } from '../services/instagram';
-import { asyncHandler } from '../middleware/error.middleware';
 import { sendSuccess, createMeta } from '../utils/response-builder';
 import logger from '../utils/logger';
 
