@@ -79,22 +79,17 @@ class DashboardCalendarService {
 
       // Process automations -> calendar events
       const automationEvents = activeAutomations.map((automation: AutomationDocument) => {
-        const triggers = automation.config?.triggers || [];
-        const scheduleTrigger = triggers.find(t => t.schedule);
-        const startDate = scheduleTrigger?.schedule?.startDate || null;
-        const endDate = scheduleTrigger?.schedule?.endDate || null;
-        const platformFromAction = automation.config?.actions?.[0]?.platform || 'unknown';
         const nextRun = this.calculateNextRun(automation);
 
         return {
           id: String(automation._id),
           title: automation.name,
           content: automation.description || '',
-          platform: platformFromAction,
-          scheduledAt: nextRun || startDate || automation.nextExecutionAt || automation.updatedAt,
+          platform: automation.platform,
+          scheduledAt: nextRun || new Date(),
           status: automation.status === AutomationStatus.ACTIVE ? 'scheduled' : 'draft',
           type: 'automation' as const,
-          tags: [] as string[],
+          tags: automation.tags || [],
           mediaUrls: [] as string[]
         };
       });
@@ -202,17 +197,17 @@ class DashboardCalendarService {
       return null;
     }
 
-    // Prefer explicit nextExecutionAt
-    if (automation.nextExecutionAt) {
-      return automation.nextExecutionAt;
-    }
-
-    const triggers = automation.config?.triggers || [];
-    const scheduleTrigger = triggers.find(t => t.schedule);
-    if (scheduleTrigger?.schedule?.startDate) {
-      const now = new Date();
-      const start = scheduleTrigger.schedule.startDate;
-      if (start > now) return start;
+    // Check if automation has a schedule-based trigger
+    if (automation.trigger.type === 'schedule.time_based' || automation.trigger.type === 'schedule.recurring') {
+      const triggerConfig = automation.trigger.config as any;
+      if ('scheduledTime' in triggerConfig && triggerConfig.scheduledTime) {
+        return new Date(triggerConfig.scheduledTime);
+      }
+      if ('startDate' in triggerConfig && triggerConfig.startDate) {
+        const now = new Date();
+        const start = new Date(triggerConfig.startDate);
+        if (start > now) return start;
+      }
     }
 
     return null;

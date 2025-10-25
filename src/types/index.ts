@@ -7,8 +7,6 @@
 export * from './platform.types';
 export * from './auth.types';
 export * from './user.types';
-export * from './message.types';
-export * from './webhook.types';
 export * from './api.types';
 
 // Common Types

@@ -7,23 +7,21 @@
 export {
   errorHandler,
   notFoundHandler,
-  asyncHandler
-} from './error.middleware';
+  asyncHandler,
+} from "./error.middleware";
 
 // CORS middleware
-export {
-  corsMiddleware
-} from './cors.middleware';
+export { getCorsOptions } from "./cors.middleware";
 
 // Rate limiting middleware
 export {
   generalRateLimit,
   authRateLimit,
-  webhookRateLimit
-} from './rate-limit.middleware';
+  webhookRateLimit,
+} from "./rate-limit.middleware";
 
 // Authentication guards
-export * from './guards';
+export * from "./guards";
 
 // Subscription middleware
 export {
@@ -31,5 +29,5 @@ export {
   requireFeature,
   checkUsageLimit,
   requireActiveSubscription,
-  createSubscriptionProtectedRoute
-} from './subscription.middleware';
+  createSubscriptionProtectedRoute,
+} from "./subscription.middleware";

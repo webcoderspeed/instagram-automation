@@ -386,7 +386,7 @@ export class DashboardController {
     const recentAutomations = await AutomationModel.find({
       userId
     })
-    .sort({ lastExecutedAt: -1 })
+    .sort({ 'executionStats.lastExecutedAt': -1 })
     .limit(Number(limit) / 4)
     .lean();
 
@@ -425,7 +425,7 @@ export class DashboardController {
         type: 'automation',
         title: `Automation: ${automation.name}`,
         description: automation.description || '',
-        timestamp: automation.lastExecutedAt || automation.createdAt,
+        timestamp: automation.executionStats?.lastExecutedAt || (automation as any).createdAt,
         status: automation.status
       });
     });

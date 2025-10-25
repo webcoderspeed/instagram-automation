@@ -8,19 +8,21 @@ import cron, { ScheduledTask } from 'node-cron';
 import { 
   AutomationModel, 
   AutomationDocument, 
-  AutomationStatus, 
-  AutomationType, 
-  TriggerType 
+  AutomationStatus,
+  TriggerType,
+  ActionType
 } from '../models/automation.model';
+import { 
+  AutomationExecutionResult, 
+  StructuredAutomation,
+  TriggerTypeType,
+  ActionTypeType
+} from '../types/automation.types';
 import logger from '../utils/logger';
 import { ApiError } from '../utils/api-error';
 
-interface ExecutionResult {
-  success: boolean;
-  executionTime: number;
-  error?: string;
-  data?: any;
-}
+// Use the structured execution result type
+type ExecutionResult = AutomationExecutionResult;
 
 interface ScheduledJob {
   automationId: string;
@@ -70,7 +72,7 @@ export class AutomationService {
   }
 
   /**
-   * Schedule an automation based on its triggers
+   * Schedule an automation based on its trigger
    */
   async scheduleAutomation(automation: AutomationDocument): Promise<void> {
     try {
@@ -79,15 +81,19 @@ export class AutomationService {
       // Remove existing schedule if any
       this.unscheduleAutomation(automationId);
 
-      for (const trigger of automation.config.triggers) {
-        if (trigger.type === TriggerType.SCHEDULE && trigger.schedule?.cron) {
+      // Check if automation has a schedule-based trigger
+      if (automation.trigger.type === TriggerType.SCHEDULE_TIME_BASED || 
+          automation.trigger.type === TriggerType.SCHEDULE_RECURRING) {
+        
+        const scheduleConfig = automation.trigger.config;
+        if (scheduleConfig && 'cron' in scheduleConfig && scheduleConfig.cron) {
           const task = cron.schedule(
-            trigger.schedule.cron,
+            scheduleConfig.cron,
             async () => {
               await this.executeAutomation(automationId);
             },
             {
-              timezone: trigger.schedule.timezone || 'UTC'
+              timezone: scheduleConfig.timezone || 'UTC'
             }
           );
 
@@ -96,7 +102,7 @@ export class AutomationService {
             task
           });
 
-          logger.info(`Scheduled automation ${automation.name} with cron: ${trigger.schedule.cron}`);
+          logger.info(`Scheduled automation ${automation.name} with cron: ${scheduleConfig.cron}`);
         }
       }
     } catch (error) {
@@ -118,249 +124,315 @@ export class AutomationService {
   }
 
   /**
-   * Execute an automation
+   * Execute a structured automation
    */
-  async executeAutomation(automationId: string): Promise<ExecutionResult> {
+  async executeAutomation(automationId: string, testData?: Record<string, unknown>): Promise<ExecutionResult> {
     const startTime = Date.now();
+    const executionId = new Types.ObjectId().toString();
+    const triggeredAt = new Date();
     let automation: AutomationDocument | null = null;
 
     try {
       automation = await AutomationModel.findById(automationId)
-        .populate('platformAccounts')
+        .populate('platformAccountId', 'platform username displayName')
         .populate('userId');
 
       if (!automation) {
         throw new Error('Automation not found');
       }
 
-      if (automation.status !== AutomationStatus.ACTIVE) {
-        throw new Error('Automation is not active');
+      if (automation.status !== AutomationStatus.ACTIVE && automation.status !== AutomationStatus.DRAFT) {
+        throw new Error('Automation is not active or in draft mode');
       }
 
       // Check execution limits
       await this.checkExecutionLimits(automation);
 
-      // Execute based on automation type
-      const result = await this.executeByType(automation);
+      // Execute all actions in sequence
+      const actionResults = await this.executeActions(automation, testData);
 
       const executionTime = Date.now() - startTime;
+      const actionsExecuted = actionResults.length;
+      const actionsSuccessful = actionResults.filter(r => r.success).length;
+      const actionsFailed = actionsExecuted - actionsSuccessful;
 
-      // Update analytics
-      await automation.updateAnalytics(result.success, executionTime, result.error);
+      const result: AutomationExecutionResult = {
+        executionId,
+        automationId,
+        success: actionsFailed === 0,
+        executedAt: triggeredAt,
+        executionTime,
+        actionsExecuted,
+        actionsSuccessful,
+        actionsFailed,
+        logs: actionResults.map(r => ({
+          timestamp: new Date(),
+          level: r.success ? 'info' : 'error',
+          message: r.success ? `Action ${r.actionType} executed successfully` : `Action ${r.actionType} failed: ${r.error}`,
+          data: r.data
+        }))
+      };
+
+      if (actionsFailed > 0) {
+        result.error = {
+          message: `${actionsFailed} out of ${actionsExecuted} actions failed`,
+          code: 'PARTIAL_EXECUTION_FAILURE',
+          details: actionResults.filter(r => !r.success)
+        };
+      }
+
+      // Update analytics using the automation model method
+      await automation.updateAnalytics(result);
 
       // Update next execution time for scheduled automations
       await this.updateNextExecutionTime(automation);
 
       logger.info(`Automation ${automation.name} executed successfully in ${executionTime}ms`);
 
-      return {
-        success: result.success,
-        executionTime,
-        data: result.data,
-        error: result.error
-      };
+      return result;
 
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
+      const result: AutomationExecutionResult = {
+        executionId,
+        automationId,
+        success: false,
+        executedAt: triggeredAt,
+        executionTime,
+        actionsExecuted: 0,
+        actionsSuccessful: 0,
+        actionsFailed: 0,
+        error: {
+          message: errorMessage,
+          code: 'EXECUTION_ERROR',
+          details: error
+        },
+        logs: [{
+          timestamp: new Date(),
+          level: 'error',
+          message: `Automation execution failed: ${errorMessage}`,
+          data: { error }
+        }]
+      };
+
       if (automation) {
-        await automation.updateAnalytics(false, executionTime, errorMessage);
+        await automation.updateAnalytics(result);
       }
 
       logger.error(`Automation execution failed: ${errorMessage}`);
 
-      return {
-        success: false,
-        executionTime,
-        error: errorMessage
-      };
+      return result;
     }
   }
 
   /**
-   * Execute automation based on its type
+   * Execute all actions in an automation
    */
-  private async executeByType(automation: AutomationDocument): Promise<{ success: boolean; data?: any; error?: string }> {
-    switch (automation.type) {
-      case AutomationType.POST_SCHEDULING:
-        return this.executePostScheduling(automation);
-      
-      case AutomationType.AUTO_REPLY:
-        return this.executeAutoReply(automation);
-      
-      case AutomationType.CONTENT_CURATION:
-        return this.executeContentCuration(automation);
-      
-      case AutomationType.ENGAGEMENT:
-        return this.executeEngagement(automation);
-      
-      case AutomationType.ANALYTICS_REPORT:
-        return this.executeAnalyticsReport(automation);
-      
-      case AutomationType.CROSS_POSTING:
-        return this.executeCrossPosting(automation);
-      
-      default:
-        throw new Error(`Unsupported automation type: ${automation.type}`);
-    }
-  }
-
-  /**
-   * Execute post scheduling automation
-   */
-  private async executePostScheduling(automation: AutomationDocument): Promise<{ success: boolean; data?: any }> {
-    // Implementation for post scheduling
-    // This would integrate with platform APIs to schedule posts
-    
-    const actions = automation.config.actions;
+  private async executeActions(automation: AutomationDocument, testData?: Record<string, unknown>): Promise<Array<{
+    actionType: string;
+    success: boolean;
+    data?: any;
+    error?: string;
+  }>> {
     const results = [];
 
-    for (const action of actions) {
-      if (action.type === 'schedule_post') {
-        // Mock implementation - in real scenario, this would call platform APIs
-        const result = {
-          platform: action.platform,
-          postId: new Types.ObjectId().toString(),
-          scheduledAt: new Date(),
-          status: 'scheduled'
-        };
-        results.push(result);
-      }
-    }
-
-    return { success: true, data: { scheduledPosts: results } };
-  }
-
-  /**
-   * Execute auto reply automation
-   */
-  private async executeAutoReply(automation: AutomationDocument): Promise<{ success: boolean; data?: any }> {
-    // Implementation for auto reply
-    // This would monitor for new comments/messages and send automated replies
-    
-    const replies = [];
-    const actions = automation.config.actions;
-
-    for (const action of actions) {
-      if (action.type === 'send_reply') {
-        // Mock implementation
-        const reply = {
-          messageId: new Types.ObjectId().toString(),
-          replyText: action.config.message || 'Thank you for your message!',
-          sentAt: new Date()
-        };
-        replies.push(reply);
-      }
-    }
-
-    return { success: true, data: { replies } };
-  }
-
-  /**
-   * Execute content curation automation
-   */
-  private async executeContentCuration(automation: AutomationDocument): Promise<{ success: boolean; data?: any }> {
-    // Implementation for content curation
-    // This would find and curate relevant content based on criteria
-    
-    const curatedContent = [];
-    const actions = automation.config.actions;
-
-    for (const action of actions) {
-      if (action.type === 'curate_content') {
-        // Mock implementation
-        const content = {
-          contentId: new Types.ObjectId().toString(),
-          title: 'Curated Content',
-          source: 'external_source',
-          curatedAt: new Date()
-        };
-        curatedContent.push(content);
-      }
-    }
-
-    return { success: true, data: { curatedContent } };
-  }
-
-  /**
-   * Execute engagement automation
-   */
-  private async executeEngagement(automation: AutomationDocument): Promise<{ success: boolean; data?: any }> {
-    // Implementation for engagement automation
-    // This would like posts, follow users, etc.
-    
-    const engagements = [];
-    const actions = automation.config.actions;
-
-    for (const action of actions) {
-      if (action.type === 'like_posts' || action.type === 'follow_users') {
-        // Mock implementation
-        const engagement = {
+    for (const action of automation.actions) {
+      try {
+        const result = await this.executeAction(action, automation, testData);
+        results.push({
           actionType: action.type,
-          targetId: new Types.ObjectId().toString(),
-          platform: action.platform,
-          executedAt: new Date()
-        };
-        engagements.push(engagement);
+          success: true,
+          data: result
+        });
+      } catch (error) {
+        results.push({
+          actionType: action.type,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     }
 
-    return { success: true, data: { engagements } };
+    return results;
   }
 
   /**
-   * Execute analytics report automation
+   * Execute a single action
    */
-  private async executeAnalyticsReport(automation: AutomationDocument): Promise<{ success: boolean; data?: any }> {
-    // Implementation for analytics report generation
-    
-    const actions = automation.config.actions;
-    const reports = [];
-
-    for (const action of actions) {
-      if (action.type === 'generate_report') {
-        // Generate analytics report
-        const report = {
-          reportId: new Types.ObjectId().toString(),
-          type: 'weekly_analytics',
-          generatedAt: new Date(),
-          data: {
-            totalPosts: 10,
-            totalEngagement: 500,
-            followerGrowth: 25
-          }
-        };
-        reports.push(report);
-      }
+  private async executeAction(action: any, automation: AutomationDocument, testData?: Record<string, unknown>): Promise<any> {
+    switch (action.type) {
+      case ActionType.INSTAGRAM_SEND_MESSAGE:
+        return this.executeInstagramSendMessage(action, automation, testData);
+      
+      case ActionType.INSTAGRAM_REPLY_TO_COMMENT:
+        return this.executeInstagramReplyToComment(action, automation, testData);
+      
+      case ActionType.INSTAGRAM_LIKE_COMMENT:
+        return this.executeInstagramLikeComment(action, automation, testData);
+      
+      case ActionType.INSTAGRAM_HIDE_COMMENT:
+        return this.executeInstagramHideComment(action, automation, testData);
+      
+      case ActionType.INSTAGRAM_PUBLISH_POST:
+        return this.executeInstagramPublishPost(action, automation, testData);
+      
+      case ActionType.SAVE_TO_CRM:
+        return this.executeSaveToCrm(action, automation, testData);
+      
+      case ActionType.SEND_NOTIFICATION:
+        return this.executeSendNotification(action, automation, testData);
+      
+      case ActionType.WEBHOOK_CALL:
+        return this.executeWebhookCall(action, automation, testData);
+      
+      case ActionType.TRACK_ENGAGEMENT:
+        return this.executeTrackEngagement(action, automation, testData);
+      
+      default:
+        throw new Error(`Unknown action type: ${action.type}`);
     }
-
-    return { success: true, data: { reports } };
   }
 
   /**
-   * Execute cross posting automation
+   * Execute Instagram send message action
    */
-  private async executeCrossPosting(automation: AutomationDocument): Promise<{ success: boolean; data?: any }> {
-    // Implementation for cross-platform posting
+  private async executeInstagramSendMessage(action: any, automation: AutomationDocument, testData?: Record<string, unknown>): Promise<any> {
+    // Implementation for sending Instagram messages
+    const message = action.config?.message || 'Hello!';
+    const recipient = action.config?.recipient || testData?.recipient;
     
-    const actions = automation.config.actions;
-    const crossPosts = [];
+    // Mock implementation - in real scenario, this would call Instagram API
+    return {
+      messageId: new Types.ObjectId().toString(),
+      recipient,
+      message,
+      sentAt: new Date(),
+      platform: 'instagram'
+    };
+  }
 
-    for (const action of actions) {
-      if (action.type === 'cross_post') {
-        // Mock implementation
-        const crossPost = {
-          originalPostId: action.config.sourcePostId,
-          targetPlatform: action.platform,
-          crossPostId: new Types.ObjectId().toString(),
-          postedAt: new Date()
-        };
-        crossPosts.push(crossPost);
-      }
-    }
+  /**
+   * Execute Instagram reply to comment action
+   */
+  private async executeInstagramReplyToComment(action: any, automation: AutomationDocument, testData?: Record<string, unknown>): Promise<any> {
+    const replyText = action.config?.replyText || 'Thank you for your comment!';
+    const commentId = action.config?.commentId || testData?.commentId;
+    
+    return {
+      replyId: new Types.ObjectId().toString(),
+      commentId,
+      replyText,
+      repliedAt: new Date(),
+      platform: 'instagram'
+    };
+  }
 
-    return { success: true, data: { crossPosts } };
+  /**
+   * Execute Instagram like comment action
+   */
+  private async executeInstagramLikeComment(action: any, automation: AutomationDocument, testData?: Record<string, unknown>): Promise<any> {
+    const commentId = action.config?.commentId || testData?.commentId;
+    
+    return {
+      commentId,
+      liked: true,
+      likedAt: new Date(),
+      platform: 'instagram'
+    };
+  }
+
+  /**
+   * Execute Instagram hide comment action
+   */
+  private async executeInstagramHideComment(action: any, automation: AutomationDocument, testData?: Record<string, unknown>): Promise<any> {
+    const commentId = action.config?.commentId || testData?.commentId;
+    
+    return {
+      commentId,
+      hidden: true,
+      hiddenAt: new Date(),
+      platform: 'instagram'
+    };
+  }
+
+  /**
+   * Execute Instagram publish post action
+   */
+  private async executeInstagramPublishPost(action: any, automation: AutomationDocument, testData?: Record<string, unknown>): Promise<any> {
+    const content = action.config?.content || testData?.content;
+    const mediaUrls = action.config?.mediaUrls || testData?.mediaUrls || [];
+    
+    return {
+      postId: new Types.ObjectId().toString(),
+      content,
+      mediaUrls,
+      publishedAt: new Date(),
+      platform: 'instagram'
+    };
+  }
+
+  /**
+   * Execute save to CRM action
+   */
+  private async executeSaveToCrm(action: any, automation: AutomationDocument, testData?: Record<string, unknown>): Promise<any> {
+    const data = action.config?.data || testData;
+    
+    return {
+      crmRecordId: new Types.ObjectId().toString(),
+      data,
+      savedAt: new Date()
+    };
+  }
+
+  /**
+   * Execute send notification action
+   */
+  private async executeSendNotification(action: any, automation: AutomationDocument, testData?: Record<string, unknown>): Promise<any> {
+    const message = action.config?.message || 'Automation notification';
+    const type = action.config?.type || 'info';
+    
+    return {
+      notificationId: new Types.ObjectId().toString(),
+      message,
+      type,
+      sentAt: new Date()
+    };
+  }
+
+  /**
+   * Execute webhook call action
+   */
+  private async executeWebhookCall(action: any, automation: AutomationDocument, testData?: Record<string, unknown>): Promise<any> {
+    const url = action.config?.url;
+    const method = action.config?.method || 'POST';
+    const payload = action.config?.payload || testData;
+    
+    // Mock implementation - in real scenario, this would make HTTP request
+    return {
+      webhookId: new Types.ObjectId().toString(),
+      url,
+      method,
+      payload,
+      calledAt: new Date(),
+      status: 'success'
+    };
+  }
+
+  /**
+   * Execute track engagement action
+   */
+  private async executeTrackEngagement(action: any, automation: AutomationDocument, testData?: Record<string, unknown>): Promise<any> {
+    const engagementType = action.config?.engagementType || 'like';
+    const targetId = action.config?.targetId || testData?.targetId;
+    
+    return {
+      engagementId: new Types.ObjectId().toString(),
+      engagementType,
+      targetId,
+      trackedAt: new Date()
+    };
   }
 
   /**
@@ -368,16 +440,18 @@ export class AutomationService {
    */
   private async checkExecutionLimits(automation: AutomationDocument): Promise<void> {
     const now = new Date();
+    const limits = automation.limits;
+    const stats = automation.executionStats;
     
     // Check max executions
-    if (automation.maxExecutions && automation.executionCount >= automation.maxExecutions) {
+    if (limits?.maxExecutions && stats?.totalExecutions >= limits.maxExecutions) {
       automation.status = AutomationStatus.COMPLETED;
       await automation.save();
       throw new Error('Maximum executions reached');
     }
 
     // Check daily limit
-    if (automation.dailyLimit) {
+    if (limits?.dailyLimit) {
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const executions = await AutomationModel.aggregate([
         {
@@ -389,18 +463,18 @@ export class AutomationService {
         {
           $group: {
             _id: null,
-            count: { $sum: '$executionCount' }
+            count: { $sum: '$executionStats.totalExecutions' }
           }
         }
       ]);
 
-      if (executions[0]?.count >= automation.dailyLimit) {
+      if (executions[0]?.count >= limits.dailyLimit) {
         throw new Error('Daily execution limit reached');
       }
     }
 
     // Check monthly limit
-    if (automation.monthlyLimit) {
+    if (limits?.monthlyLimit) {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const executions = await AutomationModel.aggregate([
         {
@@ -412,12 +486,12 @@ export class AutomationService {
         {
           $group: {
             _id: null,
-            count: { $sum: '$executionCount' }
+            count: { $sum: '$executionStats.totalExecutions' }
           }
         }
       ]);
 
-      if (executions[0]?.count >= automation.monthlyLimit) {
+      if (executions[0]?.count >= limits.monthlyLimit) {
         throw new Error('Monthly execution limit reached');
       }
     }
@@ -427,14 +501,14 @@ export class AutomationService {
    * Update next execution time for scheduled automations
    */
   private async updateNextExecutionTime(automation: AutomationDocument): Promise<void> {
-    for (const trigger of automation.config.triggers) {
-      if (trigger.type === TriggerType.SCHEDULE && trigger.schedule?.cron) {
+    const trigger = automation.trigger;
+    if (trigger?.type === TriggerType.SCHEDULE_RECURRING) {
+      if ('cron' in trigger.config && trigger.config.cron) {
         // Calculate next execution time based on cron expression
         // This is a simplified implementation
         const nextExecution = new Date(Date.now() + 24 * 60 * 60 * 1000); // Next day
-        automation.nextExecutionAt = nextExecution;
+        automation.updatedAt = new Date();
         await automation.save();
-        break;
       }
     }
   }
@@ -487,7 +561,7 @@ export class AutomationService {
       throw new ApiError(404, 'Automation not found');
     }
 
-    automation.status = AutomationStatus.INACTIVE;
+    automation.status = AutomationStatus.STOPPED;
     await automation.save();
 
     // Unschedule the automation
@@ -517,12 +591,12 @@ export class AutomationService {
           paused: {
             $sum: { $cond: [{ $eq: ['$status', AutomationStatus.PAUSED] }, 1, 0] }
           },
-          inactive: {
-            $sum: { $cond: [{ $eq: ['$status', AutomationStatus.INACTIVE] }, 1, 0] }
+          stopped: {
+            $sum: { $cond: [{ $eq: ['$status', AutomationStatus.STOPPED] }, 1, 0] }
           },
-          totalExecutions: { $sum: '$executionCount' },
-          totalSuccesses: { $sum: '$successCount' },
-          totalFailures: { $sum: '$failureCount' }
+          totalExecutions: { $sum: '$executionStats.totalExecutions' },
+          totalSuccesses: { $sum: '$executionStats.successfulExecutions' },
+          totalFailures: { $sum: '$executionStats.failedExecutions' }
         }
       }
     ]);
@@ -531,7 +605,7 @@ export class AutomationService {
       total: 0,
       active: 0,
       paused: 0,
-      inactive: 0,
+      stopped: 0,
       totalExecutions: 0,
       totalSuccesses: 0,
       totalFailures: 0

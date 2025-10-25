@@ -14,7 +14,7 @@ import {
 import { User } from './user.types';
 import { PlatformAccount, PlatformPost, PlatformMessage } from './platform.types';
 import { Conversation, Message, MessageTemplate } from './message.types';
-import { WebhookEvent } from './webhook.types';
+import { WebhookEvent } from '../webhook/instagram/types';
 
 // Authentication Responses
 export interface LoginResponse extends SuccessResponse<{

@@ -1,41 +1,13 @@
 import { Request, Response } from 'express';
-import { createWebhookController } from '../services/webhook/webhook-controller';
 import { sendSuccess, createMeta } from '../utils/response-builder';
 import logger from '../utils/logger';
+import { env } from '../config';
 
+/**
+ * WebhookController - Handles webhook subscription management
+ * Note: Instagram webhook verification and handling is now done by InstagramWebhookController
+ */
 export class WebhookController {
-  private webhookController: any;
-
-  constructor() {
-    this.webhookController = createWebhookController(
-      process.env.INSTAGRAM_APP_SECRET || '',
-      process.env.WEBHOOK_VERIFY_TOKEN || ''
-    );
-  }
-
-  async verifyWebhook(req: Request, res: Response): Promise<void> {
-    try {
-      await this.webhookController.verifyWebhook(req, res);
-    } catch (error) {
-      logger.error('Error verifying webhook:', error);
-      res.status(500).json({
-        error: 'Failed to verify webhook',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-    }
-  }
-
-  async handleWebhook(req: Request, res: Response): Promise<void> {
-    try {
-      await this.webhookController.handleWebhook(req, res);
-    } catch (error) {
-      logger.error('Error handling webhook:', error);
-      res.status(500).json({
-        error: 'Failed to handle webhook',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-    }
-  }
 
   async subscribeWebhook(req: Request, res: Response): Promise<void> {
     try {

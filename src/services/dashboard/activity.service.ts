@@ -96,15 +96,15 @@ class DashboardActivityService {
         { createdAt: { $gte: timeRange.start, $lte: timeRange.end } },
         { updatedAt: { $gte: timeRange.start, $lte: timeRange.end } }
       ]
-    }).sort({ updatedAt: -1 }).limit(10).lean();
+    }).sort({ updatedAt: -1 }).limit(10);
 
     return automations.map(automation => ({
       id: String(automation._id),
       name: automation.name,
-      type: automation.type,
+      type: automation.trigger.type,
       status: automation.status || 'inactive',
-      createdAt: automation.createdAt,
-      updatedAt: automation.updatedAt
+      createdAt: (automation as any).createdAt,
+      updatedAt: (automation as any).updatedAt
     }));
   }
 
@@ -146,7 +146,7 @@ class DashboardActivityService {
         AutomationModel.find({
           userId: user._id,
           createdAt: { $gte: timeRange.start, $lte: timeRange.end }
-        }).sort({ createdAt: -1 }).limit(5).lean()
+        }).sort({ createdAt: -1 }).limit(5)
       ]);
 
       const actions = [
@@ -157,8 +157,8 @@ class DashboardActivityService {
         })),
         ...recentAutomations.map(automation => ({
           action: `Created automation: ${automation.name}`,
-          timestamp: automation.createdAt,
-          details: automation.type || 'Unknown type'
+          timestamp: (automation as any).createdAt,
+          details: automation.trigger.type || 'Unknown type'
         }))
       ];
 
@@ -231,7 +231,6 @@ class DashboardActivityService {
         AutomationModel.find({ userId: user._id })
           .sort({ updatedAt: -1 })
           .limit(limit / 2)
-          .lean()
       ]);
 
       // Combine and sort activities
@@ -256,10 +255,10 @@ class DashboardActivityService {
           action: 'created',
           title: automation.name,
           platform: 'multiple',
-          timestamp: automation.updatedAt,
+          timestamp: (automation as any).updatedAt,
           status: automation.status || 'inactive',
           metadata: {
-            type: automation.type
+            type: automation.trigger.type
           }
         }))
       ];

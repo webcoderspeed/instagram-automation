@@ -3,14 +3,21 @@
  * Types and interfaces for webhook handling and events
  */
 
-import { BaseEntity, SocialPlatform } from './common.types';
+import { BaseEntity, SocialPlatform } from "../../../types";
+
+// Union type for all possible webhook payloads
+export type WebhookPayload = 
+  | InstagramMessageWebhook
+  | InstagramCommentWebhook
+  | InstagramMentionWebhook
+  | Record<string, unknown>; 
 
 export interface WebhookEvent extends BaseEntity {
   platform: SocialPlatform;
   eventType: WebhookEventType;
   eventId: string;
   accountId?: string;
-  payload: Record<string, any>;
+  payload: WebhookPayload;
   signature?: string;
   headers: Record<string, string>;
   processed: boolean;
@@ -21,43 +28,22 @@ export interface WebhookEvent extends BaseEntity {
   nextRetryAt?: Date;
 }
 
-export type WebhookEventType = 
+export type WebhookEventType =
   // Instagram Events
-  | 'instagram.message'
-  | 'instagram.comment'
-  | 'instagram.mention'
-  | 'instagram.story_mention'
-  | 'instagram.live_comment'
-  | 'instagram.account_update'
-  | 'instagram.media_published'
-  
-  // Facebook Events
-  | 'facebook.message'
-  | 'facebook.comment'
-  | 'facebook.post'
-  | 'facebook.page_update'
-  | 'facebook.lead'
-  
-  // Twitter Events
-  | 'twitter.tweet'
-  | 'twitter.mention'
-  | 'twitter.direct_message'
-  | 'twitter.follow'
-  | 'twitter.like'
-  | 'twitter.retweet'
-  
-  // LinkedIn Events
-  | 'linkedin.message'
-  | 'linkedin.comment'
-  | 'linkedin.share'
-  | 'linkedin.connection'
-  
+  | "instagram.message"
+  | "instagram.comment"
+  | "instagram.mention"
+  | "instagram.story_mention"
+  | "instagram.live_comment"
+  | "instagram.account_update"
+  | "instagram.media_published"
+
   // Generic Events
-  | 'account.connected'
-  | 'account.disconnected'
-  | 'account.expired'
-  | 'rate_limit.exceeded'
-  | 'error.occurred';
+  | "account.connected"
+  | "account.disconnected"
+  | "account.expired"
+  | "rate_limit.exceeded"
+  | "error.occurred";
 
 export interface WebhookSubscription extends BaseEntity {
   platform: SocialPlatform;
@@ -91,7 +77,7 @@ export interface WebhookDelivery extends BaseEntity {
 
 // Instagram Webhook Payloads
 export interface InstagramMessageWebhook {
-  object: 'instagram';
+  object: "instagram";
   entry: Array<{
     id: string;
     time: number;
@@ -125,12 +111,12 @@ export interface InstagramMessageWebhook {
 }
 
 export interface InstagramCommentWebhook {
-  object: 'instagram';
+  object: "instagram";
   entry: Array<{
     id: string;
     time: number;
     changes: Array<{
-      field: 'comments';
+      field: "comments";
       value: {
         id: string;
         text: string;
@@ -150,12 +136,12 @@ export interface InstagramCommentWebhook {
 }
 
 export interface InstagramMentionWebhook {
-  object: 'instagram';
+  object: "instagram";
   entry: Array<{
     id: string;
     time: number;
     changes: Array<{
-      field: 'mentions';
+      field: "mentions";
       value: {
         comment_id?: string;
         media_id: string;
@@ -170,95 +156,19 @@ export interface InstagramMentionWebhook {
   }>;
 }
 
-// Facebook Webhook Payloads
-export interface FacebookMessageWebhook {
-  object: 'page';
-  entry: Array<{
-    id: string;
-    time: number;
-    messaging: Array<{
-      sender: { id: string };
-      recipient: { id: string };
-      timestamp: number;
-      message?: {
-        mid: string;
-        text?: string;
-        attachments?: Array<{
-          type: string;
-          payload: {
-            url: string;
-          };
-        }>;
-      };
-      postback?: {
-        payload: string;
-        title: string;
-      };
-      read?: {
-        watermark: number;
-      };
-      delivery?: {
-        mids: string[];
-        watermark: number;
-      };
-    }>;
-  }>;
-}
 
-// Twitter Webhook Payloads
-export interface TwitterWebhook {
-  for_user_id: string;
-  tweet_create_events?: Array<{
-    id_str: string;
-    text: string;
-    user: {
-      id_str: string;
-      screen_name: string;
-      name: string;
-    };
-    created_at: string;
-    in_reply_to_status_id_str?: string;
-    entities: {
-      hashtags: Array<{ text: string }>;
-      user_mentions: Array<{
-        id_str: string;
-        screen_name: string;
-        name: string;
-      }>;
-    };
-  }>;
-  direct_message_events?: Array<{
-    id: string;
-    type: string;
-    created_timestamp: string;
-    message_create: {
-      target: { recipient_id: string };
-      sender_id: string;
-      message_data: {
-        text: string;
-        attachment?: {
-          type: string;
-          media: {
-            id_str: string;
-            media_url: string;
-          };
-        };
-      };
-    };
-  }>;
-  follow_events?: Array<{
-    type: string;
-    created_timestamp: string;
-    target: { id: string; screen_name: string };
-    source: { id: string; screen_name: string };
-  }>;
-}
+
+// Union type specifically for Instagram webhook payloads
+export type InstagramWebhookPayload = 
+  | InstagramMessageWebhook
+  | InstagramCommentWebhook
+  | InstagramMentionWebhook;
 
 export interface WebhookProcessor {
   platform: SocialPlatform;
   eventType: WebhookEventType;
   process(event: WebhookEvent): Promise<void>;
-  validate(payload: any, signature?: string): boolean;
+  validate(payload: WebhookPayload, signature?: string): boolean;
   retry(event: WebhookEvent): Promise<void>;
 }
 
@@ -273,9 +183,9 @@ export interface WebhookConfig {
 }
 
 export interface WebhookVerificationRequest {
-  'hub.mode': string;
-  'hub.challenge': string;
-  'hub.verify_token': string;
+  "hub.mode": string;
+  "hub.challenge": string;
+  "hub.verify_token": string;
 }
 
 export interface WebhookStats {
@@ -286,4 +196,18 @@ export interface WebhookStats {
   averageProcessingTime: number;
   lastEventAt?: Date;
   errorRate: number;
+}
+
+// Instagram-specific handler types
+export interface InstagramWebhookHandler {
+  handleMessages(webhook: InstagramMessageWebhook): Promise<void>;
+  handleComments(webhook: InstagramCommentWebhook): Promise<void>;
+  handleMentions(webhook: InstagramMentionWebhook): Promise<void>;
+}
+
+export interface InstagramHandlerContext {
+  userId: string;
+  platformAccountId: string;
+  entryId: string;
+  timestamp: number;
 }

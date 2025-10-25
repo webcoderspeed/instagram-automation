@@ -1,18 +1,31 @@
 import { Request, Response, NextFunction } from 'express';
-import { Types } from 'mongoose';
+import { Types, FilterQuery, SortOrder } from 'mongoose';
 import asyncHandler from 'express-async-handler';
 import { ApiError } from '../utils/api-error';
-import { AutomationModel, AutomationStatus, AutomationType, TriggerType } from '../models/automation.model';
+import { AutomationModel, AutomationStatus, TriggerType, ActionType, AutomationDocument } from '../models/automation.model';
 import { PlatformAccountModel } from '../models/platform-account.model';
 import { automationService } from '../services/automation.service';
 import { sendSuccess, createMeta } from '../utils/response-builder';
 import { PlatformAccountEncryption } from '../utils/platform-account-encryption';
+import { 
+  createAutomationSchema, 
+  updateAutomationSchema,
+  executeAutomationSchema 
+} from '../validators/automation.validator';
+import { 
+  StructuredAutomation, 
+  AutomationExecutionResult, 
+  AutomationTrigger,
+  ScheduleTimeTrigger,
+  ScheduleRecurringTrigger 
+} from '../types/automation.types';
+import { SessionUser } from '../config/session.config';
 
 export class AutomationController {
   /**
    * Get authenticated user from request
    */
-  private getAuthenticatedUser(req: Request): any {
+  private getAuthenticatedUser(req: Request): SessionUser {
     if (!req.session.user) {
       throw ApiError.unauthorized("User not authenticated");
     }
@@ -28,7 +41,8 @@ export class AutomationController {
       page = 1, 
       limit = 10, 
       status, 
-      type, 
+      platform,
+      triggerType,
       search,
       sortBy = 'createdAt',
       sortOrder = 'desc'
@@ -38,7 +52,7 @@ export class AutomationController {
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
-    const query: any = {
+    const query: FilterQuery<AutomationDocument> = {
       userId,
       deletedAt: null
     };
@@ -47,8 +61,12 @@ export class AutomationController {
       query.status = status;
     }
 
-    if (type) {
-      query.type = type;
+    if (platform) {
+      query.platform = platform;
+    }
+
+    if (triggerType) {
+      query['trigger.type'] = triggerType;
     }
 
     if (search) {
@@ -60,12 +78,12 @@ export class AutomationController {
     }
 
     // Build sort
-    const sort: any = {};
+    const sort: Record<string, SortOrder> = {};
     sort[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
 
     const [automations, total] = await Promise.all([
       AutomationModel.find(query)
-        .populate('platformAccounts', 'platform username')
+        .populate('platformAccountIds', 'platform username displayName')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -103,7 +121,7 @@ export class AutomationController {
       _id: id,
       userId,
       deletedAt: null
-    }).populate('platformAccounts', 'platform username').lean();
+    }).populate('platformAccountIds', 'platform username displayName').lean();
 
     if (!automation) {
       throw new ApiError(404, 'Automation not found');
@@ -113,65 +131,74 @@ export class AutomationController {
   });
 
   /**
-   * Create new automation
+   * Create new structured automation
    */
   createAutomation = asyncHandler(async (req: Request, res: Response) => {
     const userId = this.getAuthenticatedUser(req).id;
-    const {
-      name,
-      description,
-      type,
-      config,
-      platformAccounts,
-      maxExecutions,
-      dailyLimit,
-      monthlyLimit,
-      tags
-    } = req.body;
+    
+    // Get validated data from middleware
+    const validatedData = req.validatedData.body;
 
     // Validate platform accounts belong to user
-    if (platformAccounts && platformAccounts.length > 0) {
-      const userPlatformAccounts = await PlatformAccountModel.find({
-        _id: { $in: platformAccounts },
-        userId,
-        isActive: true
-      });
+    const platformAccountIds = Array.isArray(validatedData.platformAccountIds) 
+      ? validatedData.platformAccountIds 
+      : [validatedData.platformAccountIds[0]];
+    
+    const platformAccounts = await PlatformAccountModel.find({
+      _id: { $in: platformAccountIds },
+      userId,
+      isActive: true
+    });
 
-      // Decrypt tokens after retrieval
-      PlatformAccountEncryption.decryptTokensForArray(userPlatformAccounts);
+    if (platformAccounts.length !== platformAccountIds.length) {
+      throw new ApiError(400, 'One or more platform accounts not found or not accessible');
+    }
 
-      if (userPlatformAccounts.length !== platformAccounts.length) {
-        throw new ApiError(400, 'One or more platform accounts are invalid or not accessible');
-      }
+    // Ensure platform matches the accounts
+    const invalidAccounts = platformAccounts.filter(account => account.platform !== validatedData.platform);
+    if (invalidAccounts.length > 0) {
+      throw new ApiError(400, 'Platform mismatch with selected accounts');
     }
 
     const automation = new AutomationModel({
       userId,
-      name,
-      description,
-      type,
-      config: config || { triggers: [], actions: [] },
-      platformAccounts: platformAccounts || [],
-      maxExecutions,
-      dailyLimit,
-      monthlyLimit,
-      tags: tags || [],
-      status: AutomationStatus.INACTIVE,
-      analytics: {
-        totalRuns: 0,
-        successRate: 0,
-        avgExecutionTime: 0,
-        errorCount: 0
+      name: validatedData.name,
+      description: validatedData.description,
+      platform: validatedData.platform,
+      platformAccountIds: platformAccountIds.map((id: string) => new Types.ObjectId(id)),
+      trigger: validatedData.trigger,
+      actions: validatedData.actions,
+      conditions: validatedData.conditions || [],
+      settings: {
+        stopOnError: validatedData.settings?.stopOnError ?? false,
+        maxRetries: validatedData.settings?.maxRetries ?? 3,
+        retryDelay: validatedData.settings?.retryDelay ?? 60,
+        notifyOnSuccess: validatedData.settings?.notifyOnSuccess ?? false,
+        notifyOnError: validatedData.settings?.notifyOnError ?? true,
+        priority: validatedData.settings?.priority || 'normal',
+        timeout: validatedData.settings?.timeout || 30,
+        variables: validatedData.settings?.variables || {}
+      },
+      tags: validatedData.tags || [],
+      status: AutomationStatus.DRAFT,
+      executionStats: {
+        totalExecutions: 0,
+        successfulExecutions: 0,
+        failedExecutions: 0,
+        averageExecutionTime: 0
       }
     });
 
     await automation.save();
 
+    // Populate platform accounts for response
+    await automation.populate('platformAccountIds', 'platform username displayName');
+
     sendSuccess(res, { automation }, 201, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**
-   * Update automation
+   * Update structured automation
    */
   updateAutomation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -191,17 +218,78 @@ export class AutomationController {
       throw new ApiError(404, 'Automation not found');
     }
 
-    // Don't allow updating running automations
+    // Don't allow updating active automations
     if (automation.status === AutomationStatus.ACTIVE) {
       throw new ApiError(400, 'Cannot update active automation. Please pause it first.');
     }
 
-    const updateData = { ...req.body };
-    delete updateData.userId; // Prevent userId modification
-    delete updateData.analytics; // Prevent analytics modification
+    // Get validated data from middleware
+    const validatedData = req.validatedData.body;
 
-    Object.assign(automation, updateData);
+    // If platform accounts are being changed, validate them
+    if (validatedData.platformAccountIds && validatedData.platformAccountIds.length > 0) {
+      const platformAccounts = await PlatformAccountModel.find({
+        _id: { $in: validatedData.platformAccountIds },
+        userId,
+        isActive: true
+      });
+
+      if (platformAccounts.length !== validatedData.platformAccountIds.length) {
+        throw new ApiError(400, 'One or more platform accounts not found or not accessible');
+      }
+
+      // Ensure platform matches the existing automation platform
+       const invalidAccounts = platformAccounts.filter(account => account.platform !== automation.platform);
+       if (invalidAccounts.length > 0) {
+         throw new ApiError(400, 'Platform mismatch with selected accounts');
+       }
+    }
+
+    // Update automation with validated data
+    if (validatedData.name) automation.name = validatedData.name;
+    if (validatedData.description !== undefined) automation.description = validatedData.description;
+    if (validatedData.trigger) {
+       // Transform string dates to Date objects for schedule-based triggers
+       let trigger: AutomationTrigger;
+       
+       if (validatedData.trigger.type === 'schedule.time_based') {
+         trigger = {
+           ...validatedData.trigger,
+           config: {
+             ...validatedData.trigger.config,
+             executeAt: new Date(validatedData.trigger.config.executeAt)
+           }
+         } as ScheduleTimeTrigger;
+       } else if (validatedData.trigger.type === 'schedule.recurring') {
+         trigger = {
+           ...validatedData.trigger,
+           config: {
+             ...validatedData.trigger.config,
+             startDate: validatedData.trigger.config.startDate ? new Date(validatedData.trigger.config.startDate) : undefined,
+             endDate: validatedData.trigger.config.endDate ? new Date(validatedData.trigger.config.endDate) : undefined
+           }
+         } as ScheduleRecurringTrigger;
+       } else {
+         trigger = validatedData.trigger as AutomationTrigger;
+       }
+       
+       automation.trigger = trigger;
+     }
+    if (validatedData.actions) automation.actions = validatedData.actions;
+    if (validatedData.conditions !== undefined) automation.conditions = validatedData.conditions;
+    if (validatedData.settings) {
+      automation.settings = {
+        ...automation.settings,
+        ...validatedData.settings
+      };
+    }
+
+    if (validatedData.tags !== undefined) automation.tags = validatedData.tags;
+
     await automation.save();
+
+    // Populate platform account for response
+    await automation.populate('platformAccountIds', 'platform username displayName');
 
     sendSuccess(res, { automation }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
@@ -229,7 +317,7 @@ export class AutomationController {
 
     // Stop automation if it's running
     if (automation.status === AutomationStatus.ACTIVE) {
-      automation.status = AutomationStatus.INACTIVE;
+      automation.status = AutomationStatus.STOPPED;
     }
 
     automation.deletedAt = new Date();
@@ -321,7 +409,7 @@ export class AutomationController {
       throw new ApiError(404, 'Automation not found');
     }
 
-    if (automation.status === AutomationStatus.INACTIVE) {
+    if (automation.status === AutomationStatus.STOPPED) {
       throw new ApiError(400, 'Automation is already stopped');
     }
 
@@ -332,7 +420,7 @@ export class AutomationController {
   });
 
   /**
-   * Execute automation manually
+   * Execute structured automation manually
    */
   executeAutomation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -342,26 +430,36 @@ export class AutomationController {
       throw new ApiError(400, 'Invalid automation ID');
     }
 
+    // Validate request body if test data is provided
+    let testData = undefined;
+    if (req.body && Object.keys(req.body).length > 0) {
+      const validatedData = executeAutomationSchema.parse(req.body);
+      testData = validatedData.testData;
+    }
+
     const automation = await AutomationModel.findOne({
       _id: id,
       userId,
       deletedAt: null
-    }).populate('platformAccounts');
+    }).populate('platformAccountIds', 'platform username displayName');
 
     if (!automation) {
       throw new ApiError(404, 'Automation not found');
     }
 
-    // Use automation service to execute the automation
-    const result = await automationService.executeAutomation(id);
+    // Use automation service to execute the automation with optional test data
+    const result = await automationService.executeAutomation(id, testData);
 
     sendSuccess(res, {
-      executionId: new Types.ObjectId().toString(),
+      executionId: result.executionId,
       status: result.success ? 'completed' : 'failed',
       executionTime: result.executionTime,
-      data: result.data,
+      actionsExecuted: result.actionsExecuted,
+      actionsSuccessful: result.actionsSuccessful,
+      actionsFailed: result.actionsFailed,
       message: result.success ? 'Automation executed successfully' : 'Automation execution failed',
-      error: result.error
+      error: result.error,
+      logs: result.logs
     }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
@@ -393,7 +491,7 @@ export class AutomationController {
         startDate.setDate(endDate.getDate() - 30);
     }
 
-    const matchQuery: any = {
+    const matchQuery: FilterQuery<AutomationDocument> = {
       userId,
       deletedAt: null,
       createdAt: { $gte: startDate, $lte: endDate }
@@ -415,10 +513,10 @@ export class AutomationController {
           pausedAutomations: {
             $sum: { $cond: [{ $eq: ['$status', AutomationStatus.PAUSED] }, 1, 0] }
           },
-          totalExecutions: { $sum: '$executionCount' },
-          successfulExecutions: { $sum: '$successCount' },
-          failedExecutions: { $sum: '$failureCount' },
-          averageExecutionTime: { $avg: '$analytics.avgExecutionTime' }
+          totalExecutions: { $sum: '$executionStats.totalExecutions' },
+          successfulExecutions: { $sum: '$executionStats.successfulExecutions' },
+          failedExecutions: { $sum: '$executionStats.failedExecutions' },
+          averageExecutionTime: { $avg: '$executionStats.averageExecutionTime' }
         }
       }
     ]);
@@ -455,69 +553,67 @@ export class AutomationController {
     const { category, search } = req.query;
 
     // Mock templates data
-    let templates = [
+    const templates = [
       {
         id: 'auto_reply',
         name: 'Auto Reply',
         description: 'Automatically reply to comments and messages',
-        type: AutomationType.AUTO_REPLY,
-        triggers: [{ type: TriggerType.EVENT }],
-        actions: [{ type: 'send_reply' }],
+        triggers: [{ type: TriggerType.INSTAGRAM_COMMENT_RECEIVED }],
+        actions: [{ type: ActionType.INSTAGRAM_SEND_MESSAGE }],
         category: 'engagement'
       },
       {
         id: 'content_curation',
         name: 'Content Curation',
         description: 'Automatically curate and share relevant content',
-        type: AutomationType.CONTENT_CURATION,
-        triggers: [{ type: TriggerType.SCHEDULE }],
-        actions: [{ type: 'curate_content' }, { type: 'create_post' }],
+        triggers: [{ type: TriggerType.SCHEDULE_RECURRING }],
+        actions: [{ type: ActionType.INSTAGRAM_PUBLISH_POST }],
         category: 'content'
       },
       {
         id: 'engagement_boost',
         name: 'Engagement Boost',
         description: 'Automatically engage with relevant posts and users',
-        type: AutomationType.ENGAGEMENT,
-        triggers: [{ type: TriggerType.SCHEDULE }],
-        actions: [{ type: 'like_posts' }, { type: 'follow_users' }],
+        triggers: [{ type: TriggerType.SCHEDULE_RECURRING }],
+        actions: [{ type: ActionType.INSTAGRAM_LIKE_COMMENT }, { type: ActionType.TRACK_ENGAGEMENT }],
         category: 'engagement'
       },
       {
         id: 'analytics_report',
         name: 'Analytics Report',
         description: 'Generate and send periodic analytics reports',
-        type: AutomationType.ANALYTICS_REPORT,
-        triggers: [{ type: TriggerType.SCHEDULE }],
-        actions: [{ type: 'generate_report' }, { type: 'send_email' }],
+        triggers: [{ type: TriggerType.SCHEDULE_RECURRING }],
+        actions: [{ type: ActionType.GENERATE_REPORT }],
         category: 'analytics'
       },
       {
         id: 'cross_posting',
         name: 'Cross Platform Posting',
         description: 'Automatically post content across multiple platforms',
-        type: AutomationType.CROSS_POSTING,
-        triggers: [{ type: TriggerType.EVENT }],
-        actions: [{ type: 'cross_post' }],
+        triggers: [{ type: TriggerType.INSTAGRAM_MEDIA_PUBLISHED }],
+        actions: [{ type: ActionType.INSTAGRAM_PUBLISH_POST }],
         category: 'content'
       }
     ];
 
-    // Filter by category
-    if (category) {
-      templates = templates.filter(template => template.category === category);
-    }
+    // Filter templates
+    const filteredTemplates = templates.filter(template => {
+      // Filter by category
+      if (category && template.category !== category) {
+        return false;
+      }
 
-    // Filter by search
-    if (search) {
-      const searchLower = (search as string).toLowerCase();
-      templates = templates.filter(template => 
-        template.name.toLowerCase().includes(searchLower) ||
-        template.description.toLowerCase().includes(searchLower)
-      );
-    }
+      // Filter by search
+      if (search) {
+        const searchLower = (search as string).toLowerCase();
+        return template.name.toLowerCase().includes(searchLower) ||
+               template.description.toLowerCase().includes(searchLower);
+      }
 
-    sendSuccess(res, { templates }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
+      return true;
+    });
+
+    sendSuccess(res, { templates: filteredTemplates }, 200, createMeta({ requestId: req.headers['x-request-id'] as string }));
   });
 
   /**

@@ -463,6 +463,37 @@ Instagram webhook requests come from these IP ranges:
 
 ## Webhook Event Types
 
+### Instagram Events
+The webhook handles various Instagram event types through the WebhookService:
+
+1. **Messages**: Direct messages received - triggers auto-DM processing
+2. **Comments**: Comments on posts - triggers comment automation
+3. **Mentions**: Mentions in stories or posts - triggers mention responses
+4. **Message Deliveries**: Message delivery confirmations
+5. **Message Reads**: Message read confirmations (messaging_seen)
+6. **Postbacks**: Button clicks and quick replies (messaging_postbacks)
+7. **Message Reactions**: Reactions to messages
+8. **Referrals**: Referral events from messaging
+9. **Account Linking**: Account linking events (planned)
+10. **Opt-in Events**: User opt-in events (planned)
+
+### Event Processing Flow
+The WebhookService processes events through specialized handlers:
+
+```typescript
+// Available event handlers
+const availableHandlers = [
+  'messages',           // handleMessages
+  'message_deliveries', // handleMessageDeliveries  
+  'message_reads',      // handleMessagingSeen
+  'messaging_postbacks',// handleMessagingPostbacks
+  'messaging_referrals',// handleMessagingReferrals
+  'message_reactions',  // handleMessageReactions
+  'comments',          // handleComments
+  'mentions'           // handleCommentMentions
+];
+```
+
 ### Comment Events
 ```json
 {

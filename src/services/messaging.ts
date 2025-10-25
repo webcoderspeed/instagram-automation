@@ -29,6 +29,25 @@ export interface MessageContent {
   };
 }
 
+export interface StoredMessage {
+  senderId: string;
+  recipientId: string;
+  messageId: string;
+  content: {
+    text?: string;
+    type: 'text' | 'image' | 'video' | 'audio' | 'file';
+    url?: string;
+  };
+  timestamp: Date;
+  platform: 'instagram' | 'facebook' | 'twitter';
+}
+
+export interface SendMessageResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
+
 export class InstagramMessagingService {
   private baseUrl: string;
   private apiVersion: string;
@@ -349,6 +368,106 @@ export class InstagramMessagingService {
         userId
       });
       return false;
+    }
+  }
+  /**
+   * Store incoming message for tracking and analytics
+   */
+  async storeIncomingMessage(message: StoredMessage): Promise<void> {
+    try {
+      logger.info('Storing incoming message', {
+        senderId: message.senderId,
+        recipientId: message.recipientId,
+        messageId: message.messageId,
+        platform: message.platform,
+        contentType: message.content.type
+      });
+
+      // TODO: Implement database storage for messages
+      // This could be stored in a Message model/collection
+      // For now, we'll just log it
+      logger.debug('Message stored successfully', {
+        messageId: message.messageId,
+        timestamp: message.timestamp
+      });
+
+    } catch (error) {
+      logger.error('Error storing incoming message', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        messageId: message.messageId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Send a text message to a user (unified method for auto-DM)
+   */
+  async sendTextMessage(
+    recipientId: string,
+    text: string,
+    platform: 'instagram' | 'facebook' | 'twitter',
+    accessToken?: string,
+    instagramUserId?: string
+  ): Promise<SendMessageResult> {
+    try {
+      logger.info('Sending text message via unified method', {
+        recipientId,
+        platform,
+        textLength: text.length
+      });
+
+      if (platform === 'instagram') {
+        // For Instagram, we need access token and Instagram user ID
+        if (!accessToken || !instagramUserId) {
+          logger.error('Missing required parameters for Instagram message', {
+            hasAccessToken: !!accessToken,
+            hasInstagramUserId: !!instagramUserId
+          });
+          return {
+            success: false,
+            error: 'Missing access token or Instagram user ID'
+          };
+        }
+
+        const result = await this.sendDirectMessage({
+          recipientId,
+          message: text,
+          accessToken,
+          instagramUserId
+        });
+
+        if (result) {
+          return {
+            success: true,
+            messageId: result.message_id
+          };
+        } else {
+          return {
+            success: false,
+            error: 'Failed to send Instagram message'
+          };
+        }
+      }
+
+      // TODO: Implement for other platforms (Facebook, Twitter)
+      logger.warn('Platform not yet supported for unified messaging', { platform });
+      return {
+        success: false,
+        error: `Platform ${platform} not yet supported`
+      };
+
+    } catch (error) {
+      logger.error('Error sending text message', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        recipientId,
+        platform
+      });
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
     }
   }
 }

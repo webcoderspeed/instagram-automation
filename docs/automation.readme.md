@@ -12,9 +12,12 @@ https://api.yourapp.com/api/automations
   - [Overview](#overview)
     - [Key Features](#key-features)
     - [Automation Status](#automation-status)
-    - [Automation Types](#automation-types)
     - [Trigger Types](#trigger-types)
-  - [Authentication & Permissions](#authentication--permissions)
+    - [Action Types](#action-types)
+    - [Automation Types](#automation-types)
+    - [Trigger Types](#trigger-types-1)
+    - [Schedule Trigger Configuration](#schedule-trigger-configuration)
+  - [Authentication \& Permissions](#authentication--permissions)
   - [Automation Management](#automation-management)
     - [1. Get All Automations](#1-get-all-automations)
     - [2. Get Automation by ID](#2-get-automation-by-id)
@@ -36,15 +39,29 @@ https://api.yourapp.com/api/automations
     - [Scheduling System](#scheduling-system)
     - [Execution Limits](#execution-limits)
   - [Data Models](#data-models)
-    - [Automation Object](#automation-object)
-    - [Config Object](#config-object)
-    - [Analytics Object](#analytics-object)
+    - [AutomationDocument Interface](#automationdocument-interface)
+    - [Trigger Configurations](#trigger-configurations)
+    - [Action Configurations](#action-configurations)
+    - [Condition Schema](#condition-schema)
+    - [Settings Schema](#settings-schema)
   - [Error Responses](#error-responses)
-    - [Common Error Codes](#common-error-codes)
-    - [Automation-Specific Errors](#automation-specific-errors)
+    - [Common Error Codes:](#common-error-codes)
+    - [Automation-Specific Errors:](#automation-specific-errors)
+  - [Automation Types](#automation-types-1)
+    - [Available Automation Types:](#available-automation-types)
+    - [Settings Schema by Type:](#settings-schema-by-type)
+      - [Like Posts (`like_posts`):](#like-posts-like_posts)
+      - [Follow Users (`follow_users`):](#follow-users-follow_users)
+      - [Comment Posts (`comment_posts`):](#comment-posts-comment_posts)
+  - [Best Practices](#best-practices)
+    - [Automation Design](#automation-design)
+    - [Security Best Practices](#security-best-practices)
+    - [Monitoring and Maintenance](#monitoring-and-maintenance)
   - [Rate Limiting](#rate-limiting)
   - [Security Features](#security-features)
-  - [Best Practices](#best-practices)
+    - [Authentication](#authentication)
+    - [Permissions](#permissions)
+    - [Data Protection](#data-protection)
 
 ---
 
@@ -62,21 +79,54 @@ The Automation API provides a comprehensive workflow engine for creating, managi
 - **⚡ High Performance**: Optimized for scale with efficient resource management
 - **🔧 Template System**: Pre-built automation templates for quick setup
 - **📈 Execution Monitoring**: Real-time status tracking and error handling
+- **🔀 Multi-Account Support**: Support for multiple platform accounts per automation
+- **🎛️ Advanced Filtering**: Sophisticated filtering for triggers and conditions
+- **📝 Variable Support**: Dynamic content with variable substitution
 
 ### Automation Status
 
-| Status | Description | Behavior |
-|--------|-------------|----------|
-| `ACTIVE` | Automation is running and executing based on triggers | Scheduled executions will run automatically |
-| `INACTIVE` | Automation is stopped and will not execute | No executions will occur |
-| `PAUSED` | Automation is temporarily paused | Can be resumed without losing configuration |
-| `COMPLETED` | Automation has finished all scheduled executions | Automatically set when max executions reached |
-| `FAILED` | Automation encountered critical errors and stopped | Requires manual intervention |
+| Status      | Description                                           | Behavior                                      |
+| ----------- | ----------------------------------------------------- | --------------------------------------------- |
+| `draft`     | Automation is in draft mode                           | Not executing, can be edited freely           |
+| `active`    | Automation is running and executing based on triggers | Scheduled executions will run automatically   |
+| `paused`    | Automation is temporarily paused                      | Can be resumed without losing configuration   |
+| `stopped`   | Automation is stopped and will not execute            | No executions will occur                      |
+| `completed` | Automation has finished all scheduled executions      | Automatically set when max executions reached |
+| `failed`    | Automation encountered critical errors and stopped    | Requires manual intervention                  |
+
+### Trigger Types
+
+| Type                          | Code                         | Description                                          | Configuration                         |
+| ----------------------------- | ---------------------------- | ---------------------------------------------------- | ------------------------------------- |
+| **Instagram Message**         | `instagram.message_received` | Triggered when Instagram message is received         | keywords, senderFilters, exactMatch   |
+| **Instagram Comment**         | `instagram.comment_received` | Triggered when comment is received on Instagram post | keywords, mediaIds, authorFilters     |
+| **Instagram Mention**         | `instagram.mention_received` | Triggered when mentioned in Instagram content        | keywords, mentionTypes, authorFilters |
+| **Instagram Story Mention**   | `instagram.story_mention`    | Triggered when mentioned in Instagram story          | keywords, authorFilters               |
+| **Instagram Media Published** | `instagram.media_published`  | Triggered when new media is published                | mediaTypes, hashtags                  |
+| **Schedule Time-Based**       | `schedule.time_based`        | One-time execution at specific date/time             | executeAt, timezone                   |
+| **Schedule Recurring**        | `schedule.recurring`         | Recurring execution with cron pattern                | cron, timezone, startDate, endDate    |
+| **Manual Trigger**            | `manual.trigger`             | Manually triggered execution                         | No configuration required             |
+
+### Action Types
+
+| Type                        | Code                         | Description                            | Configuration                           |
+| --------------------------- | ---------------------------- | -------------------------------------- | --------------------------------------- |
+| **Instagram Send Message**  | `instagram.send_message`     | Send direct message on Instagram       | messageType, content, delay             |
+| **Instagram Reply Comment** | `instagram.reply_to_comment` | Reply to Instagram comment             | replyText, useVariables, delay          |
+| **Instagram Like Comment**  | `instagram.like_comment`     | Like Instagram comment                 | delay                                   |
+| **Instagram Hide Comment**  | `instagram.hide_comment`     | Hide Instagram comment                 | reason, delay                           |
+| **Instagram Publish Post**  | `instagram.publish_post`     | Publish new Instagram post             | mediaType, mediaUrls, caption, hashtags |
+| **Instagram Publish Story** | `instagram.publish_story`    | Publish Instagram story                | mediaUrls, duration, stickers           |
+| **Save to CRM**             | `internal.save_to_crm`       | Save contact information to CRM        | fields, useVariables                    |
+| **Send Notification**       | `internal.send_notification` | Send notification via various channels | notificationType, recipients, message   |
+| **Webhook Call**            | `internal.webhook_call`      | Make HTTP request to external webhook  | url, method, headers, body              |
+| **Track Engagement**        | `analytics.track_engagement` | Track engagement metrics               | eventName, properties                   |
+| **Generate Report**         | `analytics.generate_report`  | Generate analytics report              | reportType, metrics, recipients         |
 
 ### Automation Types
 
 | Type | Code | Description | Use Cases |
-|------|------|-------------|-----------||
+| ---- | ---- | ----------- | --------- ||
 | **Post Scheduling** | `POST_SCHEDULING` | Schedule posts for future publication | Content calendar management, optimal timing |
 | **Auto Reply** | `AUTO_REPLY` | Automatically respond to comments and messages | Customer service, engagement automation |
 | **Content Curation** | `CONTENT_CURATION` | Automatically curate and share relevant content | Content discovery, reposting |
@@ -86,26 +136,53 @@ The Automation API provides a comprehensive workflow engine for creating, managi
 
 ### Trigger Types
 
-| Type | Code | Description | Configuration |
-|------|------|-------------|---------------|
-| **Schedule** | `SCHEDULE` | Time-based triggers using cron expressions | Cron pattern, timezone, date range |
-| **Event** | `EVENT` | Triggered by platform events (comments, mentions) | Event types, filters, conditions |
-| **Condition** | `CONDITION` | Triggered when specific conditions are met | Condition logic, thresholds, operators |
-| **Webhook** | `WEBHOOK` | Triggered by external webhook calls | Webhook URL, authentication, payload validation |
+| Type                    | Code                  | Description                                       | Configuration                                   |
+| ----------------------- | --------------------- | ------------------------------------------------- | ----------------------------------------------- |
+| **Schedule Time-Based** | `schedule.time_based` | One-time execution at specific date/time          | executeAt (Date), timezone                      |
+| **Schedule Recurring**  | `schedule.recurring`  | Recurring execution with cron pattern             | cronPattern, startDate, endDate, timezone       |
+| **Event**               | `EVENT`               | Triggered by platform events (comments, mentions) | Event types, filters, conditions                |
+| **Condition**           | `CONDITION`           | Triggered when specific conditions are met        | Condition logic, thresholds, operators          |
+| **Webhook**             | `WEBHOOK`             | Triggered by external webhook calls               | Webhook URL, authentication, payload validation |
+
+### Schedule Trigger Configuration
+
+**Time-Based Schedule:**
+```typescript
+{
+  type: "schedule.time_based",
+  config: {
+    executeAt: Date,  // Specific execution time
+    timezone?: string // Optional timezone (default: UTC)
+  }
+}
+```
+
+**Recurring Schedule:**
+```typescript
+{
+  type: "schedule.recurring", 
+  config: {
+    cronPattern: string,    // Cron expression (e.g., "0 9 * * 1-5")
+    startDate?: Date,       // Optional start date
+    endDate?: Date,         // Optional end date
+    timezone?: string       // Optional timezone (default: UTC)
+  }
+}
+```
 
 ## Authentication & Permissions
 
 All automation endpoints require authentication and specific permissions:
 
-| Permission | Description | Required For |
-|------------|-------------|-------------|
-| `AUTOMATION_LIST` | View automation list | GET /automations |
-| `AUTOMATION_READ` | View automation details | GET /automations/:id, GET /templates |
-| `AUTOMATION_CREATE` | Create new automations | POST /automations |
-| `AUTOMATION_UPDATE` | Modify existing automations | PUT /automations/:id |
-| `AUTOMATION_DELETE` | Delete automations | DELETE /automations/:id |
-| `AUTOMATION_EXECUTE` | Control automation execution | POST /automations/:id/start, /stop, /pause, /execute |
-| `ANALYTICS_READ` | View analytics and statistics | GET /automations/:id/analytics, /stats/overview |
+| Permission           | Description                   | Required For                                         |
+| -------------------- | ----------------------------- | ---------------------------------------------------- |
+| `AUTOMATION_LIST`    | View automation list          | GET /automations                                     |
+| `AUTOMATION_READ`    | View automation details       | GET /automations/:id, GET /templates                 |
+| `AUTOMATION_CREATE`  | Create new automations        | POST /automations                                    |
+| `AUTOMATION_UPDATE`  | Modify existing automations   | PUT /automations/:id                                 |
+| `AUTOMATION_DELETE`  | Delete automations            | DELETE /automations/:id                              |
+| `AUTOMATION_EXECUTE` | Control automation execution  | POST /automations/:id/start, /stop, /pause, /execute |
+| `ANALYTICS_READ`     | View analytics and statistics | GET /automations/:id/analytics, /stats/overview      |
 
 ---
 
@@ -120,19 +197,20 @@ All automation endpoints require authentication and specific permissions:
 
 **Query Parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `page` | integer | 1 | Page number for pagination |
-| `limit` | integer | 10 | Number of items per page (max: 100) |
-| `status` | string | - | Filter by status: `ACTIVE`, `INACTIVE`, `PAUSED`, `COMPLETED`, `FAILED` |
-| `type` | string | - | Filter by automation type |
-| `search` | string | - | Search in name, description, and tags |
-| `sortBy` | string | `createdAt` | Sort field: `createdAt`, `updatedAt`, `name`, `status` |
-| `sortOrder` | string | `desc` | Sort order: `asc`, `desc` |
+| Parameter     | Type    | Default     | Description                                                                                   |
+| ------------- | ------- | ----------- | --------------------------------------------------------------------------------------------- |
+| `page`        | integer | 1           | Page number for pagination                                                                    |
+| `limit`       | integer | 10          | Number of items per page (max: 100)                                                           |
+| `status`      | string  | -           | Filter by status: `ACTIVE`, `INACTIVE`, `PAUSED`, `COMPLETED`, `FAILED`                       |
+| `platform`    | string  | -           | Filter by platform: `instagram`, `facebook`, `twitter`, `linkedin`                            |
+| `triggerType` | string  | -           | Filter by trigger type: `instagram.message`, `instagram.comment`, `schedule.time_based`, etc. |
+| `search`      | string  | -           | Search in name, description, and tags                                                         |
+| `sortBy`      | string  | `createdAt` | Sort field: `createdAt`, `updatedAt`, `name`, `status`, `lastExecutedAt`                      |
+| `sortOrder`   | string  | `desc`      | Sort order: `asc`, `desc`                                                                     |
 
 **Example Request:**
 ```bash
-curl -X GET "https://api.yourapp.com/api/automations?page=1&limit=10&status=ACTIVE&sortBy=name" \
+curl -X GET "https://api.yourapp.com/api/automations?page=1&limit=10&status=ACTIVE&platform=instagram&triggerType=instagram.message" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
@@ -145,52 +223,84 @@ curl -X GET "https://api.yourapp.com/api/automations?page=1&limit=10&status=ACTI
     "automations": [
       {
         "id": "507f1f77bcf86cd799439011",
-        "name": "Instagram Engagement Boost",
-        "description": "Automatically engage with posts using specific hashtags",
-        "type": "ENGAGEMENT",
+        "name": "Instagram Auto Reply",
+        "description": "Automatically reply to Instagram messages with custom responses",
         "status": "ACTIVE",
+        "platform": "instagram",
         "platformAccounts": [
           {
             "id": "507f1f77bcf86cd799439012",
             "platform": "instagram",
-            "username": "@yourhandle"
+            "username": "@yourhandle",
+            "isActive": true
           }
         ],
         "config": {
-          "triggers": [
+          "trigger": {
+            "type": "instagram.message",
+            "senderFilters": {
+              "includeVerified": true,
+              "minFollowers": 100,
+              "excludeKeywords": ["spam", "bot"]
+            },
+            "messageFilters": {
+              "keywords": ["hello", "hi", "info"],
+              "excludeKeywords": ["unsubscribe"]
+            }
+          },
+          "actions": [
             {
-              "type": "SCHEDULE",
-              "schedule": {
-                "cron": "0 */2 * * *",
-                "timezone": "UTC"
+              "type": "instagram.send_message",
+              "config": {
+                "messageType": "text",
+                "content": {
+                  "text": "Thanks for your message! We'll get back to you soon."
+                },
+                "useVariables": true,
+                "delay": 5000
               }
             }
           ],
-          "actions": [
+          "conditions": [
             {
-              "type": "like_posts",
-              "config": {
-                "hashtags": ["#photography", "#nature"],
-                "maxLikes": 50
-              }
+              "field": "sender.followerCount",
+              "operator": "gte",
+              "value": 100
             }
-          ]
+          ],
+          "settings": {
+            "executionLimits": {
+              "maxExecutions": 1000,
+              "dailyLimit": 100,
+              "monthlyLimit": 3000
+            },
+            "rateLimiting": {
+              "requestsPerMinute": 10,
+              "requestsPerHour": 100
+            },
+            "timing": {
+              "executeImmediately": true,
+              "timezone": "UTC"
+            }
+          }
         },
-        "maxExecutions": 1000,
-        "dailyLimit": 100,
-        "monthlyLimit": 3000,
-        "executionCount": 45,
-        "successCount": 43,
-        "failureCount": 2,
-        "lastExecutedAt": "2024-01-15T10:30:00Z",
-        "nextExecutionAt": "2024-01-15T12:00:00Z",
-        "analytics": {
-          "totalRuns": 45,
-          "successRate": 95.6,
-          "avgExecutionTime": 2340,
-          "errorCount": 2
+        "executionStats": {
+          "totalExecutions": 45,
+          "successfulExecutions": 43,
+          "failedExecutions": 2,
+          "lastExecutedAt": "2024-01-15T10:30:00Z",
+          "nextExecutionAt": null,
+          "averageExecutionTime": 2340
         },
-        "tags": ["engagement", "growth"],
+        "limits": {
+          "maxExecutions": 1000,
+          "dailyLimit": 100,
+          "monthlyLimit": 3000,
+          "currentDailyCount": 15,
+          "currentMonthlyCount": 450
+        },
+        "tags": ["auto-reply", "customer-service"],
+        "isActive": true,
         "createdAt": "2024-01-01T12:00:00Z",
         "updatedAt": "2024-01-15T10:30:00Z"
       }
@@ -202,24 +312,30 @@ curl -X GET "https://api.yourapp.com/api/automations?page=1&limit=10&status=ACTI
       "totalPages": 3,
       "hasNext": true,
       "hasPrev": false
+    },
+    "filters": {
+      "status": "ACTIVE",
+      "platform": "instagram",
+      "triggerType": "instagram.message"
     }
   },
   "meta": {
-    "requestId": "req_123456789"
+    "requestId": "req_123456789",
+    "timestamp": "2024-01-15T10:30:00Z"
   }
 }
 ```
 
 ### 2. Get Automation by ID
-**Endpoint:** `GET /:id`  
-**Description:** Specific automation की detailed information return करता है।  
-**Authentication:** Required (authMiddleware.authenticate)  
+**Endpoint:** `GET /api/automations/:id`  
+**Description:** Retrieve detailed information for a specific automation including full configuration, execution stats, and analytics.  
+**Authentication:** Required  
 **Permission:** `AUTOMATION_READ`
 
 ```bash
-curl -X GET http://localhost:3000/api/automations/automation_id_here \
+curl -X GET "https://api.yourapp.com/api/automations/507f1f77bcf86cd799439011" \
   -H "Content-Type: application/json" \
-  -b cookies.txt
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 **Response:**
@@ -228,70 +344,253 @@ curl -X GET http://localhost:3000/api/automations/automation_id_here \
   "success": true,
   "data": {
     "automation": {
-      "id": "automation_id",
-      "name": "Auto Like Posts",
-      "description": "Automatically likes posts with specific hashtags",
-      "type": "like_posts",
-      "status": "active",
-      "platformAccountId": "platform_account_id",
-      "settings": {
-        "targetHashtags": ["#photography", "#nature"],
-        "likesPerHour": 30,
-        "maxLikesPerDay": 500,
-        "targetAccounts": ["@photographer1", "@naturelover"],
-        "avoidRecentlyLiked": true,
-        "minFollowers": 100,
-        "maxFollowers": 10000
+      "id": "507f1f77bcf86cd799439011",
+      "name": "Instagram Comment Auto-Reply",
+      "description": "Automatically reply to comments on Instagram posts with personalized responses",
+      "status": "ACTIVE",
+      "platform": "instagram",
+      "platformAccounts": [
+        {
+          "id": "507f1f77bcf86cd799439012",
+          "platform": "instagram",
+          "username": "@yourhandle",
+          "isActive": true,
+          "connectedAt": "2024-01-01T10:00:00Z"
+        }
+      ],
+      "config": {
+        "trigger": {
+          "type": "instagram.comment",
+          "postFilters": {
+            "includeOwnPosts": true,
+            "includeTaggedPosts": false,
+            "hashtags": ["#photography", "#nature"]
+          },
+          "commentFilters": {
+            "keywords": ["love", "amazing", "beautiful"],
+            "excludeKeywords": ["spam", "fake"],
+            "minLength": 3,
+            "maxLength": 500
+          },
+          "senderFilters": {
+            "includeVerified": true,
+            "minFollowers": 50,
+            "excludeBusinessAccounts": false
+          }
+        },
+        "actions": [
+          {
+            "type": "instagram.reply_to_comment",
+            "config": {
+              "replyText": "Thank you for your comment! 😊",
+              "useVariables": true,
+              "delay": 30000,
+              "personalizeResponse": true
+            }
+          },
+          {
+            "type": "save_to_crm",
+            "config": {
+              "fields": {
+                "name": "{{sender.username}}",
+                "source": "instagram_comment",
+                "notes": "Engaged with post: {{post.caption}}"
+              },
+              "tags": ["instagram", "engagement"]
+            }
+          }
+        ],
+        "conditions": [
+          {
+            "field": "sender.followerCount",
+            "operator": "gte",
+            "value": 50
+          },
+          {
+            "field": "comment.length",
+            "operator": "gte",
+            "value": 3
+          }
+        ],
+        "settings": {
+          "executionLimits": {
+            "maxExecutions": 500,
+            "dailyLimit": 50,
+            "monthlyLimit": 1500
+          },
+          "rateLimiting": {
+            "requestsPerMinute": 5,
+            "requestsPerHour": 50,
+            "requestsPerDay": 200
+          },
+          "timing": {
+            "executeImmediately": false,
+            "delayRange": {
+              "min": 30000,
+              "max": 300000
+            },
+            "timezone": "UTC"
+          },
+          "errorHandling": {
+            "retryAttempts": 3,
+            "retryDelay": 60000,
+            "skipOnError": false
+          },
+          "notifications": {
+            "onSuccess": false,
+            "onFailure": true,
+            "onLimit": true
+          }
+        }
       },
-      "schedule": {
-        "enabled": true,
-        "startTime": "09:00",
-        "endTime": "18:00",
-        "timezone": "Asia/Kolkata",
-        "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+      "executionStats": {
+        "totalExecutions": 150,
+        "successfulExecutions": 145,
+        "failedExecutions": 5,
+        "lastExecutedAt": "2024-01-15T11:00:00Z",
+        "nextExecutionAt": null,
+        "averageExecutionTime": 2500,
+        "successRate": 96.67
       },
+      "limits": {
+        "maxExecutions": 500,
+        "dailyLimit": 50,
+        "monthlyLimit": 1500,
+        "currentDailyCount": 12,
+        "currentMonthlyCount": 150,
+        "resetDailyAt": "2024-01-16T00:00:00Z",
+        "resetMonthlyAt": "2024-02-01T00:00:00Z"
+      },
+      "analytics": {
+        "last7Days": {
+          "executions": 35,
+          "successRate": 97.1,
+          "avgResponseTime": 2300
+        },
+        "last30Days": {
+          "executions": 150,
+          "successRate": 96.67,
+          "avgResponseTime": 2500
+        }
+      },
+      "tags": ["auto-reply", "engagement", "customer-service"],
+      "isActive": true,
+      "createdBy": "507f1f77bcf86cd799439013",
       "createdAt": "2024-01-01T10:00:00Z",
-      "updatedAt": "2024-01-01T11:00:00Z",
-      "lastRun": "2024-01-01T11:00:00Z",
-      "nextRun": "2024-01-01T12:00:00Z",
-      "runCount": 150,
-      "successCount": 145,
-      "errorCount": 5
+      "updatedAt": "2024-01-15T11:00:00Z"
     }
+  },
+  "meta": {
+    "requestId": "req_123456790",
+    "timestamp": "2024-01-15T11:00:00Z"
   }
 }
 ```
 
 ### 3. Create New Automation
-**Endpoint:** `POST /`  
-**Description:** नया automation create करता है।  
-**Authentication:** Required (authMiddleware.authenticate)  
+**Endpoint:** `POST /api/automations`  
+**Description:** Create a new automation with comprehensive configuration including triggers, actions, conditions, and settings.  
+**Authentication:** Required  
 **Permission:** `AUTOMATION_CREATE`  
-**Validation:** createAutomationSchema applied
+**Validation:** `createAutomationSchema` applied
 
+**Request Body Schema:**
+```typescript
+{
+  name: string;                    // Required: Automation name (3-100 chars)
+  description?: string;            // Optional: Description (max 500 chars)
+  platform: 'instagram' | 'facebook' | 'twitter' | 'linkedin';
+  platformAccountIds: string[];   // Required: Array of platform account IDs
+  config: {
+    trigger: AutomationTrigger;    // Required: Trigger configuration
+    actions: AutomationAction[];   // Required: Array of actions (min 1)
+    conditions?: AutomationCondition[]; // Optional: Execution conditions
+    settings?: AutomationSettings; // Optional: Execution settings
+  };
+  tags?: string[];                 // Optional: Tags for organization
+}
+```
+
+**Example Request:**
 ```bash
-curl -X POST http://localhost:3000/api/automation \
+curl -X POST "http://localhost:3001/api/automations" \
   -H "Content-Type: application/json" \
-  -b cookies.txt \
+  -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "name": "Auto Follow Users",
-    "description": "Automatically follow users based on hashtags",
-    "type": "follow_users",
-    "platformAccountId": "platform_account_id",
-    "settings": {
-      "targetHashtags": ["#photography", "#travel"],
-      "followsPerHour": 20,
-      "maxFollowsPerDay": 200,
-      "minFollowers": 50,
-      "maxFollowers": 5000
+    "name": "Instagram Message Auto-Reply",
+    "description": "Automatically reply to Instagram direct messages with personalized responses",
+    "platform": "instagram",
+    "platformAccountIds": ["507f1f77bcf86cd799439012"],
+    "config": {
+      "trigger": {
+        "type": "instagram.message",
+        "senderFilters": {
+          "includeVerified": true,
+          "minFollowers": 100,
+          "excludeKeywords": ["spam", "bot"]
+        },
+        "messageFilters": {
+          "keywords": ["hello", "hi", "info", "help"],
+          "excludeKeywords": ["unsubscribe", "stop"]
+        }
+      },
+      "actions": [
+        {
+          "type": "instagram.send_message",
+          "config": {
+            "messageType": "text",
+            "content": {
+              "text": "Hi {{sender.firstName}}! Thanks for reaching out. How can I help you today?"
+            },
+            "useVariables": true,
+            "delay": 5000
+          }
+        },
+        {
+          "type": "save_to_crm",
+          "config": {
+            "fields": {
+              "name": "{{sender.username}}",
+              "email": "{{sender.email}}",
+              "source": "instagram_dm",
+              "notes": "Initial contact via Instagram DM"
+            },
+            "tags": ["instagram", "lead"]
+          }
+        }
+      ],
+      "conditions": [
+        {
+          "field": "sender.followerCount",
+          "operator": "gte",
+          "value": 100
+        }
+      ],
+      "settings": {
+        "executionLimits": {
+          "maxExecutions": 1000,
+          "dailyLimit": 50,
+          "monthlyLimit": 1500
+        },
+        "rateLimiting": {
+          "requestsPerMinute": 10,
+          "requestsPerHour": 100
+        },
+        "timing": {
+          "executeImmediately": true,
+          "timezone": "UTC"
+        },
+        "errorHandling": {
+          "retryAttempts": 3,
+          "retryDelay": 60000
+        },
+        "notifications": {
+          "onFailure": true,
+          "onLimit": true
+        }
+      }
     },
-    "schedule": {
-      "enabled": true,
-      "startTime": "10:00",
-      "endTime": "17:00",
-      "timezone": "Asia/Kolkata",
-      "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
-    }
+    "tags": ["auto-reply", "customer-service", "lead-generation"]
   }'
 ```
 
@@ -302,56 +601,196 @@ curl -X POST http://localhost:3000/api/automation \
   "message": "Automation created successfully",
   "data": {
     "automation": {
-      "id": "new_automation_id",
-      "name": "Auto Follow Users",
-      "description": "Automatically follow users based on hashtags",
-      "type": "follow_users",
-      "status": "paused",
-      "platformAccountId": "platform_account_id",
-      "settings": {
-        "targetHashtags": ["#photography", "#travel"],
-        "followsPerHour": 20,
-        "maxFollowsPerDay": 200,
-        "minFollowers": 50,
-        "maxFollowers": 5000
+      "id": "507f1f77bcf86cd799439014",
+      "name": "Instagram Message Auto-Reply",
+      "description": "Automatically reply to Instagram direct messages with personalized responses",
+      "status": "INACTIVE",
+      "platform": "instagram",
+      "platformAccounts": [
+        {
+          "id": "507f1f77bcf86cd799439012",
+          "platform": "instagram",
+          "username": "@yourhandle",
+          "isActive": true
+        }
+      ],
+      "config": {
+        "trigger": {
+          "type": "instagram.message",
+          "senderFilters": {
+            "includeVerified": true,
+            "minFollowers": 100,
+            "excludeKeywords": ["spam", "bot"]
+          },
+          "messageFilters": {
+            "keywords": ["hello", "hi", "info", "help"],
+            "excludeKeywords": ["unsubscribe", "stop"]
+          }
+        },
+        "actions": [
+          {
+            "type": "instagram.send_message",
+            "config": {
+              "messageType": "text",
+              "content": {
+                "text": "Hi {{sender.firstName}}! Thanks for reaching out. How can I help you today?"
+              },
+              "useVariables": true,
+              "delay": 5000
+            }
+          },
+          {
+            "type": "save_to_crm",
+            "config": {
+              "fields": {
+                "name": "{{sender.username}}",
+                "email": "{{sender.email}}",
+                "source": "instagram_dm",
+                "notes": "Initial contact via Instagram DM"
+              },
+              "tags": ["instagram", "lead"]
+            }
+          }
+        ],
+        "conditions": [
+          {
+            "field": "sender.followerCount",
+            "operator": "gte",
+            "value": 100
+          }
+        ],
+        "settings": {
+          "executionLimits": {
+            "maxExecutions": 1000,
+            "dailyLimit": 50,
+            "monthlyLimit": 1500
+          },
+          "rateLimiting": {
+            "requestsPerMinute": 10,
+            "requestsPerHour": 100
+          },
+          "timing": {
+            "executeImmediately": true,
+            "timezone": "UTC"
+          },
+          "errorHandling": {
+            "retryAttempts": 3,
+            "retryDelay": 60000
+          },
+          "notifications": {
+            "onFailure": true,
+            "onLimit": true
+          }
+        }
       },
-      "schedule": {
-        "enabled": true,
-        "startTime": "10:00",
-        "endTime": "17:00",
-        "timezone": "Asia/Kolkata",
-        "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+      "executionStats": {
+        "totalExecutions": 0,
+        "successfulExecutions": 0,
+        "failedExecutions": 0,
+        "lastExecutedAt": null,
+        "nextExecutionAt": null,
+        "averageExecutionTime": 0
       },
-      "createdAt": "2024-01-01T12:00:00Z",
-      "updatedAt": "2024-01-01T12:00:00Z"
+      "limits": {
+        "maxExecutions": 1000,
+        "dailyLimit": 50,
+        "monthlyLimit": 1500,
+        "currentDailyCount": 0,
+        "currentMonthlyCount": 0
+      },
+      "tags": ["auto-reply", "customer-service", "lead-generation"],
+      "isActive": false,
+      "createdBy": "507f1f77bcf86cd799439013",
+      "createdAt": "2024-01-15T12:00:00Z",
+      "updatedAt": "2024-01-15T12:00:00Z"
     }
+  },
+  "meta": {
+    "requestId": "req_123456791",
+    "timestamp": "2024-01-15T12:00:00Z"
   }
 }
 ```
 
 ### 4. Update Automation
-**Endpoint:** `PUT /:id`  
-**Description:** Existing automation को update करता है।  
-**Authentication:** Required (authMiddleware.authenticate)  
+**Endpoint:** `PUT /api/automations/:id`  
+**Description:** Update an existing automation's configuration, settings, or metadata.  
+**Authentication:** Required  
 **Permission:** `AUTOMATION_UPDATE`  
-**Validation:** updateAutomationSchema applied
+**Validation:** `updateAutomationSchema` applied
 
+**Request Body Schema:**
+```typescript
+{
+  name?: string;                   // Optional: Update automation name
+  description?: string;            // Optional: Update description
+  config?: {
+    trigger?: AutomationTrigger;   // Optional: Update trigger configuration
+    actions?: AutomationAction[];  // Optional: Update actions
+    conditions?: AutomationCondition[]; // Optional: Update conditions
+    settings?: AutomationSettings; // Optional: Update settings
+  };
+  tags?: string[];                 // Optional: Update tags
+}
+```
+
+**Example Request:**
 ```bash
-curl -X PUT http://localhost:3000/api/automations/automation_id_here \
+curl -X PUT "https://api.yourapp.com/api/automations/507f1f77bcf86cd799439011" \
   -H "Content-Type: application/json" \
-  -b cookies.txt \
+  -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "name": "Updated Auto Like Posts",
-    "settings": {
-      "targetHashtags": ["#photography", "#nature", "#landscape"],
-      "likesPerHour": 25,
-      "maxLikesPerDay": 400
+    "name": "Enhanced Instagram Comment Auto-Reply",
+    "description": "Updated automation with improved response templates and better filtering",
+    "config": {
+      "trigger": {
+        "type": "instagram.comment",
+        "postFilters": {
+          "includeOwnPosts": true,
+          "includeTaggedPosts": true,
+          "hashtags": ["#photography", "#nature", "#travel"]
+        },
+        "commentFilters": {
+          "keywords": ["love", "amazing", "beautiful", "awesome", "great"],
+          "excludeKeywords": ["spam", "fake", "bot"],
+          "minLength": 3,
+          "maxLength": 500
+        },
+        "senderFilters": {
+          "includeVerified": true,
+          "minFollowers": 100,
+          "excludeBusinessAccounts": false
+        }
+      },
+      "actions": [
+        {
+          "type": "instagram.reply_to_comment",
+          "config": {
+            "replyText": "Thank you so much for your kind words! 😊 Really appreciate it!",
+            "useVariables": true,
+            "delay": 45000,
+            "personalizeResponse": true
+          }
+        }
+      ],
+      "settings": {
+        "executionLimits": {
+          "dailyLimit": 75,
+          "monthlyLimit": 2000
+        },
+        "rateLimiting": {
+          "requestsPerMinute": 3,
+          "requestsPerHour": 30
+        },
+        "timing": {
+          "delayRange": {
+            "min": 30000,
+            "max": 180000
+          }
+        }
+      }
     },
-    "schedule": {
-      "enabled": true,
-      "startTime": "08:00",
-      "endTime": "20:00"
-    }
+    "tags": ["auto-reply", "engagement", "enhanced"]
   }'
 ```
 
@@ -362,11 +801,11 @@ curl -X PUT http://localhost:3000/api/automations/automation_id_here \
   "message": "Automation updated successfully",
   "data": {
     "automation": {
-      "id": "automation_id",
-      "name": "Updated Auto Like Posts",
-      "description": "Automatically likes posts with specific hashtags",
-      "type": "like_posts",
-      "status": "active",
+      "id": "507f1f77bcf86cd799439011",
+      "name": "Enhanced Instagram Comment Auto-Reply",
+      "description": "Updated automation with improved response templates and better filtering",
+      "status": "ACTIVE",
+      "platform": "instagram",
       "settings": {
         "targetHashtags": ["#photography", "#nature", "#landscape"],
         "likesPerHour": 25,
@@ -747,100 +1186,844 @@ The system uses **node-cron** for advanced scheduling capabilities:
 
 The system enforces multiple types of execution limits:
 
-| Limit Type | Description | Behavior When Reached |
-|------------|-------------|----------------------|
-| **Max Executions** | Total lifetime executions | Automation status set to `COMPLETED` |
-| **Daily Limit** | Maximum executions per day | Skip execution until next day |
-| **Monthly Limit** | Maximum executions per month | Skip execution until next month |
-| **Rate Limiting** | Platform-specific rate limits | Automatic throttling and retry |
+| Limit Type         | Description                   | Behavior When Reached                |
+| ------------------ | ----------------------------- | ------------------------------------ |
+| **Max Executions** | Total lifetime executions     | Automation status set to `COMPLETED` |
+| **Daily Limit**    | Maximum executions per day    | Skip execution until next day        |
+| **Monthly Limit**  | Maximum executions per month  | Skip execution until next month      |
+| **Rate Limiting**  | Platform-specific rate limits | Automatic throttling and retry       |
 
 ## Data Models
 
-### Automation Object
+### AutomationDocument Interface
 
 ```typescript
-interface Automation {
-  id: string;                    // Unique automation identifier
-  userId: string;                // Owner user ID
-  name: string;                  // Automation name
-  description?: string;          // Optional description
-  type: AutomationType;          // Automation type enum
-  status: AutomationStatus;      // Current status
-  config: AutomationConfig;      // Triggers and actions configuration
-  platformAccounts: string[];   // Associated platform account IDs
-  maxExecutions?: number;        // Maximum lifetime executions
-  dailyLimit?: number;          // Daily execution limit
-  monthlyLimit?: number;        // Monthly execution limit
-  executionCount: number;       // Total executions performed
-  successCount: number;         // Successful executions
-  failureCount: number;         // Failed executions
-  lastExecutedAt?: Date;        // Last execution timestamp
-  nextExecutionAt?: Date;       // Next scheduled execution
-  analytics: AnalyticsData;     // Performance metrics
-  tags: string[];               // Categorization tags
-  createdAt: Date;              // Creation timestamp
-  updatedAt: Date;              // Last update timestamp
-  deletedAt?: Date;             // Soft deletion timestamp
+interface AutomationDocument extends Document {
+  // Basic Information
+  name: string;                          // Automation name (max 100 chars)
+  description?: string;                  // Optional description (max 500 chars)
+  status: AutomationStatusType;          // Current automation status
+  
+  // Ownership & Platform
+  userId: Types.ObjectId;                // Owner user ID
+  platformAccountIds: Types.ObjectId[]; // Multiple platform accounts support
+  platform: SocialPlatform;             // Target social platform
+  
+  // Automation Configuration
+  trigger: AutomationTrigger;            // Single trigger configuration
+  actions: AutomationAction[];           // Array of actions to execute
+  conditions?: AutomationCondition[];    // Optional conditions for execution
+  settings: AutomationSettings;          // Execution settings and limits
+  
+  // Execution Statistics
+  executionStats: {
+    totalExecutions: number;             // Total times executed
+    successfulExecutions: number;        // Successful executions count
+    failedExecutions: number;            // Failed executions count
+    lastExecutedAt?: Date;               // Last execution timestamp
+    nextExecutionAt?: Date;              // Next scheduled execution
+    averageExecutionTime: number;        // Average execution time in ms
+    lastError?: string;                  // Last error message
+  };
+  
+  // Execution Limits
+  limits?: {
+    maxExecutions?: number;              // Maximum total executions
+    dailyLimit?: number;                 // Daily execution limit
+    monthlyLimit?: number;               // Monthly execution limit
+  };
+  
+  // Metadata
+  tags?: string[];                       // Categorization tags
+  category?: string;                     // Automation category
+  version: number;                       // Version number for updates
+  metadata: Record<string, unknown>;     // Additional metadata
+  deletedAt?: Date;                      // Soft deletion timestamp
+  
+  // Timestamps
+  createdAt: Date;                       // Creation timestamp
+  updatedAt: Date;                       // Last update timestamp
+  
+  // Methods
+  execute(): Promise<AutomationExecutionResult>;
+  pause(): Promise<AutomationDocument>;
+  resume(): Promise<AutomationDocument>;
+  stop(): Promise<AutomationDocument>;
+  updateAnalytics(result: AutomationExecutionResult): Promise<AutomationDocument>;
 }
 ```
 
-### Config Object
+### Trigger Configurations
 
 ```typescript
-interface AutomationConfig {
-  triggers: Trigger[];          // Array of trigger configurations
-  actions: Action[];            // Array of action configurations
-}
-
-interface Trigger {
-  type: TriggerType;           // SCHEDULE, EVENT, CONDITION, WEBHOOK
-  schedule?: {                 // For SCHEDULE triggers
-    cron: string;              // Cron expression
-    timezone?: string;         // Timezone (default: UTC)
-    startDate?: Date;          // Optional start date
-    endDate?: Date;            // Optional end date
-  };
-  event?: {                    // For EVENT triggers
-    platform: string;          // Platform identifier
-    eventType: string;         // Event type (comment, mention, etc.)
-    filters?: object;          // Event filtering criteria
-  };
-  condition?: {                // For CONDITION triggers
-    field: string;             // Field to monitor
-    operator: string;          // Comparison operator
-    value: any;                // Comparison value
-  };
-  webhook?: {                  // For WEBHOOK triggers
-    url: string;               // Webhook endpoint
-    secret?: string;           // Webhook secret for validation
+// Instagram Message Trigger
+interface InstagramMessageTrigger {
+  type: 'instagram.message_received';
+  config: {
+    keywords?: string[];                 // Keywords to match
+    exactMatch?: boolean;                // Exact keyword matching
+    caseSensitive?: boolean;             // Case sensitive matching
+    excludeKeywords?: string[];          // Keywords to exclude
+    senderFilters?: {                    // Sender filtering options
+      includeVerified?: boolean;
+      excludeBusinessAccounts?: boolean;
+      minFollowers?: number;
+      maxFollowers?: number;
+    };
   };
 }
 
-interface Action {
-  type: string;                // Action type identifier
-  platform?: string;          // Target platform
-  config: object;              // Action-specific configuration
-  retryPolicy?: {              // Retry configuration
-    maxRetries: number;
-    backoffMs: number;
+// Instagram Comment Trigger
+interface InstagramCommentTrigger {
+  type: 'instagram.comment_received';
+  config: {
+    keywords?: string[];                 // Keywords to match in comments
+    exactMatch?: boolean;                // Exact keyword matching
+    caseSensitive?: boolean;             // Case sensitive matching
+    excludeKeywords?: string[];          // Keywords to exclude
+    mediaIds?: string[];                 // Specific media IDs to monitor
+    mediaTypes?: ('photo' | 'video' | 'carousel')[];
+    authorFilters?: SenderFilters;       // Comment author filters
+    parentCommentOnly?: boolean;         // Only parent comments
+  };
+}
+
+// Schedule Time-Based Trigger
+interface ScheduleTimeTrigger {
+  type: 'schedule.time_based';
+  config: {
+    executeAt: string;                   // ISO datetime string
+    timezone?: string;                   // Timezone (default: UTC)
+  };
+}
+
+// Schedule Recurring Trigger
+interface ScheduleRecurringTrigger {
+  type: 'schedule.recurring';
+  config: {
+    cron: string;                        // Cron expression
+    timezone?: string;                   // Timezone (default: UTC)
+    startDate?: string;                  // Start date (ISO string)
+    endDate?: string;                    // End date (ISO string)
+    maxExecutions?: number;              // Maximum executions
   };
 }
 ```
 
-### Analytics Object
+### Action Configurations
 
 ```typescript
-interface AnalyticsData {
-  totalRuns: number;           // Total execution count
-  successRate: number;         // Success percentage (0-100)
-  avgExecutionTime: number;    // Average execution time in milliseconds
-  errorCount: number;          // Total error count
-  lastError?: string;          // Last error message
-  performanceMetrics?: {       // Detailed performance data
-    minExecutionTime: number;
-    maxExecutionTime: number;
-    p95ExecutionTime: number;
+// Instagram Send Message Action
+interface InstagramSendMessageAction {
+  type: 'instagram.send_message';
+  config: {
+    messageType: 'text' | 'quick_reply' | 'button_template' | 'generic_template';
+    content: {
+      text?: string;                     // Message text (max 1000 chars)
+      quickReplies?: QuickReply[];       // Quick reply buttons (max 13)
+      buttons?: Button[];                // Action buttons (max 3)
+      template?: GenericTemplate;        // Generic template for rich content
+    };
+    delay?: number;                      // Delay before sending (0-3600 seconds)
   };
+}
+
+// Instagram Publish Post Action
+interface InstagramPublishPostAction {
+  type: 'instagram.publish_post';
+  config: {
+    mediaType: 'photo' | 'video' | 'carousel';
+    mediaUrls: string[];                 // Media URLs (1-10 items)
+    caption: string;                     // Post caption (max 2200 chars)
+    hashtags?: string[];                 // Hashtags (max 30)
+    mentions?: string[];                 // User mentions (max 20)
+    location?: {                         // Location tagging
+      name: string;
+      latitude?: number;
+      longitude?: number;
+    };
+    useVariables?: boolean;              // Enable variable substitution
+  };
+}
+
+// Save to CRM Action
+interface SaveToCrmAction {
+  type: 'internal.save_to_crm';
+  config: {
+    fields: {
+      name?: string;                     // Contact name
+      email?: string;                    // Email address
+      phone?: string;                    // Phone number
+      source: string;                    // Lead source
+      notes?: string;                    // Additional notes
+      tags?: string[];                   // Contact tags
+    };
+    useVariables?: boolean;              // Enable variable substitution
+  };
+}
+
+// Webhook Call Action
+interface WebhookCallAction {
+  type: 'internal.webhook_call';
+  config: {
+    url: string;                         // Webhook URL
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH';
+    headers?: Record<string, string>;    // HTTP headers
+    body?: Record<string, unknown>;      // Request body
+    timeout?: number;                    // Request timeout (1-300 seconds)
+    retries?: number;                    // Retry attempts (0-5)
+    useVariables?: boolean;              // Enable variable substitution
+  };
+}
+```
+
+### Condition Schema
+
+```typescript
+interface AutomationCondition {
+  field: string;                         // Field to evaluate
+  operator: ConditionOperator;           // Comparison operator
+  value: unknown;                        // Comparison value
+  logicalOperator?: 'AND' | 'OR';        // Logical operator for chaining
+}
+
+type ConditionOperator = 
+  | 'equals'
+  | 'not_equals'
+  | 'contains'
+  | 'not_contains'
+  | 'starts_with'
+  | 'ends_with'
+  | 'greater_than'
+  | 'less_than'
+  | 'greater_than_or_equal'
+  | 'less_than_or_equal'
+  | 'in'
+  | 'not_in'
+  | 'is_empty'
+  | 'is_not_empty'
+  | 'regex_match';
+```
+
+### Settings Schema
+
+```typescript
+interface AutomationSettings {
+  // Execution Limits
+  maxExecutionsPerDay?: number;          // Daily execution limit (1-10000)
+  maxExecutionsPerMonth?: number;        // Monthly execution limit (1-100000)
+  maxTotalExecutions?: number;           // Total execution limit
+  
+  // Rate Limiting
+  rateLimitPerMinute?: number;           // Executions per minute (1-60)
+  rateLimitPerHour?: number;             // Executions per hour (1-3600)
+  
+  // Active Hours
+  activeHours?: {
+    start: string;                       // Start time (HH:MM format)
+    end: string;                         // End time (HH:MM format)
+    timezone: string;                    // Timezone
+    daysOfWeek: number[];                // Days of week (0-6, Sunday=0)
+  };
+  
+  // Error Handling
+  stopOnError?: boolean;                 // Stop automation on error
+  maxRetries?: number;                   // Maximum retry attempts (0-10)
+  retryDelay?: number;                   // Delay between retries (1-3600 seconds)
+  
+  // Notifications
+  notifyOnSuccess?: boolean;             // Notify on successful execution
+  notifyOnError?: boolean;               // Notify on error (default: true)
+  notificationChannels?: string[];       // Notification channels
+  
+  // Advanced Settings
+  priority?: 'low' | 'normal' | 'high';  // Execution priority
+  timeout?: number;                      // Execution timeout (1-300 seconds)
+  variables?: Record<string, string>;    // Custom variables for substitution
+}
+```
+
+## Validation Schemas
+
+The automation system uses comprehensive validation schemas to ensure data integrity and security. All validation is performed using Joi validation library with custom validators.
+
+### Create Automation Validation
+
+```typescript
+const createAutomationSchema = Joi.object({
+  name: Joi.string()
+    .min(1)
+    .max(100)
+    .required()
+    .messages({
+      'string.empty': 'Automation name is required',
+      'string.max': 'Automation name cannot exceed 100 characters'
+    }),
+    
+  description: Joi.string()
+    .max(500)
+    .optional()
+    .messages({
+      'string.max': 'Description cannot exceed 500 characters'
+    }),
+    
+  platform: Joi.string()
+    .valid('instagram', 'facebook', 'twitter', 'linkedin')
+    .required()
+    .messages({
+      'any.only': 'Platform must be one of: instagram, facebook, twitter, linkedin'
+    }),
+    
+  platformAccountIds: Joi.array()
+    .items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/))
+    .min(1)
+    .max(10)
+    .required()
+    .messages({
+      'array.min': 'At least one platform account is required',
+      'array.max': 'Maximum 10 platform accounts allowed',
+      'string.pattern.base': 'Invalid platform account ID format'
+    }),
+    
+  config: Joi.object({
+    trigger: triggerValidationSchema.required(),
+    actions: Joi.array()
+      .items(actionValidationSchema)
+      .min(1)
+      .max(10)
+      .required()
+      .messages({
+        'array.min': 'At least one action is required',
+        'array.max': 'Maximum 10 actions allowed'
+      }),
+    conditions: Joi.array()
+      .items(conditionValidationSchema)
+      .max(20)
+      .optional(),
+    settings: settingsValidationSchema.required()
+  }).required(),
+  
+  tags: Joi.array()
+    .items(Joi.string().max(50))
+    .max(20)
+    .optional()
+    .messages({
+      'array.max': 'Maximum 20 tags allowed',
+      'string.max': 'Each tag cannot exceed 50 characters'
+    })
+});
+```
+
+### Update Automation Validation
+
+```typescript
+const updateAutomationSchema = Joi.object({
+  name: Joi.string()
+    .min(1)
+    .max(100)
+    .optional(),
+    
+  description: Joi.string()
+    .max(500)
+    .allow('')
+    .optional(),
+    
+  config: Joi.object({
+    trigger: triggerValidationSchema.optional(),
+    actions: Joi.array()
+      .items(actionValidationSchema)
+      .min(1)
+      .max(10)
+      .optional(),
+    conditions: Joi.array()
+      .items(conditionValidationSchema)
+      .max(20)
+      .optional(),
+    settings: settingsValidationSchema.optional()
+  }).optional(),
+  
+  tags: Joi.array()
+    .items(Joi.string().max(50))
+    .max(20)
+    .optional()
+}).min(1); // At least one field must be provided for update
+```
+
+### Trigger Validation Schemas
+
+```typescript
+// Base trigger schema
+const baseTriggerSchema = Joi.object({
+  type: Joi.string().required(),
+  config: Joi.object().required()
+});
+
+// Instagram Message Trigger
+const instagramMessageTriggerSchema = baseTriggerSchema.keys({
+  type: Joi.string().valid('instagram.message_received').required(),
+  config: Joi.object({
+    keywords: Joi.array()
+      .items(Joi.string().min(1).max(100))
+      .max(50)
+      .optional(),
+    exactMatch: Joi.boolean().default(false),
+    caseSensitive: Joi.boolean().default(false),
+    excludeKeywords: Joi.array()
+      .items(Joi.string().min(1).max(100))
+      .max(20)
+      .optional(),
+    senderFilters: Joi.object({
+      includeVerified: Joi.boolean().optional(),
+      excludeBusinessAccounts: Joi.boolean().optional(),
+      minFollowers: Joi.number().min(0).max(1000000).optional(),
+      maxFollowers: Joi.number().min(0).max(10000000).optional()
+    }).optional()
+  }).required()
+});
+
+// Instagram Comment Trigger
+const instagramCommentTriggerSchema = baseTriggerSchema.keys({
+  type: Joi.string().valid('instagram.comment_received').required(),
+  config: Joi.object({
+    keywords: Joi.array()
+      .items(Joi.string().min(1).max(100))
+      .max(50)
+      .optional(),
+    exactMatch: Joi.boolean().default(false),
+    caseSensitive: Joi.boolean().default(false),
+    excludeKeywords: Joi.array()
+      .items(Joi.string().min(1).max(100))
+      .max(20)
+      .optional(),
+    mediaIds: Joi.array()
+      .items(Joi.string())
+      .max(100)
+      .optional(),
+    mediaTypes: Joi.array()
+      .items(Joi.string().valid('photo', 'video', 'carousel'))
+      .optional(),
+    authorFilters: Joi.object({
+      includeVerified: Joi.boolean().optional(),
+      excludeBusinessAccounts: Joi.boolean().optional(),
+      minFollowers: Joi.number().min(0).max(1000000).optional(),
+      maxFollowers: Joi.number().min(0).max(10000000).optional()
+    }).optional(),
+    parentCommentOnly: Joi.boolean().default(false)
+  }).required()
+});
+
+// Schedule Recurring Trigger
+const scheduleRecurringTriggerSchema = baseTriggerSchema.keys({
+  type: Joi.string().valid('schedule.recurring').required(),
+  config: Joi.object({
+    cron: Joi.string()
+      .pattern(/^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Invalid cron expression format'
+      }),
+    timezone: Joi.string()
+      .default('UTC')
+      .optional(),
+    startDate: Joi.string()
+      .isoDate()
+      .optional(),
+    endDate: Joi.string()
+      .isoDate()
+      .optional(),
+    maxExecutions: Joi.number()
+      .min(1)
+      .max(100000)
+      .optional()
+  }).required()
+});
+
+// Combined trigger validation
+const triggerValidationSchema = Joi.alternatives().try(
+  instagramMessageTriggerSchema,
+  instagramCommentTriggerSchema,
+  scheduleRecurringTriggerSchema
+);
+```
+
+### Action Validation Schemas
+
+```typescript
+// Base action schema
+const baseActionSchema = Joi.object({
+  type: Joi.string().required(),
+  config: Joi.object().required()
+});
+
+// Instagram Send Message Action
+const instagramSendMessageActionSchema = baseActionSchema.keys({
+  type: Joi.string().valid('instagram.send_message').required(),
+  config: Joi.object({
+    messageType: Joi.string()
+      .valid('text', 'quick_reply', 'button_template', 'generic_template')
+      .required(),
+    content: Joi.object({
+      text: Joi.string()
+        .max(1000)
+        .when('messageType', {
+          is: 'text',
+          then: Joi.required(),
+          otherwise: Joi.optional()
+        }),
+      quickReplies: Joi.array()
+        .items(Joi.object({
+          title: Joi.string().max(20).required(),
+          payload: Joi.string().max(1000).required()
+        }))
+        .max(13)
+        .when('messageType', {
+          is: 'quick_reply',
+          then: Joi.required(),
+          otherwise: Joi.forbidden()
+        }),
+      buttons: Joi.array()
+        .items(Joi.object({
+          type: Joi.string().valid('web_url', 'postback').required(),
+          title: Joi.string().max(20).required(),
+          url: Joi.string().uri().when('type', {
+            is: 'web_url',
+            then: Joi.required(),
+            otherwise: Joi.forbidden()
+          }),
+          payload: Joi.string().max(1000).when('type', {
+            is: 'postback',
+            then: Joi.required(),
+            otherwise: Joi.forbidden()
+          })
+        }))
+        .max(3)
+        .when('messageType', {
+          is: 'button_template',
+          then: Joi.required(),
+          otherwise: Joi.forbidden()
+        })
+    }).required(),
+    delay: Joi.number()
+      .min(0)
+      .max(3600)
+      .default(0)
+  }).required()
+});
+
+// Instagram Publish Post Action
+const instagramPublishPostActionSchema = baseActionSchema.keys({
+  type: Joi.string().valid('instagram.publish_post').required(),
+  config: Joi.object({
+    mediaType: Joi.string()
+      .valid('photo', 'video', 'carousel')
+      .required(),
+    mediaUrls: Joi.array()
+      .items(Joi.string().uri())
+      .min(1)
+      .max(10)
+      .required(),
+    caption: Joi.string()
+      .max(2200)
+      .required(),
+    hashtags: Joi.array()
+      .items(Joi.string().pattern(/^#[a-zA-Z0-9_]+$/))
+      .max(30)
+      .optional(),
+    mentions: Joi.array()
+      .items(Joi.string().pattern(/^@[a-zA-Z0-9_.]+$/))
+      .max(20)
+      .optional(),
+    location: Joi.object({
+      name: Joi.string().max(100).required(),
+      latitude: Joi.number().min(-90).max(90).optional(),
+      longitude: Joi.number().min(-180).max(180).optional()
+    }).optional(),
+    useVariables: Joi.boolean().default(false)
+  }).required()
+});
+
+// Webhook Call Action
+const webhookCallActionSchema = baseActionSchema.keys({
+  type: Joi.string().valid('internal.webhook_call').required(),
+  config: Joi.object({
+    url: Joi.string()
+      .uri({ scheme: ['http', 'https'] })
+      .required(),
+    method: Joi.string()
+      .valid('GET', 'POST', 'PUT', 'PATCH')
+      .default('POST'),
+    headers: Joi.object()
+      .pattern(Joi.string(), Joi.string())
+      .optional(),
+    body: Joi.object().optional(),
+    timeout: Joi.number()
+      .min(1)
+      .max(300)
+      .default(30),
+    retries: Joi.number()
+      .min(0)
+      .max(5)
+      .default(3),
+    useVariables: Joi.boolean().default(false)
+  }).required()
+});
+
+// Combined action validation
+const actionValidationSchema = Joi.alternatives().try(
+  instagramSendMessageActionSchema,
+  instagramPublishPostActionSchema,
+  webhookCallActionSchema
+);
+```
+
+### Condition Validation Schema
+
+```typescript
+const conditionValidationSchema = Joi.object({
+  field: Joi.string()
+    .min(1)
+    .max(100)
+    .required()
+    .messages({
+      'string.empty': 'Condition field is required'
+    }),
+    
+  operator: Joi.string()
+    .valid(
+      'equals', 'not_equals', 'contains', 'not_contains',
+      'starts_with', 'ends_with', 'greater_than', 'less_than',
+      'greater_than_or_equal', 'less_than_or_equal',
+      'in', 'not_in', 'is_empty', 'is_not_empty', 'regex_match'
+    )
+    .required()
+    .messages({
+      'any.only': 'Invalid condition operator'
+    }),
+    
+  value: Joi.alternatives()
+    .try(
+      Joi.string().max(1000),
+      Joi.number(),
+      Joi.boolean(),
+      Joi.array().items(Joi.alternatives().try(
+        Joi.string().max(100),
+        Joi.number()
+      )).max(100)
+    )
+    .required(),
+    
+  logicalOperator: Joi.string()
+    .valid('AND', 'OR')
+    .default('AND')
+    .optional()
+});
+```
+
+### Settings Validation Schema
+
+```typescript
+const settingsValidationSchema = Joi.object({
+  // Execution Limits
+  maxExecutionsPerDay: Joi.number()
+    .min(1)
+    .max(10000)
+    .optional()
+    .messages({
+      'number.min': 'Daily execution limit must be at least 1',
+      'number.max': 'Daily execution limit cannot exceed 10,000'
+    }),
+    
+  maxExecutionsPerMonth: Joi.number()
+    .min(1)
+    .max(100000)
+    .optional(),
+    
+  maxTotalExecutions: Joi.number()
+    .min(1)
+    .max(1000000)
+    .optional(),
+    
+  // Rate Limiting
+  rateLimitPerMinute: Joi.number()
+    .min(1)
+    .max(60)
+    .optional(),
+    
+  rateLimitPerHour: Joi.number()
+    .min(1)
+    .max(3600)
+    .optional(),
+    
+  // Active Hours
+  activeHours: Joi.object({
+    start: Joi.string()
+      .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Start time must be in HH:MM format'
+      }),
+    end: Joi.string()
+      .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'End time must be in HH:MM format'
+      }),
+    timezone: Joi.string()
+      .default('UTC')
+      .optional(),
+    daysOfWeek: Joi.array()
+      .items(Joi.number().min(0).max(6))
+      .min(1)
+      .max(7)
+      .unique()
+      .required()
+      .messages({
+        'array.min': 'At least one day of week is required',
+        'array.unique': 'Days of week must be unique',
+        'number.min': 'Day of week must be between 0-6 (Sunday=0)'
+      })
+  }).optional(),
+  
+  // Error Handling
+  stopOnError: Joi.boolean()
+    .default(false),
+    
+  maxRetries: Joi.number()
+    .min(0)
+    .max(10)
+    .default(3),
+    
+  retryDelay: Joi.number()
+    .min(1)
+    .max(3600)
+    .default(60),
+    
+  // Notifications
+  notifyOnSuccess: Joi.boolean()
+    .default(false),
+    
+  notifyOnError: Joi.boolean()
+    .default(true),
+    
+  notificationChannels: Joi.array()
+    .items(Joi.string().valid('email', 'sms', 'webhook', 'push'))
+    .optional(),
+    
+  // Advanced Settings
+  priority: Joi.string()
+    .valid('low', 'normal', 'high')
+    .default('normal'),
+    
+  timeout: Joi.number()
+    .min(1)
+    .max(300)
+    .default(60),
+    
+  variables: Joi.object()
+    .pattern(
+      Joi.string().min(1).max(50),
+      Joi.string().max(500)
+    )
+    .max(50)
+    .optional()
+    .messages({
+      'object.max': 'Maximum 50 variables allowed'
+    })
+});
+```
+
+### Custom Validation Rules
+
+```typescript
+// Custom validators for specific business logic
+const customValidators = {
+  // Validate cron expression
+  cronExpression: (value: string) => {
+    try {
+      const cronParser = require('cron-parser');
+      cronParser.parseExpression(value);
+      return true;
+    } catch (error) {
+      throw new Error('Invalid cron expression');
+    }
+  },
+  
+  // Validate platform account ownership
+  platformAccountOwnership: async (accountIds: string[], userId: string) => {
+    const accounts = await PlatformAccount.find({
+      _id: { $in: accountIds },
+      userId: userId
+    });
+    
+    if (accounts.length !== accountIds.length) {
+      throw new Error('One or more platform accounts do not belong to the user');
+    }
+    
+    return true;
+  },
+  
+  // Validate webhook URL accessibility
+  webhookUrlAccessibility: async (url: string) => {
+    try {
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        timeout: 5000 
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Webhook URL returned status ${response.status}`);
+      }
+      
+      return true;
+    } catch (error) {
+      throw new Error('Webhook URL is not accessible');
+    }
+  }
+};
+```
+
+### Validation Error Examples
+
+```json
+// Field validation error
+{
+  "success": false,
+  "message": "Validation failed",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": [
+      {
+        "field": "name",
+        "message": "Automation name is required",
+        "value": ""
+      },
+      {
+        "field": "config.actions",
+        "message": "At least one action is required",
+        "value": []
+      }
+    ]
+  }
+}
+
+// Business logic validation error
+{
+  "success": false,
+  "message": "Platform account validation failed",
+  "error": {
+    "code": "PLATFORM_ACCOUNT_ERROR",
+    "details": "One or more platform accounts do not belong to the user"
+  }
+}
+
+// Custom validation error
+{
+  "success": false,
+  "message": "Webhook validation failed",
+  "error": {
+    "code": "WEBHOOK_VALIDATION_ERROR",
+    "details": "Webhook URL is not accessible"
+  }
 }
 ```
 

@@ -237,7 +237,7 @@ curl -X GET "https://api.yourapp.com/api/dashboard/content-calendar?month=8&year
 ```
 
 ### Get Recent Activity
-Retrieve recent activity feed including posts, campaigns, and automations.
+Retrieve recent activity and events from your social media accounts including posts, automations, and engagement metrics.
 
 **Endpoint:** `GET /api/dashboard/recent-activity`
 
@@ -249,6 +249,16 @@ Authorization: Bearer <token>
 **Query Parameters:**
 - `limit` (optional): Number of activities to return (default: 20, max: 100)
 - `offset` (optional): Offset for pagination (default: 0)
+- `platform` (optional): Filter by platform
+- `type` (optional): Filter by activity type (post, automation, comment, like, follow, etc.)
+
+**Activity Types:**
+- `post`: Social media posts and content
+- `automation`: Automation executions and updates
+- `comment`: Comments received or made
+- `like`: Likes received or given
+- `follow`: New followers or following actions
+- `engagement`: General engagement activities
 
 **Example Request:**
 ```bash
