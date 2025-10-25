@@ -320,20 +320,10 @@ export class InstagramController {
           return;
         }
 
-        // Test connection
-        const connectionTest =
-          await instagramIntegrationService.testConnectionFromDB(
-            req.session.user.id
-          );
-
         sendSuccess(
           res,
           {
-            connected: status.isConnected,
-            platform: "instagram",
-            accountInfo: status.accountInfo,
-            tokenStatus: status.tokenStatus,
-            connectionTest,
+            ...status,
             message: "Instagram connection status retrieved successfully",
           },
           200,

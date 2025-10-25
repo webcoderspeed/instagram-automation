@@ -74,7 +74,7 @@ class InstagramService {
 
   constructor(config: InstagramConfig = {}) {
     this.config = config;
-    this.baseUrl = config.baseUrl || 'https://graph.facebook.com/v24.0';
+    this.baseUrl = config.baseUrl || 'https://graph.instagram.com/v24.0';
     this.rateLimit = { remaining: 200, resetTime: Date.now() + 3600000 }; // 1 hour
     logger.info('Instagram Graph API service initialized');
   }
@@ -113,13 +113,15 @@ class InstagramService {
       throw new Error('Access token is required for Instagram Graph API requests');
     }
 
+    
     try {
       const url = `${this.baseUrl}${endpoint}`;
       const requestParams = {
         access_token: this.config.accessToken,
         ...params
       };
-
+      
+      console.log('Request params:', requestParams);
       logger.info(`Making API request to: ${endpoint}`);
       const response = await axios.get(url, { params: requestParams });
       

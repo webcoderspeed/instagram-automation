@@ -596,14 +596,15 @@ export class InstagramIntegrationService {
     const platformAccount = await PlatformAccountModel.findOne({
       userId,
       platform: 'instagram'
-    });
+    }).select('+accessToken +refreshToken +tokenExpiresAt');
+
 
     if (!platformAccount) {
       return { isConnected: false };
     }
 
-    // Decrypt tokens after retrieval
-    PlatformAccountEncryption.decryptTokensAfterRetrieve(platformAccount);
+    // TODO: // Decrypt tokens after retrieval 
+    // PlatformAccountEncryption.decryptTokensAfterRetrieve(platformAccount);
 
     const tokenStatus = instagramTokenService.validateToken({
       accessToken: platformAccount.accessToken,
@@ -612,7 +613,7 @@ export class InstagramIntegrationService {
     });
 
     return {
-       isConnected: platformAccount.isActive && tokenStatus.isValid,
+       isConnected: platformAccount.isActive,
        accountInfo: {
          id: platformAccount.id,
          username: platformAccount.username,
