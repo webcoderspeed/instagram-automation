@@ -35,7 +35,9 @@ class SignupController {
    */
   async signup(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { email, username, password, firstName, lastName, timezone, language, role }: SignupRequest = req.body;
+      const { email, username, password, firstName, lastName, timezone, language }: SignupRequest = req.body;
+
+
 
       const result = await signupService.signup({
         email: email.toLowerCase().trim(),
@@ -45,7 +47,6 @@ class SignupController {
         lastName: lastName?.trim(),
         timezone,
         language,
-        role
       });
 
       logger.info(`User signup successful: ${email}`);

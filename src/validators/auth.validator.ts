@@ -38,10 +38,6 @@ export const registerSchema = z.object({
       .string()
       .max(50, 'Last name must be less than 50 characters')
       .optional(),
-    role: z
-      .enum([ROLES.USER, ROLES.MANAGER])
-      .optional()
-      .default(ROLES.USER),
     timezone: z
       .string()
       .optional(),

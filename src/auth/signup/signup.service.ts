@@ -46,9 +46,6 @@ class SignupService {
         throw new ApiError(400, 'User already exists with this email or username');
       }
 
-      // Validate and set role
-      const userRole = this.validateAndSetRole(data.role);
-
       // Hash password
       const passwordHash = await this.hashPassword(data.password);
 
@@ -62,7 +59,6 @@ class SignupService {
         displayName: data.firstName && data.lastName ? `${data.firstName} ${data.lastName}` : data.username,
         timezone: data.timezone || 'UTC',
         language: data.language || 'en',
-        role: userRole,
         isEmailVerified: false
       });
 
