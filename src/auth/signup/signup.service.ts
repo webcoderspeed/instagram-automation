@@ -12,6 +12,7 @@ import { NotificationModel, NotificationType, NotificationChannel, NotificationP
 import { ApiError } from '../../utils/api-error';
 import logger from '../../utils/logger';
 import { emailService } from '../../services/email.service';
+import { env } from '../../config';
 
 export interface SignupData {
   email: string;
@@ -244,7 +245,7 @@ class SignupService {
   private async sendVerificationEmail(user: UserDocument, originalToken: string): Promise<void> {
     try {
       // Use API endpoint for verification instead of frontend URL
-      const verificationUrl = `http://localhost:3000/api/auth/verify-email?token=${originalToken}`;
+      const verificationUrl = `${env.FRONTEND_URL}/verify-email?token=${originalToken}`;
       
       await emailService.sendVerificationEmail({
         to: user.email,

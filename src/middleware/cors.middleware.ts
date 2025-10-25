@@ -1,20 +1,20 @@
-import { Request, Response, NextFunction } from 'express';
-
-export const corsMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  // Set CORS headers
-  res.header('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header(
-    'Access-Control-Allow-Headers',
-    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-  );
-  res.header('Access-Control-Allow-Credentials', 'true');
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-    return;
-  }
-
-  next();
-};
+export function getCorsOptions(ORIGINS: string) {
+  return {
+    origin: (ORIGINS ?? '')?.split(','),
+    credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    allowedHeaders: [
+      'Origin',
+      'X-Requested-With',
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'Access-Control-Allow-Headers',
+      'App',
+      'X-Trace-Id',
+      'X-Api-Key',
+    ],
+  };
+}

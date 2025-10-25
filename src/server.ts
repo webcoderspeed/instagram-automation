@@ -10,12 +10,14 @@ import {
   server as serverConfig,
   databaseConnection,
   sessionConfig,
+  env,
 } from "./config";
-import { corsMiddleware } from "./middleware/cors.middleware";
+import { getCorsOptions } from "./middleware/cors.middleware";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import { generalRateLimit } from "./middleware/rate-limit.middleware";
 import routes from "./routes";
 import logger from "./utils/logger";
+import cors from 'cors'
 
 /**
  * Social Media SaaS Automation Server
@@ -55,7 +57,7 @@ class Server {
     this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
     // CORS middleware
-    this.app.use(corsMiddleware);
+    this.app.use(cors(getCorsOptions(env.ALLOWED_ORIGINS)));
 
     // Session middleware (must be before routes)
     this.app.use(session(sessionConfig));
