@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import logger from '../utils/logger';
 
 // Instagram Graph API configuration interface
@@ -74,7 +74,7 @@ class InstagramService {
 
   constructor(config: InstagramConfig = {}) {
     this.config = config;
-    this.baseUrl = config.baseUrl || 'https://graph.facebook.com/v24.0';
+    this.baseUrl = config.baseUrl || 'https://graph.instagram.com/v24.0';
     this.rateLimit = { remaining: 200, resetTime: Date.now() + 3600000 }; // 1 hour
     logger.info('Instagram Graph API service initialized');
   }
@@ -113,13 +113,15 @@ class InstagramService {
       throw new Error('Access token is required for Instagram Graph API requests');
     }
 
+    
     try {
       const url = `${this.baseUrl}${endpoint}`;
       const requestParams = {
         access_token: this.config.accessToken,
         ...params
       };
-
+      
+      console.log('Request params:', requestParams);
       logger.info(`Making API request to: ${endpoint}`);
       const response = await axios.get(url, { params: requestParams });
       
@@ -206,7 +208,7 @@ class InstagramService {
         access_token: this.config.accessToken
       };
 
-      const response = await axios.post(`${this.baseUrl}/me/media`, params);
+      const response = await axios.post<MediaContainer>(`${this.baseUrl}/me/media`, params);
       
       logger.info('Media container created successfully', { id: response.data.id });
       return response.data;
@@ -234,7 +236,7 @@ class InstagramService {
         access_token: this.config.accessToken
       };
 
-      const response = await axios.post(`${this.baseUrl}/me/media_publish`, params);
+      const response = await axios.post<PublishResponse>(`${this.baseUrl}/me/media_publish`, params);
       
       logger.info('Media published successfully', { id: response.data.id });
       return response.data;
@@ -268,24 +270,7 @@ class InstagramService {
   /**
    * Get account insights (Business/Creator accounts only)
    */
-  async getAccountInsights(period: 'day' | 'week' | 'days_28' = 'day'): Promise<InstagramInsights | null> {
-    try {
-      logger.info(`Fetching account insights for period: ${period}`);
-      
-      // Updated metrics for v24.0 compatibility - removed deprecated profile_views and website_clicks
-      const metrics = 'views,reach,follower_count,total_interactions';
-      const data = await this.makeApiRequest('/me/insights', { 
-        metric: metrics,
-        period 
-      });
 
-      logger.info('Account insights fetched successfully');
-      return data;
-    } catch (error) {
-      logger.error(`Error fetching account insights: ${error}`);
-      return null;
-    }
-  }
 
   /**
    * Validate access token
@@ -330,6 +315,8 @@ class InstagramService {
   getRateLimitStatus(): RateLimit {
     return { ...this.rateLimit };
   }
+
+
 }
 
 // Export singleton instance

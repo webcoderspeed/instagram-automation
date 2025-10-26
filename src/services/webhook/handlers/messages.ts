@@ -6,6 +6,7 @@
 
 import logger from '../../../utils/logger';
 import { messagingService } from '../../messaging';
+import { autoDMService, IncomingMessage } from '../../auto-dm';
 import { WebhookMessaging } from '../interfaces/base';
 import { MessageHandler } from '../types/handlers';
 
@@ -107,38 +108,76 @@ export const handleMessages: MessageHandler = async (entryId: string, messaging:
 };
 
 async function handleTextMessage(senderId: string, recipientId: string, text: string, messageId: string): Promise<void> {
-  logger.info('Processing text message', { senderId, text, messageId });
-
-  // Check if we have access token for sending replies
-  const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
-  if (!accessToken) {
-    logger.warn('No access token available for sending reply', { messageId });
-    return;
-  }
-
   try {
-    // Send automatic reply
-    const response = await messagingService.sendDirectMessage({
-      recipientId: senderId,
-      message: 'Hi from AI! Thanks for your message.',
-      accessToken,
-      instagramUserId: recipientId
+    logger.info('Processing text message', {
+      senderId,
+      recipientId,
+      messageId,
+      textLength: text.length,
+      textPreview: text.substring(0, 50) + (text.length > 50 ? '...' : '')
     });
 
-    if (response) {
-      logger.info('Automatic reply sent successfully', {
-        originalMessageId: messageId,
-        replyMessageId: response.message_id
+    // Store the message in the messaging service
+    await messagingService.storeIncomingMessage({
+      senderId,
+      recipientId,
+      messageId,
+      content: {
+        text,
+        type: 'text'
+      },
+      timestamp: new Date(),
+      platform: 'instagram' // TODO: Determine platform from context
+    });
+
+    // Process auto DM for this message
+    const incomingMessage: IncomingMessage = {
+      senderId,
+      recipientId,
+      text,
+      messageId,
+      platform: 'instagram', // TODO: Determine platform from context
+      timestamp: new Date(),
+      entryId: recipientId // Using recipientId as entryId for now
+    };
+
+    // Trigger auto DM processing
+    const autoDMResult = await autoDMService.processIncomingMessage(incomingMessage);
+    
+    if (autoDMResult.success) {
+      logger.info('Auto DM triggered successfully', {
+        messageId,
+        senderId,
+        automationId: autoDMResult.automationId,
+        responseText: autoDMResult.responseText?.substring(0, 100) + '...'
+      });
+    } else if (autoDMResult.error) {
+      logger.warn('Auto DM processing failed', {
+        messageId,
+        senderId,
+        error: autoDMResult.error
       });
     } else {
-      logger.warn('Reply response was null', { messageId });
+      logger.debug('No auto DM triggered for message', {
+        messageId,
+        senderId,
+        message: autoDMResult.message
+      });
     }
-  } catch (error) {
-    logger.error('Failed to send automatic reply', {
-      error: error instanceof Error ? error.message : 'Unknown error',
+
+    logger.debug('Text message processed successfully', {
       messageId,
       senderId
     });
+
+  } catch (error) {
+    logger.error('Error processing text message', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      senderId,
+      recipientId,
+      messageId
+    });
+    throw error;
   }
 }
 

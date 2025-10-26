@@ -12,7 +12,9 @@ import {
   handleMessageReactions,
   handleMessagingSeen,
   handleMessagingPostbacks,
-  handleMessagingReferrals
+  handleMessagingReferrals,
+  handleComments,
+  handleCommentMentions
 } from './handlers';
 
 export class WebhookService {
@@ -202,14 +204,39 @@ export class WebhookService {
       changeCount: changes.length
     });
 
-    // TODO: Implement change event processing
-    // These include feed events, comments, mentions, etc.
     for (const change of changes) {
       logger.debug('Change event received', {
         entryId,
         field: change.field,
         value: change.value
       });
+
+      try {
+        // Route change events to appropriate handlers
+        switch (change.field) {
+          case 'comments':
+            await handleComments(entryId, change);
+            break;
+          
+          case 'mentions':
+            await handleCommentMentions(entryId, change);
+            break;
+          
+          default:
+            logger.debug('Unhandled change event field', {
+              entryId,
+              field: change.field
+            });
+            break;
+        }
+      } catch (error) {
+        logger.error('Error processing change event', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          entryId,
+          field: change.field,
+          stack: error instanceof Error ? error.stack : undefined
+        });
+      }
     }
   }
 
@@ -228,7 +255,9 @@ export class WebhookService {
         'message_reads',
         'messaging_postbacks',
         'messaging_referrals',
-        'message_reactions'
+        'message_reactions',
+        'comments',
+        'mentions'
       ]
     };
   }

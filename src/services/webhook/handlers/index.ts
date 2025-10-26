@@ -13,6 +13,9 @@ export { handleMessagingSeen } from './messaging-seen';
 export { handleMessagingPostbacks } from './messaging-postbacks';
 export { handleMessagingReferrals } from './messaging-referrals';
 
+// Comment handlers
+export { handleComments, handleCommentMentions } from './comments';
+
 // Re-export types for convenience
 export type {
   WebhookEventHandler,
