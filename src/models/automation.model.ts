@@ -21,6 +21,200 @@ import { SocialPlatform } from '../types';
 // Re-export types for convenience
 export { AutomationStatusType, TriggerTypeType, ActionTypeType };
 
+// ============================================================================
+// VALIDATION FUNCTIONS
+// ============================================================================
+
+function validateMessageTriggerConfig(config: any): boolean {
+  // Optional fields validation
+  if (config.keywords && (!Array.isArray(config.keywords) || !config.keywords.every((k: any) => typeof k === 'string'))) {
+    return false;
+  }
+  if (config.excludeKeywords && (!Array.isArray(config.excludeKeywords) || !config.excludeKeywords.every((k: any) => typeof k === 'string'))) {
+    return false;
+  }
+  if (config.exactMatch !== undefined && typeof config.exactMatch !== 'boolean') {
+    return false;
+  }
+  if (config.caseSensitive !== undefined && typeof config.caseSensitive !== 'boolean') {
+    return false;
+  }
+  if (config.requireAttachment !== undefined && typeof config.requireAttachment !== 'boolean') {
+    return false;
+  }
+  return true;
+}
+
+function validateCommentTriggerConfig(config: any): boolean {
+  // Optional fields validation
+  if (config.keywords && (!Array.isArray(config.keywords) || !config.keywords.every((k: any) => typeof k === 'string'))) {
+    return false;
+  }
+  if (config.excludeKeywords && (!Array.isArray(config.excludeKeywords) || !config.excludeKeywords.every((k: any) => typeof k === 'string'))) {
+    return false;
+  }
+  if (config.exactMatch !== undefined && typeof config.exactMatch !== 'boolean') {
+    return false;
+  }
+  if (config.caseSensitive !== undefined && typeof config.caseSensitive !== 'boolean') {
+    return false;
+  }
+  if (config.mediaIds && (!Array.isArray(config.mediaIds) || !config.mediaIds.every((id: any) => typeof id === 'string'))) {
+    return false;
+  }
+  if (config.mediaTypes && (!Array.isArray(config.mediaTypes) || !config.mediaTypes.every((type: any) => ['photo', 'video', 'carousel'].includes(type)))) {
+    return false;
+  }
+  if (config.parentCommentOnly !== undefined && typeof config.parentCommentOnly !== 'boolean') {
+    return false;
+  }
+  return true;
+}
+
+function validateMentionTriggerConfig(config: any): boolean {
+  // Optional fields validation
+  if (config.keywords && (!Array.isArray(config.keywords) || !config.keywords.every((k: any) => typeof k === 'string'))) {
+    return false;
+  }
+  if (config.excludeKeywords && (!Array.isArray(config.excludeKeywords) || !config.excludeKeywords.every((k: any) => typeof k === 'string'))) {
+    return false;
+  }
+  if (config.exactMatch !== undefined && typeof config.exactMatch !== 'boolean') {
+    return false;
+  }
+  if (config.caseSensitive !== undefined && typeof config.caseSensitive !== 'boolean') {
+    return false;
+  }
+  if (config.mediaTypes && (!Array.isArray(config.mediaTypes) || !config.mediaTypes.every((type: any) => ['FEED', 'STORY', 'REELS'].includes(type)))) {
+    return false;
+  }
+  return true;
+}
+
+function validateScheduleTimeTriggerConfig(config: any): boolean {
+  if (!config.executeAt || !(config.executeAt instanceof Date) && !Date.parse(config.executeAt)) {
+    return false;
+  }
+  if (!config.timezone || typeof config.timezone !== 'string') {
+    return false;
+  }
+  return true;
+}
+
+function validateScheduleRecurringTriggerConfig(config: any): boolean {
+  if (!config.cron || typeof config.cron !== 'string') {
+    return false;
+  }
+  if (!config.timezone || typeof config.timezone !== 'string') {
+    return false;
+  }
+  if (config.startDate && !(config.startDate instanceof Date) && !Date.parse(config.startDate)) {
+    return false;
+  }
+  if (config.endDate && !(config.endDate instanceof Date) && !Date.parse(config.endDate)) {
+    return false;
+  }
+  if (config.maxExecutions !== undefined && (typeof config.maxExecutions !== 'number' || config.maxExecutions < 1)) {
+    return false;
+  }
+  return true;
+}
+
+function validateActionConfig(actionType: string, config: any): boolean {
+  switch (actionType) {
+    case ActionType.INSTAGRAM_SEND_MESSAGE:
+      return validateSendMessageActionConfig(config);
+    case ActionType.INSTAGRAM_REPLY_TO_COMMENT:
+      return validateReplyToCommentActionConfig(config);
+    case ActionType.INSTAGRAM_LIKE_COMMENT:
+      return validateLikeCommentActionConfig(config);
+    case ActionType.INSTAGRAM_HIDE_COMMENT:
+      return validateHideCommentActionConfig(config);
+    case ActionType.SAVE_TO_CRM:
+      return validateSaveToCrmActionConfig(config);
+    case ActionType.SEND_NOTIFICATION:
+      return validateSendNotificationActionConfig(config);
+    case ActionType.TRACK_ENGAGEMENT:
+      return validateTrackEngagementActionConfig(config);
+    default:
+      return false;
+  }
+}
+
+function validateSendMessageActionConfig(config: any): boolean {
+  // Check if messageType is provided and valid
+  if (!config.messageType || !['text', 'quick_reply', 'button_template', 'generic_template'].includes(config.messageType)) {
+    return false;
+  }
+  
+  // Check if content object exists
+  if (!config.content || typeof config.content !== 'object') {
+    return false;
+  }
+  
+  // For text messages, text field is required
+  if (config.messageType === 'text') {
+    if (!config.content.text || typeof config.content.text !== 'string') {
+      return false;
+    }
+  }
+  
+  // Validate delay if provided
+  if (config.delay !== undefined && (typeof config.delay !== 'number' || config.delay < 0)) {
+    return false;
+  }
+  
+  return true;
+}
+
+function validateReplyToCommentActionConfig(config: any): boolean {
+  if (!config.replyText || typeof config.replyText !== 'string') {
+    return false;
+  }
+  if (config.delay !== undefined && (typeof config.delay !== 'number' || config.delay < 0)) {
+    return false;
+  }
+  return true;
+}
+
+function validateLikeCommentActionConfig(config: any): boolean {
+  if (config.delay !== undefined && (typeof config.delay !== 'number' || config.delay < 0)) {
+    return false;
+  }
+  return true;
+}
+
+function validateHideCommentActionConfig(config: any): boolean {
+  if (config.delay !== undefined && (typeof config.delay !== 'number' || config.delay < 0)) {
+    return false;
+  }
+  return true;
+}
+
+function validateSaveToCrmActionConfig(config: any): boolean {
+  if (!config.fields || typeof config.fields !== 'object') {
+    return false;
+  }
+  return true;
+}
+
+function validateSendNotificationActionConfig(config: any): boolean {
+  if (!config.message || typeof config.message !== 'string') {
+    return false;
+  }
+  if (!config.recipients || !Array.isArray(config.recipients) || !config.recipients.every((r: any) => typeof r === 'string')) {
+    return false;
+  }
+  return true;
+}
+
+function validateTrackEngagementActionConfig(config: any): boolean {
+  if (config.properties && typeof config.properties !== 'object') {
+    return false;
+  }
+  return true;
+}
+
 // Automation Status Constants
 export const AutomationStatus = {
   DRAFT: 'draft',
@@ -162,10 +356,30 @@ const automationSchema = new Schema({
       required: true,
       validate: {
         validator: function(config: any) {
-          // Basic validation - can be enhanced based on trigger type
-          return config && typeof config === 'object';
+          if (!config || typeof config !== 'object') {
+            return false;
+          }
+
+          const triggerType = (this as any).trigger?.type;
+          
+          switch (triggerType) {
+            case TriggerType.INSTAGRAM_MESSAGE_RECEIVED:
+              return validateMessageTriggerConfig(config);
+            case TriggerType.INSTAGRAM_COMMENT_RECEIVED:
+              return validateCommentTriggerConfig(config);
+            case TriggerType.INSTAGRAM_MENTION_RECEIVED:
+              return validateMentionTriggerConfig(config);
+            case TriggerType.SCHEDULE_TIME_BASED:
+              return validateScheduleTimeTriggerConfig(config);
+            case TriggerType.SCHEDULE_RECURRING:
+              return validateScheduleRecurringTriggerConfig(config);
+            case TriggerType.MANUAL_TRIGGER:
+              return Object.keys(config).length === 0; // Empty config for manual triggers
+            default:
+              return false;
+          }
         },
-        message: 'Trigger config must be a valid object'
+        message: 'Trigger config must match the trigger type requirements'
       }
     }
   },
@@ -181,11 +395,10 @@ const automationSchema = new Schema({
       type: Schema.Types.Mixed,
       required: true,
       validate: {
-        validator: function(config: any) {
-          // Basic validation - can be enhanced based on action type
-          return config && typeof config === 'object';
+        validator: function(this: any, config: any) {
+          return validateActionConfig(this.type, config);
         },
-        message: 'Action config must be a valid object'
+        message: 'Invalid action configuration for the specified action type'
       }
     }
   }],

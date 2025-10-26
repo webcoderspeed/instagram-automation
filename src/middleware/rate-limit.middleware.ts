@@ -15,7 +15,7 @@ class RateLimiter {
   private windowMs: number;
   private maxRequests: number;
 
-  constructor(windowMs: number = 15 * 60 * 1000, maxRequests: number = 100) {
+  constructor(windowMs: number = 15 * 60 * 1000, maxRequests: number = 10000) {
     this.windowMs = windowMs;
     this.maxRequests = maxRequests;
     
@@ -82,8 +82,8 @@ class RateLimiter {
 
 // Create rate limiters for different endpoints
 export const generalRateLimit = new RateLimiter(15 * 60 * 1000, 100); // 100 requests per 15 minutes
-export const authRateLimit = new RateLimiter(15 * 60 * 1000, 10); // 10 auth requests per 15 minutes
-export const webhookRateLimit = new RateLimiter(60 * 1000, 50); // 50 webhook requests per minute
+export const authRateLimit = new RateLimiter(15 * 60 * 1000, 100); // 10 auth requests per 15 minutes
+export const webhookRateLimit = new RateLimiter(60 * 1000, 500); // 50 webhook requests per minute
 
 // Specific rate limiters for auth endpoints
 export const rateLimitMiddleware = {

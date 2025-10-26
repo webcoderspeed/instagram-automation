@@ -36,6 +36,16 @@ router.get('/templates',
 );
 
 /**
+ * @route GET /api/automations/stats
+ * @desc Get automation statistics overview
+ * @access Private (ANALYTICS_READ permission required)
+ */
+router.get('/stats',
+  roleMiddleware.requirePermission(PERMISSIONS.ANALYTICS_READ),
+  automationController.getAutomationStats
+);
+
+/**
  * @route GET /api/automations/:id
  * @desc Get automation by ID
  * @access Private (AUTOMATION_READ permission required)
@@ -125,16 +135,6 @@ router.post('/:id/execute',
 router.get('/:id/analytics',
   roleMiddleware.requirePermission(PERMISSIONS.ANALYTICS_READ),
   automationController.getAutomationAnalytics
-);
-
-/**
- * @route GET /api/automations/stats/overview
- * @desc Get automation statistics overview
- * @access Private (ANALYTICS_READ permission required)
- */
-router.get('/stats/overview',
-  roleMiddleware.requirePermission(PERMISSIONS.ANALYTICS_READ),
-  automationController.getAutomationStats
 );
 
 export default router;

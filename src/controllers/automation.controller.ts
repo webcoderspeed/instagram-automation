@@ -23,6 +23,46 @@ import { SessionUser } from '../config/session.config';
 
 export class AutomationController {
   /**
+   * Transform trigger with date conversion for schedule-based triggers
+   */
+  private transformTriggerWithDates(trigger: AutomationTrigger): AutomationTrigger {
+    if (trigger.type === 'schedule.time_based') {
+      return {
+        ...trigger,
+        config: {
+          ...trigger.config,
+          executeAt: new Date(trigger.config.executeAt)
+        }
+      } as ScheduleTimeTrigger;
+    }
+    
+    if (trigger.type === 'schedule.recurring') {
+      return {
+        ...trigger,
+        config: {
+          ...trigger.config,
+          startDate: trigger.config.startDate ? new Date(trigger.config.startDate) : undefined,
+          endDate: trigger.config.endDate ? new Date(trigger.config.endDate) : undefined
+        }
+      } as ScheduleRecurringTrigger;
+    }
+    
+    return trigger;
+  }
+
+  /**
+   * Parse test data from request body
+   */
+  private parseTestData(requestBody: unknown): Record<string, unknown> | undefined {
+    if (!requestBody || typeof requestBody !== 'object' || Object.keys(requestBody).length === 0) {
+      return undefined;
+    }
+    
+    const validatedData = executeAutomationSchema.parse(requestBody);
+    return validatedData.testData;
+  }
+
+  /**
    * Get authenticated user from request
    */
   private getAuthenticatedUser(req: Request): SessionUser {
@@ -250,29 +290,7 @@ export class AutomationController {
     if (validatedData.description !== undefined) automation.description = validatedData.description;
     if (validatedData.trigger) {
        // Transform string dates to Date objects for schedule-based triggers
-       let trigger: AutomationTrigger;
-       
-       if (validatedData.trigger.type === 'schedule.time_based') {
-         trigger = {
-           ...validatedData.trigger,
-           config: {
-             ...validatedData.trigger.config,
-             executeAt: new Date(validatedData.trigger.config.executeAt)
-           }
-         } as ScheduleTimeTrigger;
-       } else if (validatedData.trigger.type === 'schedule.recurring') {
-         trigger = {
-           ...validatedData.trigger,
-           config: {
-             ...validatedData.trigger.config,
-             startDate: validatedData.trigger.config.startDate ? new Date(validatedData.trigger.config.startDate) : undefined,
-             endDate: validatedData.trigger.config.endDate ? new Date(validatedData.trigger.config.endDate) : undefined
-           }
-         } as ScheduleRecurringTrigger;
-       } else {
-         trigger = validatedData.trigger as AutomationTrigger;
-       }
-       
+       const trigger = this.transformTriggerWithDates(validatedData.trigger);
        automation.trigger = trigger;
      }
     if (validatedData.actions) automation.actions = validatedData.actions;
@@ -431,11 +449,7 @@ export class AutomationController {
     }
 
     // Validate request body if test data is provided
-    let testData = undefined;
-    if (req.body && Object.keys(req.body).length > 0) {
-      const validatedData = executeAutomationSchema.parse(req.body);
-      testData = validatedData.testData;
-    }
+    const testData = this.parseTestData(req.body);
 
     const automation = await AutomationModel.findOne({
       _id: id,
@@ -620,7 +634,13 @@ export class AutomationController {
    * Get automation statistics
    */
   getAutomationStats = asyncHandler(async (req: Request, res: Response) => {
-    const userId = new Types.ObjectId(this.getAuthenticatedUser(req).id);
+    const user = this.getAuthenticatedUser(req);
+    
+    if (!Types.ObjectId.isValid(user.id)) {
+      throw new ApiError(400, 'Invalid user ID');
+    }
+    
+    const userId = new Types.ObjectId(user.id);
 
     const stats = await automationService.getAutomationStats(userId);
 
